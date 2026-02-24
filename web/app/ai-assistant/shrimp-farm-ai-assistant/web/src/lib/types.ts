@@ -214,6 +214,38 @@ export type ForecastsResponse = {
 	forecast_days: number
 }
 
+// ---------------------------------------------------------------------------
+// Feeding Optimization types
+// ---------------------------------------------------------------------------
+
+export type FeedingScheduleEntry = {
+	time: string        // "07:00"
+	amount_kg: number
+	amount_g: number
+	notes: string
+}
+
+export type FeedingPlan = {
+	pond_id: number
+	daily_feed_kg: number
+	current_daily_feed_kg: number
+	current_biomass_kg: number
+	feed_type: string
+	fcr_current: number
+	fcr_target: number
+	schedule: FeedingScheduleEntry[]
+	adjustment_factor: number
+	adjustment_reason: string
+}
+
+export type FeedingOptimizationResponse = {
+	timestamp: string
+	plans: FeedingPlan[]
+	overall_fcr: number
+	potential_savings_pct: number
+	top_recommendation: string
+}
+
 
 
 

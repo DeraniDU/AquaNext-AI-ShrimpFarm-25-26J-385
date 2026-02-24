@@ -71,7 +71,8 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 	const avgSalinity = avg(water.map((w) => w.salinity))
 	const avgOxygen = avg(water.map((w) => w.dissolved_oxygen))
 	const avgTemp = avg(water.map((w) => w.temperature))
-	const totalFeedG = sum(feed.map((f) => f.feed_amount))
+	// `feed_amount` is per-feeding (see sample generator); daily feed = amount * frequency.
+	const totalFeedG = sum(feed.map((f) => f.feed_amount * (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 1)))
 	const totalEnergyKwh = sum(energy.map((e) => e.total_energy))
 	const totalEnergyCost = sum(energy.map((e) => e.cost))
 
@@ -93,7 +94,7 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 	}))
 	const historyLabels = historyFiltered.map((h) => shortDate(h.timestamp))
 	const historyAvgWeight = historyFiltered.map((h) => avg(h.feed.map((f) => f.average_weight)))
-	const historyTotalFeedKg = historyFiltered.map((h) => sum(h.feed.map((f) => f.feed_amount)) / 1000)
+	const historyTotalFeedKg = historyFiltered.map((h) => sum(h.feed.map((f) => f.feed_amount * (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 1))) / 1000)
 
 	const latestBiomassKg = sum(feed.map((f) => (f.shrimp_count * f.average_weight) / 1000)) // g -> kg
 	const projectedHarvestTons = latestBiomassKg / 1000
@@ -120,15 +121,11 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 				borderColor: '#2563eb',
 				backgroundColor: 'rgba(37, 99, 235, 0.10)',
 				fill: true,
-				tension: 0.35
-			},
-			{
-				type: 'bar' as const,
-				label: 'Feed (kg)',
-				data: historyTotalFeedKg,
-				backgroundColor: 'rgba(245, 158, 11, 0.70)',
-				borderRadius: 6,
-				maxBarThickness: 18
+				tension: 0.35,
+				pointRadius: 4,
+				pointBackgroundColor: '#2563eb',
+				pointBorderColor: '#ffffff',
+				pointBorderWidth: 2
 			}
 		]
 	}
@@ -242,22 +239,18 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 			</div>
 
 			<div className="panel">
-				<PanelHeader title="AI Automation Controls" />
-				<div className="controlList">
-					<ControlRow label="Feeder System" state={feederActive ? 'ACTIVE' : 'IDLE'} tone={feederActive ? 'good' : 'info'} />
-					<ControlRow label="Aerators" state={aeratorsOn ? 'ON' : 'OFF'} tone={aeratorsOn ? 'good' : 'warn'} />
-					<ControlRow label="Water Pumps" state={pumpsOn ? 'ON' : 'OFF'} tone={pumpsOn ? 'good' : 'warn'} />
-					<ControlRow label="Health Monitoring" state="RUNNING" tone="good" />
+				<PanelHeader title="IoT Sensor Network" />
+				<div className="map">
+					<div className="mapBg" aria-hidden="true" />
+					{pondIds.map((id, idx) => (
+						<MapMarker key={id} pondId={id} idx={idx} status={water.find((w) => w.pond_id === id)?.status ?? 'good'} />
+					))}
 				</div>
-				<div className="controlButtons">
-					<ActionButton label="Feed" />
-					<ActionButton label="Aerate" />
-					<ActionButton label="Pump" />
-					<ActionButton label="Clean" />
-				</div>
-				<div className="muted" style={{ marginTop: 10 }}>
-					Energy: <span className="mono">{formatNumber(totalEnergyKwh, { maximumFractionDigits: 1 })}</span> kWh · Cost: Rs.{' '}
-					<span className="mono">{formatNumber(totalEnergyCost, { maximumFractionDigits: 2 })}</span>
+				<div className="legendRow">
+					<LegendDot color="#ef4444" label="Temp" />
+					<LegendDot color="#2563eb" label="DO" />
+					<LegendDot color="#22c55e" label="pH" />
+					<LegendDot color="#60a5fa" label="Salinity" />
 				</div>
 			</div>
 
@@ -285,6 +278,8 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 						<SmallBadge tone="good" label="No Disease Detected" />
 						<SmallBadge tone="good" label="Clear Water" />
 					</div>
+
+
 				</div>
 			</div>
 
@@ -315,27 +310,11 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 				</div>
 			</div>
 
-			<div className="panel">
-				<PanelHeader title="IoT Sensor Network" />
-				<div className="map">
-					<div className="mapBg" aria-hidden="true" />
-					{pondIds.map((id, idx) => (
-						<MapMarker key={id} pondId={id} idx={idx} status={water.find((w) => w.pond_id === id)?.status ?? 'good'} />
-					))}
-				</div>
-				<div className="legendRow">
-					<LegendDot color="#ef4444" label="Temp" />
-					<LegendDot color="#2563eb" label="DO" />
-					<LegendDot color="#22c55e" label="pH" />
-					<LegendDot color="#60a5fa" label="Salinity" />
-				</div>
-			</div>
-
 			<div className="panel spanAll">
 				<PanelHeader
 					title="Alerts"
 					right={
-						<div className="alertSummary">
+						<div className="alertSummary" style={{ display: 'flex', gap: 6 }}>
 							<Chip label={`Critical ${alertCounts.bad}`} tone="bad" />
 							<Chip label={`Warning ${alertCounts.warn}`} tone="warn" />
 							<Chip label={`Info ${alertCounts.info}`} tone="info" />
@@ -343,59 +322,119 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 					}
 				/>
 				{alerts.length ? (
-					<div className="alertsList">
-						{alerts.slice(0, 10).map((a, i) => (
-							<div key={`${a.source}-${i}`} className="alertRow">
-								<span className={`alertDot ${a.tone}`} aria-hidden="true" />
-								<div className="alertTextWrap">
-									<div className="alertText">{a.text}</div>
-									<div className="alertMeta muted">
+					<div className="alertsList" style={{ padding: '8px 0', maxHeight: '200px', overflowY: 'auto' }}>
+						{alerts.slice(0, 5).map((a, i) => (
+							<div key={`${a.source}-${i}`} className="alertRow" style={{ padding: '6px 12px', marginBottom: 4 }}>
+								<span className={`alertDot ${a.tone}`} aria-hidden="true" style={{ width: 6, height: 6, marginRight: 8 }} />
+								<div className="alertTextWrap" style={{ flex: 1, minWidth: 0 }}>
+									<div className="alertText" style={{ fontSize: 17, lineHeight: 1.4, marginBottom: 2 }}>{a.text}</div>
+									<div className="alertMeta muted" style={{ fontSize: 17, color: 'var(--muted)' }}>
 										{a.pondId ? <span className="mono">Pond {a.pondId}</span> : null}
 										{a.pondId ? ' · ' : ''}
 										{a.source}
 									</div>
 								</div>
-								<div className="alertRight">
+								<div className="alertRight" style={{ marginLeft: 8 }}>
 									<Chip label={a.label} tone={a.tone} />
 								</div>
 							</div>
 						))}
 					</div>
 				) : (
-					<div className="emptyState">No active alerts.</div>
+					<div className="emptyState" style={{ padding: '8px 0', fontSize: 17 }}>No active alerts.</div>
 				)}
 			</div>
 
 			{dashboard.recommendations && dashboard.recommendations.length > 0 ? (
 				<div className="panel spanAll">
 					<PanelHeader
-						title="AI Strategic Recommendations"
+						title="AI Strategic Recommendations per Pond"
 						right={<span className="muted">{dashboard.recommendations.length} recommendation(s)</span>}
 					/>
-					<div className="alertsList">
-						{dashboard.recommendations.map((rec, i) => {
-							// Parse markdown-style recommendations (e.g., "**Pond 1**: ...")
-							const parts = rec.split(/(\*\*[^*]+\*\*)/g)
+					<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, padding: '16px 0' }}>
+						{pondIds.map((pondId) => {
+							const pondWater = water.find((w) => w.pond_id === pondId)
+							const pondFeed = feed.find((f) => f.pond_id === pondId)
+							const pondRecos = dashboard.recommendations.filter((rec) => {
+								const match = rec.match(/\*\*Pond (\d+)\*\*/i)
+								return match && parseInt(match[1]) === pondId
+							})
+							
+							if (!pondWater && !pondFeed) return null
+
+							// Determine status
+							const getStatus = () => {
+								if (!pondWater) return { label: 'Unknown', color: '#6b7280', icon: '❓' }
+								if (pondWater.status === 'critical' || pondWater.status === 'poor') {
+									return { label: 'Action Needed', color: '#ef4444', icon: '🔴' }
+								}
+								if (pondWater.status === 'fair') {
+									return { label: 'Monitor', color: '#f59e0b', icon: '⚠️' }
+								}
+								return { label: 'Stable', color: '#16a34a', icon: '✅' }
+							}
+
+							// Determine stock type from average weight
+							const getStockType = () => {
+								if (!pondFeed) return { label: 'Unknown', icon: '❓', color: '#6b7280' }
+								const weight = pondFeed.average_weight
+								if (weight < 10) return { label: 'Juvenile', icon: '🐟', color: '#3b82f6' }
+								return { label: 'Harvest-Ready', icon: '🌿', color: '#16a34a' }
+							}
+
+							const status = getStatus()
+							const stockType = getStockType()
+							const recommendation = pondRecos[0]?.replace(/\*\*[^*]+\*\*:?\s*/g, '').trim() || 'No specific recommendations at this time.'
+
 							return (
 								<div
-									key={i}
-									className="alertRow"
+									key={pondId}
 									style={{
-										gridTemplateColumns: '1fr',
-										padding: '12px 16px',
-										borderLeft: '3px solid rgba(37, 99, 235, 0.6)'
+										border: `2px solid ${status.color}20`,
+										borderRadius: 12,
+										padding: 16,
+										backgroundColor: 'rgba(255, 255, 255, 0.6)',
+										display: 'flex',
+										flexDirection: 'column',
+										gap: 12
 									}}
 								>
-									<div className="alertTextWrap" style={{ width: '100%' }}>
-										<div className="alertText" style={{ color: 'rgba(17, 24, 39, 0.84)', lineHeight: '1.6' }}>
-											{parts.map((part, j) => {
-												if (part.startsWith('**') && part.endsWith('**')) {
-													const text = part.slice(2, -2)
-													return <strong key={j} style={{ color: 'rgba(17, 24, 39, 0.95)' }}>{text}</strong>
-												}
-												return <span key={j}>{part}</span>
-											})}
+									{/* Header with Status */}
+									<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+										<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+											<span style={{ fontSize: 18 }}>{status.icon}</span>
+											<span style={{ fontSize: 18, fontWeight: 700, color: status.color }}>{status.label}</span>
 										</div>
+										<span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Pond {pondId}</span>
+									</div>
+
+									{/* Metrics */}
+									{pondWater && (
+										<div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px', backgroundColor: 'rgba(17, 24, 39, 0.03)', borderRadius: 8 }}>
+											<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+												<span style={{ fontSize: 18 }}>🧪</span>
+												<span style={{ fontSize: 18, color: 'var(--text)' }}>pH: <strong>{pondWater.ph.toFixed(1)}</strong></span>
+											</div>
+											<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+												<span style={{ fontSize: 18 }}>🌿</span>
+												<span style={{ fontSize: 18, color: 'var(--text)' }}>DO: <strong>{pondWater.dissolved_oxygen.toFixed(1)} mg/L</strong></span>
+											</div>
+											<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+												<span style={{ fontSize: 18 }}>🌡️</span>
+												<span style={{ fontSize: 18, color: 'var(--text)' }}>Temperature: <strong>{pondWater.temperature.toFixed(1)}°C</strong></span>
+											</div>
+										</div>
+									)}
+
+									{/* Stock Type */}
+									<div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', backgroundColor: `${stockType.color}15`, borderRadius: 6 }}>
+										<span style={{ fontSize: 18 }}>{stockType.icon}</span>
+										<span style={{ fontSize: 18, fontWeight: 600, color: stockType.color }}>{stockType.label}</span>
+									</div>
+
+									{/* Recommendations */}
+									<div style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.5 }}>
+										{recommendation}
 									</div>
 								</div>
 							)
@@ -497,188 +536,6 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 				</div>
 			) : null}
 
-			<div className="panel spanAll">
-				<PanelHeader title="AI Recommendations" />
-				<div className="actionPlanGrid">
-					{/* Best Feeding Plan */}
-					<ActionPlanCard
-						title="Best Feeding Plan"
-						icon="🔄"
-						details={[
-							`Feed: **${formatNumber(totalFeedG / 1000, { maximumFractionDigits: 1 })} kg** at **7:00 AM** and **8:00 PM**`,
-							`Feed Type: **${feed.length > 0 ? feed[0].feed_type : '35% protein, balanced vitamins'}**`
-						]}
-						chartData={{
-							labels: historyLabels.slice(-7),
-							data: historyTotalFeedKg.slice(-7),
-							color: 'rgba(34, 197, 94, 0.75)'
-						}}
-					/>
-
-					{/* Efficient Labor Plan */}
-					<ActionPlanCard
-						title="Efficient Labor Plan"
-						icon="👥"
-						details={[
-							`**Monday / Wed / Fri**: Net Cleaning & Shrimp Sampling`,
-							`**Tuesday / Thursday**: Aerator Maintenance`
-						]}
-						laborData={{
-							totalWorkers: sum(labor.map((l) => l.worker_count)),
-							tasksCompleted: sum(labor.map((l) => l.tasks_completed.length)),
-							efficiency: avg(labor.map((l) => l.efficiency_score))
-						}}
-					/>
-
-					{/* Optimal Harvest Plan */}
-					<ActionPlanCard
-						title="Optimal Harvest Plan"
-						icon="📅"
-						details={[
-							`Between **${calculateHarvestWindow(historyAvgWeight)}** (FCR ${typeof fcr === 'number' ? formatNumber(fcr, { maximumFractionDigits: 1 }) : '1.3'})`,
-							`Projected Yield: **${formatNumber(projectedHarvestTons, { maximumFractionDigits: 1 })} tons**`,
-							`Market Price: **Rs. ${formatNumber(shrimpPricePerKg, { maximumFractionDigits: 0 })}/kg**`
-						]}
-						harvestChartData={{
-							labels: historyLabels.slice(-7),
-							waterData: historyFiltered.slice(-7).map((h) => ({
-								temp: avg(h.water_quality?.map((w) => w.temperature) || [avgTemp]),
-								do: avg(h.water_quality?.map((w) => w.dissolved_oxygen) || [avgOxygen]),
-								ph: avg(h.water_quality?.map((w) => w.ph) || [avgPh]),
-								salinity: avg(h.water_quality?.map((w) => w.salinity) || [avgSalinity])
-							}))
-						}}
-					/>
-				</div>
-			</div>
-
-			<div className="panel spanAll">
-				<PanelHeader
-					title="Decision Agent (XGBoost)"
-					right={
-						<span className="muted">
-							Source: <span className="mono">{decisionSourceLabel}</span>
-							{typeof data.decisions?.overall_urgency === 'number'
-								? ` · Overall urgency: ${formatPercent01(data.decisions.overall_urgency)}`
-								: ''}
-						</span>
-					}
-				/>
-
-				{topActions.length ? (
-					<div className="decisionCards">
-						{topActions.map((d) => (
-							<DecisionCard key={d.pond_id} d={d} />
-						))}
-					</div>
-				) : (
-					<div className="emptyState">
-						No decision outputs available. If you trained the XGBoost model, make sure it’s enabled in the backend and refresh.
-					</div>
-				)}
-
-				<div className="decisionGrid">
-					<div className="decisionBlock">
-						<div className="decisionBlockTitle">Action plan</div>
-						{decisionRecos.length ? (
-							<div className="recoGroups">
-								{Object.entries(recosByPond)
-									.sort(([a], [b]) => Number(a) - Number(b))
-									.map(([pondId, items]) => (
-										<div key={pondId} className="recoGroup">
-											<div className="recoHeader">
-												<Chip label={`Pond ${pondId}`} tone="info" />
-												<span className="muted">{items.length} item(s)</span>
-											</div>
-											<ul className="decisionList">
-												{items.slice(0, 6).map((r: DecisionRecommendation, i) => (
-													<li key={`${r.pond_id}-${i}`}>{r.text}</li>
-												))}
-											</ul>
-										</div>
-									))}
-							</div>
-						) : (
-							<div className="emptyState">No decision-based recommendations available.</div>
-						)}
-
-						<div className="decisionMiniGrid">
-							<MiniStat label="Filtered ponds" value={pondFilter ? `1 (Pond ${pondFilter})` : String(water.length)} />
-							<MiniStat label="Generated recos" value={String(decisionRecos.length)} />
-						</div>
-					</div>
-
-					<div className="decisionBlock">
-						<div className="decisionBlockTitle">Details</div>
-						<div className="muted" style={{ marginBottom: 10 }}>
-							Expanded view of model outputs (all ponds in view).
-						</div>
-						<details className="details">
-							<summary className="detailsSummary">
-								<span>Show per-pond decision table</span>
-								<span className="muted">{decisionsSorted.length} row(s)</span>
-							</summary>
-							<div className="tableWrap" style={{ marginTop: 10 }}>
-								<table className="table">
-									<thead>
-										<tr>
-											<th>Pond</th>
-											<th>Primary action</th>
-											<th className="right">Urgency</th>
-											<th className="right">Confidence</th>
-											<th>Suggested settings</th>
-										</tr>
-									</thead>
-									<tbody>
-										{decisionsSorted.map((d: DecisionOutput) => (
-											<tr key={d.pond_id}>
-												<td className="mono">Pond {d.pond_id}</td>
-												<td>
-													<div className="mono">
-														#{d.priority_rank} · {actionLabel(d.primary_action)}
-													</div>
-													{d.secondary_actions?.length ? (
-														<div className="muted" style={{ marginTop: 2 }}>
-															Secondary: {d.secondary_actions.map((a) => actionLabel(a)).join(', ')}
-														</div>
-													) : null}
-												</td>
-												<td className="right">
-													<div className="inlineRight">
-														<Chip label={formatPercent01(d.urgency_score)} tone={toneForScore(d.urgency_score)} />
-													</div>
-												</td>
-												<td className="right">
-													<div className="inlineRight">
-														<Chip label={formatPercent01(d.confidence)} tone={toneForScore(d.confidence)} />
-													</div>
-												</td>
-												<td className="muted">
-													{formatSettings(d)}
-													{d.reasoning ? (
-														<div style={{ marginTop: 6 }}>
-															<details className="why">
-																<summary className="whySummary">Why?</summary>
-																<div className="whyBody">{d.reasoning}</div>
-															</details>
-														</div>
-													) : null}
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						</details>
-
-						{data.decisions?.resource_allocation ? (
-							<div className="muted" style={{ marginTop: 10 }}>
-								Resource allocation: <span className="mono">{JSON.stringify(data.decisions.resource_allocation)}</span>
-							</div>
-						) : null}
-					</div>
-				</div>
-			</div>
 		</div>
 	)
 }

@@ -552,6 +552,29 @@ class DataRepository:
         try:
             from collections import defaultdict
             
+            def _latest_per_pond(items: List[Any]) -> List[Any]:
+                """
+                Reduce a list of per-pond readings to the latest reading per pond.
+                
+                Historical chart snapshots should have one reading per pond per day.
+                Without this, hourly sample data causes "daily" totals to blow up
+                (e.g., summing 24 readings in a day).
+                """
+                latest: Dict[int, Any] = {}
+                for item in items:
+                    pond_id = getattr(item, "pond_id", None)
+                    ts = getattr(item, "timestamp", None)
+                    if pond_id is None:
+                        continue
+                    current = latest.get(int(pond_id))
+                    if current is None:
+                        latest[int(pond_id)] = item
+                        continue
+                    cur_ts = getattr(current, "timestamp", None)
+                    if ts is not None and (cur_ts is None or ts > cur_ts):
+                        latest[int(pond_id)] = item
+                return list(latest.values())
+            
             # When a time range is specified, get ALL records in that range (no limit)
             # Otherwise, use a reasonable limit to avoid memory issues
             # For a month of data with multiple readings per day, we need a much higher limit
@@ -703,12 +726,17 @@ class DataRepository:
             for ts, data in grouped.items():
                 # Only create snapshot if we have at least some data
                 if data["water_quality"] or data["feed"] or data["energy"] or data["labor"]:
+                    # Keep only the latest reading per pond for the day
+                    wq_day = _latest_per_pond(data["water_quality"])
+                    feed_day = _latest_per_pond(data["feed"])
+                    energy_day = _latest_per_pond(data["energy"])
+                    labor_day = _latest_per_pond(data["labor"])
                     snapshot = {
                         "timestamp": ts.isoformat(),
-                        "water_quality": [w.model_dump(mode="json") for w in data["water_quality"]],
-                        "feed": [f.model_dump(mode="json") for f in data["feed"]],
-                        "energy": [e.model_dump(mode="json") for e in data["energy"]],
-                        "labor": [l.model_dump(mode="json") for l in data["labor"]]
+                        "water_quality": [w.model_dump(mode="json") for w in wq_day],
+                        "feed": [f.model_dump(mode="json") for f in feed_day],
+                        "energy": [e.model_dump(mode="json") for e in energy_day],
+                        "labor": [l.model_dump(mode="json") for l in labor_day]
                     }
                     snapshots.append(snapshot)
             

@@ -245,7 +245,8 @@ def get_dashboard(
 			decision_bundle_dump = decision_bundle.model_dump(mode="json")
 
 			# Human-friendly recommendations derived from decision outputs.
-			reco_agent = DecisionRecommendationAgent()
+			# Prefer LLM-generated action-plan text (falls back only if LLM unavailable).
+			reco_agent = DecisionRecommendationAgent(enable_llm=True)
 			decision_recommendations = [
 				{
 					"pond_id": r.pond_id,
@@ -284,5 +285,44 @@ def get_dashboard(
 		_DASHBOARD_CACHE_TS[cache_key] = now
 
 	return payload
+
+
+@app.get("/api/feeding-optimization")
+def get_feeding_optimization(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	"""
+	Return an optimized per-pond feeding plan.
+
+	Calculates recommended daily feed amounts, feeding windows, and feed
+	types based on current biomass estimates and live water quality data.
+
+	Query params:
+	- ponds: Number of ponds to optimize for
+	- seed: Optional RNG seed (passed through to data generators for reproducibility)
+	"""
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	water_quality_agent = WaterQualityAgent()
+	feed_agent = FeedPredictionAgent()
+
+	water_quality_data = []
+	feed_data = []
+
+	for pond_id in range(1, ponds + 1):
+		wq = water_quality_agent.get_water_quality_data(pond_id)
+		water_quality_data.append(wq)
+
+		feed = feed_agent.get_feed_data(pond_id, wq)
+		feed_data.append(feed)
+
+	from agents.feeding_optimizer import FeedingOptimizerAgent
+	optimizer = FeedingOptimizerAgent()
+	result = optimizer.optimize_all(feed_data, water_quality_data)
+
+	return result.model_dump(mode="json")
 
 
