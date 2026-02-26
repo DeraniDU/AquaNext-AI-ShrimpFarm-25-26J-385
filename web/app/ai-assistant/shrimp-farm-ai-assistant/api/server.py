@@ -150,7 +150,7 @@ def get_forecasts(
 		energy = energy_agent.get_energy_data(pond_id, wq)
 		energy_data.append(energy)
 		
-		labor = labor_agent.get_labor_data(pond_id, wq, energy)
+		labor = labor_agent.get_or_generate_labor_data(pond_id, wq, energy)
 		labor_data.append(labor)
 	
 	# Load historical data (from MongoDB or JSON files)
@@ -228,8 +228,13 @@ def get_dashboard(
 		energy = energy_agent.get_energy_data(pond_id, wq)
 		energy_data.append(energy)
 
-		labor = labor_agent.get_labor_data(pond_id, wq, energy)
+		labor = labor_agent.get_or_generate_labor_data(pond_id, wq, energy)
 		labor_data.append(labor)
+
+	# AI labor optimization: per-pond plans, schedules, and recommendations
+	labor_optimization = labor_agent.optimize_all_labor(
+		water_quality_data, energy_data, labor_data
+	)
 
 	dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 
@@ -275,6 +280,7 @@ def get_dashboard(
 		"feed": [f.model_dump(mode="json") for f in feed_data],
 		"energy": [e.model_dump(mode="json") for e in energy_data],
 		"labor": [l.model_dump(mode="json") for l in labor_data],
+		"labor_optimization": labor_optimization,
 		"decision_agent_type": decision_agent_type,
 		"decisions": decision_bundle_dump,
 		"decision_recommendations": decision_recommendations,
@@ -324,5 +330,51 @@ def get_feeding_optimization(
 	result = optimizer.optimize_all(feed_data, water_quality_data)
 
 	return result.model_dump(mode="json")
+
+
+@app.get("/api/labor-optimization")
+def get_labor_optimization(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	"""
+	Return AI-powered labor optimization per pond: schedules, recommendations, metrics, and optional LLM plan.
+
+	Uses LaborOptimizationAgent (CrewAI + LLM when OPENAI_API_KEY is set) plus rule-based schedules
+	and recommendations. Labor data is generated from water quality and energy when not in MongoDB.
+
+	Query params:
+	- ponds: Number of ponds to optimize for
+	- seed: Optional RNG seed for reproducible simulation
+	"""
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	water_quality_agent = WaterQualityAgent()
+	energy_agent = EnergyOptimizationAgent()
+	labor_agent = LaborOptimizationAgent()
+
+	water_quality_data = []
+	energy_data = []
+	labor_data = []
+
+	for pond_id in range(1, ponds + 1):
+		wq = water_quality_agent.get_water_quality_data(pond_id)
+		water_quality_data.append(wq)
+		energy = energy_agent.get_energy_data(pond_id, wq)
+		energy_data.append(energy)
+		labor = labor_agent.get_or_generate_labor_data(pond_id, wq, energy)
+		labor_data.append(labor)
+
+	labor_optimization = labor_agent.optimize_all_labor(
+		water_quality_data, energy_data, labor_data
+	)
+
+	return {
+		"labor_optimization": labor_optimization,
+		"timestamp": datetime.utcnow().isoformat(),
+		"ponds": ponds,
+	}
 
 

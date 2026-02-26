@@ -64,6 +64,7 @@ class ShrimpFarmOrchestrator:
             'feed': [],
             'energy': [],
             'labor': [],
+            'labor_optimization': [],
             'dashboard': None
         }
         
@@ -174,11 +175,13 @@ class ShrimpFarmOrchestrator:
         self.farm_data['energy'] = energy_data
         logger.info(f"Collected energy data for {len(energy_data)} ponds")
         
-        # Labor optimization
+        # Labor: get or generate data, then run AI labor optimization
         labor_data = []
         for i, (wq_data, energy_data_item) in enumerate(zip(water_quality_data, energy_data)):
             pond_id = i + 1
-            labor_data_item = self.labor_agent.get_labor_data(pond_id, wq_data, energy_data_item)
+            labor_data_item = self.labor_agent.get_or_generate_labor_data(
+                pond_id, wq_data, energy_data_item
+            )
             labor_data.append(labor_data_item)
             # Save to database if available
             if repository and repository.is_available:
@@ -189,6 +192,17 @@ class ShrimpFarmOrchestrator:
         
         self.farm_data['labor'] = labor_data
         logger.info(f"Collected labor data for {len(labor_data)} ponds")
+
+        # Run AI labor optimization (CrewAI agent + rule-based schedule/recommendations)
+        try:
+            labor_optimization = self.labor_agent.optimize_all_labor(
+                water_quality_data, energy_data, labor_data
+            )
+            self.farm_data['labor_optimization'] = labor_optimization
+            logger.info(f"Labor optimization completed for {len(labor_optimization)} ponds")
+        except Exception as e:
+            logger.warning(f"Labor optimization failed: {e}")
+            self.farm_data['labor_optimization'] = []
         
         # Close repository connection
         if repository:

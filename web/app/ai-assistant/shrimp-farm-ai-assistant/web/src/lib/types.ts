@@ -117,12 +117,38 @@ export type LaborData = {
 	next_tasks: string[]
 }
 
+/** Per-pond result from AI labor optimization (CrewAI + rule-based). */
+export type LaborOptimizationResult = {
+	pond_id: number
+	ai_plan: string | null
+	schedule: {
+		morning_shift?: { time: string; tasks: string[]; workers: number }
+		afternoon_shift?: { time: string; tasks: string[]; workers: number }
+		evening_shift?: { time: string; tasks: string[]; workers: number }
+	}
+	recommendations: Array<{
+		category: string
+		priority: string
+		recommendation: string
+		expected_improvement?: string
+		implementation?: string
+	}>
+	metrics: {
+		tasks_per_hour: number
+		tasks_per_worker: number
+		cost_per_task: number
+		efficiency_score: number
+		total_labor_cost: number
+	}
+}
+
 export type DashboardApiResponse = {
 	dashboard: ShrimpFarmDashboard
 	water_quality: WaterQualityData[]
 	feed: FeedData[]
 	energy: EnergyData[]
 	labor: LaborData[]
+	labor_optimization?: LaborOptimizationResult[]
 	decision_agent_type?: string | null
 	decisions?: MultiPondDecision | null
 	decision_recommendations?: DecisionRecommendation[]

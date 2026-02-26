@@ -19,11 +19,17 @@ import json
 import numpy as np
 
 
-def train_xgboost_models(num_samples: int = 20000, model_dir: str = "models/xgboost_models") -> None:
+def train_xgboost_models(
+    num_samples: int = 20000,
+    model_dir: str = "models/xgboost_models",
+    noise_level: float = 0.0,
+    noise_seed: int = 42,
+) -> None:
     try:
         import joblib
         import xgboost as xgb
         from sklearn.model_selection import train_test_split
+        from sklearn.metrics import r2_score
     except ImportError as e:
         raise SystemExit(
             "Missing dependencies. Install with: pip install xgboost scikit-learn joblib"
@@ -64,6 +70,12 @@ def train_xgboost_models(num_samples: int = 20000, model_dir: str = "models/xgbo
         X, y_urgency, test_size=0.2, random_state=42
     )
 
+    if noise_level > 0:
+        from evaluate_xgboost_models import apply_feature_noise
+        print(f"\n   Applying feature noise to training data (noise_level={noise_level}, seed={noise_seed})...")
+        X_train = apply_feature_noise(X_ref=X_train, X=X_train, noise_level=noise_level, seed=noise_seed)
+        Xu_train = apply_feature_noise(X_ref=Xu_train, X=Xu_train, noise_level=noise_level, seed=noise_seed)
+
     print(f"\n2. Training action classifier ({len(observed)} observed classes out of 8)...")
     action_model = xgb.XGBClassifier(
         n_estimators=300,
@@ -77,6 +89,9 @@ def train_xgboost_models(num_samples: int = 20000, model_dir: str = "models/xgbo
         n_jobs=-1,
     )
     action_model.fit(X_train, ya_train, eval_set=[(X_val, ya_val)], verbose=False)
+    train_acc_action = float(action_model.score(X_train, ya_train)) * 100
+    val_acc_action = float(action_model.score(X_val, ya_val)) * 100
+    print(f"   Action classifier: train accuracy = {train_acc_action:.2f}%, val accuracy = {val_acc_action:.2f}%")
 
     print("\n3. Training urgency regressor...")
     urgency_model = xgb.XGBRegressor(
@@ -90,6 +105,9 @@ def train_xgboost_models(num_samples: int = 20000, model_dir: str = "models/xgbo
         n_jobs=-1,
     )
     urgency_model.fit(Xu_train, yu_train, eval_set=[(Xu_val, yu_val)], verbose=False)
+    train_r2_urgency = float(r2_score(yu_train, urgency_model.predict(Xu_train)))
+    val_r2_urgency = float(r2_score(yu_val, urgency_model.predict(Xu_val)))
+    print(f"   Urgency regressor: train R² = {train_r2_urgency:.4f}, val R² = {val_r2_urgency:.4f}")
 
     print("\n4. Saving models...")
     
@@ -137,8 +155,20 @@ def train_xgboost_models(num_samples: int = 20000, model_dir: str = "models/xgbo
             json.dumps({"enc_to_orig": enc_to_orig, "orig_to_enc": orig_to_enc}, indent=2),
             encoding="utf-8",
         )
-        
+        metrics_path = out_dir / "metrics.json"
+        metrics_path.write_text(
+            json.dumps({
+                "train_accuracy": train_acc_action,
+                "val_accuracy": val_acc_action,
+                "train_r2_urgency": train_r2_urgency,
+                "val_r2_urgency": val_r2_urgency,
+                "noise_level": noise_level,
+                "noise_seed": noise_seed,
+            }, indent=2),
+            encoding="utf-8",
+        )
         print(f"   Saved: {action_path}")
+        print(f"   Saved: {metrics_path}")
         print(f"   Saved: {urgency_path}")
         print(f"   Saved: {mapping_path}")
         print("\n[OK] XGBoost models trained successfully!")
@@ -157,11 +187,23 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--samples", type=int, default=20000, help="Number of synthetic samples to generate")
     p.add_argument("--model-dir", type=str, default="models/xgboost_models", help="Output directory for saved models")
+    p.add_argument(
+        "--noise-level",
+        type=float,
+        default=0.0,
+        help="Add sensor-like noise to training features (e.g. 0.05–0.15). 0 = no noise.",
+    )
+    p.add_argument("--noise-seed", type=int, default=42, help="Random seed for noise (default 42)")
     return p.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    train_xgboost_models(num_samples=args.samples, model_dir=args.model_dir)
+    train_xgboost_models(
+        num_samples=args.samples,
+        model_dir=args.model_dir,
+        noise_level=args.noise_level,
+        noise_seed=args.noise_seed,
+    )
 
 

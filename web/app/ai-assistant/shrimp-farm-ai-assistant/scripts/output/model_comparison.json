@@ -1,0 +1,27 @@
+[
+  {
+    "model": "EfficientNetV2B0",
+    "train_acc": 77.72,
+    "val_acc": 73.2
+  },
+  {
+    "model": "ConvNeXtTiny",
+    "train_acc": 74.5,
+    "val_acc": 77.47
+  },
+  {
+    "model": "EfficientNetV2L",
+    "train_acc": 72.58,
+    "val_acc": 63.47
+  },
+  {
+    "model": "ConvNeXtTiny + EfficientNetV2B0",
+    "train_acc": 89.3,
+    "val_acc": 75.3
+  },
+  {
+    "model": "Dynamic Attention (Dual-Model)",
+    "train_acc": 93.3,
+    "val_acc": 93.2
+  }
+]

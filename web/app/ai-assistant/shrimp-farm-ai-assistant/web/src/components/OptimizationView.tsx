@@ -119,6 +119,12 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 	const energy = pondFilter ? data.energy.filter((e) => e.pond_id === pondFilter) : data.energy
 	const labor = pondFilter ? data.labor.filter((l) => l.pond_id === pondFilter) : data.labor
+	const laborOptimization = data.labor_optimization
+		? (pondFilter
+			? data.labor_optimization.filter((o) => o.pond_id === pondFilter)
+			: data.labor_optimization)
+		: []
+	const primaryLaborOpt = laborOptimization.length > 0 ? laborOptimization[0] : null
 
 	// Feeding optimization data from backend
 	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } = useFeedingOptimization(ponds)
@@ -946,6 +952,34 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 						<div className="panelTitle">Optimized Shift & Schedule Planning</div>
 					</div>
 					<div style={{ padding: '12px 0' }}>
+						{primaryLaborOpt?.schedule && (primaryLaborOpt.schedule.morning_shift || primaryLaborOpt.schedule.afternoon_shift || primaryLaborOpt.schedule.evening_shift) && (
+							<div style={{ marginBottom: 16, padding: 10, backgroundColor: 'rgba(34, 197, 94, 0.08)', borderRadius: 8, border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>Recommended shifts (AI)</div>
+								<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+									{primaryLaborOpt.schedule.morning_shift && (
+										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
+											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.morning_shift.time}</span>
+											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.morning_shift.tasks.join(' · ')}</div>
+											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.morning_shift.workers} worker(s)</div>
+										</div>
+									)}
+									{primaryLaborOpt.schedule.afternoon_shift && (
+										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
+											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.afternoon_shift.time}</span>
+											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.afternoon_shift.tasks.join(' · ')}</div>
+											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.afternoon_shift.workers} worker(s)</div>
+										</div>
+									)}
+									{primaryLaborOpt.schedule.evening_shift && (
+										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
+											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.evening_shift.time}</span>
+											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.evening_shift.tasks.join(' · ')}</div>
+											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.evening_shift.workers} worker(s)</div>
+										</div>
+									)}
+								</div>
+							</div>
+						)}
 						<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>Today's Schedule</div>
 						<div style={{ overflowX: 'auto' }}>
 							<div style={{ display: 'grid', gridTemplateColumns: '120px repeat(4, 1fr)', gap: 8, minWidth: 600 }}>
@@ -1009,15 +1043,32 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 							</div>
 						</div>
 						
-						{/* AI Recommendations */}
+						{/* AI Labor Optimization: plan + recommendations from backend */}
 						<div style={{ marginTop: 16, padding: 10, backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: 8, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-							<div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>🤖 AI Recommendations</div>
-							<div style={{ fontSize: 18, color: 'var(--text)', lineHeight: 1.6, marginBottom: 4 }}>
-								• Add one more worker to the evening operation detected at Friday 6 PM
-							</div>
-							<div style={{ fontSize: 18, color: '#dc2626', lineHeight: 1.6 }}>
-								⚠️ Alert: Ryan is overloaded with back-to-back tasks
-							</div>
+							<div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>🤖 AI Labor Recommendations</div>
+							{primaryLaborOpt ? (
+								<>
+									{primaryLaborOpt.ai_plan && (
+										<div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, marginBottom: 12, whiteSpace: 'pre-wrap' }}>
+											{primaryLaborOpt.ai_plan}
+										</div>
+									)}
+									{primaryLaborOpt.recommendations.length > 0 ? (
+										<ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
+											{primaryLaborOpt.recommendations.slice(0, 5).map((r, i) => (
+												<li key={i} style={{ marginBottom: 4 }}>
+													<strong>{r.category}</strong> ({r.priority}): {r.recommendation}
+													{r.expected_improvement ? ` — ${r.expected_improvement}` : ''}
+												</li>
+											))}
+										</ul>
+									) : !primaryLaborOpt.ai_plan && (
+										<div style={{ fontSize: 13, color: 'var(--muted)' }}>No specific recommendations. Labor efficiency is within target.</div>
+									)}
+								</>
+							) : (
+								<div style={{ fontSize: 13, color: 'var(--muted)' }}>Load dashboard with labor optimization to see AI recommendations and schedules.</div>
+							)}
 						</div>
 					</div>
 				</div>
