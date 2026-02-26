@@ -12,14 +12,13 @@ This is a **multi-agent AI system** for intelligent shrimp farm management. The 
 ┌─────────────────────────────────────────────────────────┐
 │              Application Entry Points                    │
 │  • main.py (CLI orchestrator)                           │
-│  • dashboard.py (Streamlit web interface)                │
-│  • api/server.py (FastAPI REST API)                     │
-│  • demo.py (Demo mode without API key)                  │
+│  • api/server.py (FastAPI REST API)    
+                    │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────┐
-│         ShrimpFarmOrchestrator / Dashboard App          │
+│         ShrimpFarmOrchestrator                          │
 │  • Initializes all agents                               │
 │  • Coordinates data collection                          │
 │  • Manages monitoring cycles                            │
@@ -66,13 +65,13 @@ This is a **multi-agent AI system** for intelligent shrimp farm management. The 
         │    human-readable text        │
         └───────────────┬───────────────┘
                         │
-        ┌───────────────┼───────────────┐
-        │               │               │
-        ▼               ▼               ▼
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│  Dashboard   │ │  API Server  │ │  Data File   │
-│  (Streamlit) │ │  (FastAPI)   │ │  (JSON)      │
-└──────────────┘ └──────────────┘ └──────────────┘
+                        ┼
+                        │               
+                        ▼               
+                 ┌──────────────┐
+                    API Server  │ 
+                 │  (FastAPI)   │ 
+                 └──────────────┘ 
 ```
 
 ---

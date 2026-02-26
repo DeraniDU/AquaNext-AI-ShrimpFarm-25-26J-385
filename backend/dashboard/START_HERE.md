@@ -24,3 +24,4 @@ Wait for: Browser to open automatically at `http://localhost:3000`
 
 **Note:** If the backend shows errors about `models.pkl`, the API will still work but return default/empty data.
 
+

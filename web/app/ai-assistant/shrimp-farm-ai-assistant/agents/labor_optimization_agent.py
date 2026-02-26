@@ -1,4 +1,4 @@
-from crewai import Agent, Task
+from crewai import Agent, Task, Crew
 
 # LangChain has moved OpenAI chat models across packages over time.
 # Try the modern import first, then fall back for older LangChain versions.
@@ -9,7 +9,7 @@ except Exception:  # pragma: no cover
 from models import LaborData, WaterQualityData, EnergyData
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 class LaborOptimizationAgent:
     def __init__(self):
@@ -77,10 +77,56 @@ class LaborOptimizationAgent:
             agent=self.agent,
             expected_output="Detailed labor optimization plan with scheduling, task prioritization, and efficiency improvements"
         )
+
+    def optimize_labor(
+        self,
+        pond_id: int,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+        labor_data: LaborData,
+    ) -> Dict[str, Any]:
+        """
+        Run AI labor optimization (CrewAI + LLM) for one pond, plus rule-based schedule and recommendations.
+        Returns a dict with ai_plan (str or None), schedule, recommendations, and metrics.
+        """
+        result: Dict[str, Any] = {
+            "pond_id": pond_id,
+            "ai_plan": None,
+            "schedule": self.generate_work_schedule(labor_data, water_quality_data),
+            "recommendations": self.generate_optimization_recommendations(
+                labor_data, water_quality_data, energy_data
+            ),
+            "metrics": self.calculate_productivity_metrics(labor_data),
+        }
+        if self.agent and OPENAI_API_KEY:
+            try:
+                task = self.create_labor_optimization_task(
+                    pond_id, water_quality_data, energy_data, labor_data
+                )
+                crew = Crew(agents=[self.agent], tasks=[task], verbose=True)
+                plan_result = crew.kickoff()
+                result["ai_plan"] = str(plan_result) if plan_result else None
+            except Exception as e:
+                print(f"[LaborOptimizationAgent] AI optimization failed for pond {pond_id}: {e}")
+        return result
+
+    def optimize_all_labor(
+        self,
+        water_quality_data: List[WaterQualityData],
+        energy_data: List[EnergyData],
+        labor_data: List[LaborData],
+    ) -> List[Dict[str, Any]]:
+        """Run labor optimization for all ponds. Returns list of per-pond optimization results."""
+        results = []
+        for wq, energy, labor in zip(water_quality_data, energy_data, labor_data):
+            results.append(
+                self.optimize_labor(wq.pond_id, wq, energy, labor)
+            )
+        return results
     
     def get_labor_data(self, pond_id: int, water_quality_data: Optional[WaterQualityData] = None,
                       energy_data: Optional[EnergyData] = None) -> LaborData:
-        """Get labor data from MongoDB"""
+        """Get labor data from MongoDB. Raises if DB unavailable or no data."""
         if not self.repository or not self.repository.is_available:
             raise ValueError(f"MongoDB repository not available. Cannot fetch labor data for pond {pond_id}")
         
@@ -94,6 +140,72 @@ class LaborOptimizationAgent:
         except Exception as e:
             print(f"Error: Could not fetch from MongoDB: {e}")
             raise
+
+    def generate_labor_data(
+        self,
+        pond_id: int,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> LaborData:
+        """Generate simulated labor data from water quality and energy (no DB required)."""
+        base_tasks = ["Water quality testing", "Feed distribution", "Data recording"]
+        if water_quality_data.status.value in ["poor", "critical"]:
+            base_tasks.append("Emergency aeration check")
+        if water_quality_data.ammonia > 0.2:
+            base_tasks.append("Water exchange")
+        if energy_data.efficiency_score < 0.7:
+            base_tasks.append("Equipment inspection")
+        if water_quality_data.dissolved_oxygen < 5 and "Aeration check" not in base_tasks:
+            base_tasks.append("Aeration check")
+
+        time_spent = len(base_tasks) * 0.5
+        if water_quality_data.status.value in ["poor", "critical"]:
+            time_spent *= 1.3
+        if len(water_quality_data.alerts) > 0:
+            time_spent *= 1.2
+
+        worker_count = 1
+        if len(base_tasks) >= 5 or water_quality_data.status.value == "critical":
+            worker_count = 2
+        if water_quality_data.status.value == "critical":
+            worker_count = 3
+
+        next_tasks = self._generate_next_tasks(
+            water_quality_data, energy_data, base_tasks
+        )
+        efficiency_score = self._calculate_labor_efficiency(
+            base_tasks, time_spent, worker_count, water_quality_data
+        )
+
+        return LaborData(
+            timestamp=datetime.now(),
+            pond_id=pond_id,
+            tasks_completed=base_tasks,
+            time_spent=round(time_spent, 1),
+            worker_count=worker_count,
+            efficiency_score=round(efficiency_score, 2),
+            next_tasks=next_tasks,
+        )
+
+    # Alias for Streamlit dashboard and callers that expect "simulate"
+    simulate_labor_data = generate_labor_data
+
+    def get_or_generate_labor_data(
+        self,
+        pond_id: int,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> LaborData:
+        """Get labor data from MongoDB, or generate from WQ and energy if unavailable."""
+        if self.repository and self.repository.is_available:
+            try:
+                data = self.repository.get_latest_labor_data(pond_id)
+                if data:
+                    print(f"[DB] Fetched labor data for pond {pond_id} from MongoDB")
+                    return data
+            except Exception as e:
+                print(f"[Labor] DB fetch failed for pond {pond_id}, generating: {e}")
+        return self.generate_labor_data(pond_id, water_quality_data, energy_data)
     
     def _calculate_labor_efficiency(self, completed_tasks: List[str], time_spent: float, 
                                   worker_count: int, water_quality_data: WaterQualityData) -> float:

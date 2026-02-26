@@ -177,7 +177,7 @@ class XGBoostDecisionAgent:
             recommended_heater_level=None,
             confidence=confidence,
             reasoning=reasoning,
-            affected_factors=self._affected_factors(wq, energy, labor),
+            affected_factors=self._affected_factors(wq, energy, labor), 
         )
 
     def make_multi_pond_decisions(

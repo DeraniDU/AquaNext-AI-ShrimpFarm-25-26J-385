@@ -33,19 +33,33 @@ class TrainingDataGenerator:
     def generate_water_quality_data(pond_id: int, scenario: str = "normal") -> WaterQualityData:
         """Generate water quality data for a scenario"""
         if scenario == "critical":
+            # Mix of critical drivers so training observes multiple "critical" action types.
             ph = random.uniform(6.5, 7.0)
             temp = random.uniform(24, 26)
-            do = random.uniform(2.0, 4.0)
-            ammonia = random.uniform(0.3, 0.5)
+            if random.random() < 0.5:
+                # Low DO critical
+                do = random.uniform(2.0, 4.0)
+                ammonia = random.uniform(0.10, 0.25)
+                alerts = ["CRITICAL: Low dissolved oxygen"]
+            else:
+                # High ammonia critical (DO is OK so water-exchange becomes learnable)
+                do = random.uniform(5.2, 6.8)
+                ammonia = random.uniform(0.32, 0.55)
+                alerts = ["CRITICAL: High ammonia"]
             status = WaterQualityStatus.CRITICAL
-            alerts = ["CRITICAL: Low dissolved oxygen", "CRITICAL: High ammonia"]
         elif scenario == "poor":
             ph = random.uniform(7.0, 7.4)
             temp = random.uniform(24, 25.5)
-            do = random.uniform(4.0, 5.0)
-            ammonia = random.uniform(0.2, 0.3)
+            # Create both low-DO and high-ammonia poor cases.
+            if random.random() < 0.5:
+                do = random.uniform(4.0, 5.0)
+                ammonia = random.uniform(0.18, 0.26)
+                alerts = ["WARNING: Low dissolved oxygen"]
+            else:
+                do = random.uniform(5.0, 6.5)
+                ammonia = random.uniform(0.22, 0.34)
+                alerts = ["WARNING: High ammonia"]
             status = WaterQualityStatus.POOR
-            alerts = ["WARNING: Low dissolved oxygen"]
         elif scenario == "good":
             ph = random.uniform(7.5, 8.5)
             temp = random.uniform(26, 30)
@@ -56,10 +70,18 @@ class TrainingDataGenerator:
         else:  # normal
             ph = random.uniform(7.2, 8.8)
             temp = random.uniform(25, 31)
-            do = random.uniform(4.5, 8.0)
-            ammonia = random.uniform(0.0, 0.25)
-            status = WaterQualityStatus.FAIR if random.random() > 0.5 else WaterQualityStatus.GOOD
-            alerts = []
+            # Occasionally inject "ammonia event" while DO stays OK, so the model
+            # learns water-exchange / feed adjustment instead of always aeration.
+            if random.random() < 0.15:
+                do = random.uniform(5.2, 7.5)
+                ammonia = random.uniform(0.22, 0.34)
+                alerts = ["WARNING: Rising ammonia"]
+                status = WaterQualityStatus.FAIR
+            else:
+                do = random.uniform(4.5, 8.0)
+                ammonia = random.uniform(0.0, 0.22)
+                status = WaterQualityStatus.FAIR if random.random() > 0.5 else WaterQualityStatus.GOOD
+                alerts = []
         
         return WaterQualityData(
             timestamp=datetime.now(),
@@ -164,6 +186,12 @@ class TrainingDataGenerator:
         if energy.efficiency_score < 0.7:
             base_tasks.append("Equipment inspection")
         
+        # Random "labor pressure" injections so allocate_workers becomes learnable
+        # even when water quality is stable.
+        if random.random() < 0.25:
+            base_tasks += ["Net cleaning", "Pond edge inspection", "Record reconciliation"]
+
+        # Vary time and backlog so the model can learn "labor pressure" patterns.
         time_spent = len(base_tasks) * 0.5
         if water_quality.status.value == 'critical':
             time_spent *= 1.5
@@ -174,9 +202,31 @@ class TrainingDataGenerator:
         if water_quality.status.value == 'critical':
             worker_count = 3
         
+        # Efficiency drops under high workload / stressful conditions.
         efficiency = 0.8
         if water_quality.status.value in ['excellent', 'good']:
             efficiency = 0.9
+        if water_quality.status.value in ['poor', 'critical']:
+            efficiency -= 0.1
+        if energy.efficiency_score < 0.7:
+            efficiency -= 0.1
+        efficiency = max(0.4, min(0.95, efficiency))
+        
+        # Backlog (next tasks) varies with conditions to create labels for labor actions.
+        next_tasks = ["Regular monitoring", "Scheduled maintenance"]
+        if water_quality.status.value in ['poor', 'critical']:
+            next_tasks += ["Extra water testing", "Aerator inspection"]
+        if water_quality.ammonia > 0.2:
+            next_tasks += ["Siphon waste", "Prepare partial water exchange"]
+        if energy.efficiency_score < 0.7:
+            next_tasks += ["Check aerator belts", "Inspect pumps"]
+        # Randomly vary backlog a bit (keeps dataset diverse).
+        if random.random() < 0.3:
+            next_tasks += ["Inventory check"]
+        if random.random() < 0.2:
+            next_tasks += ["Staff briefing"]
+        if random.random() < 0.25:
+            next_tasks += ["Documentation cleanup", "Extra sampling run"]
         
         return LaborData(
             timestamp=datetime.now(),
@@ -185,7 +235,7 @@ class TrainingDataGenerator:
             time_spent=time_spent,
             worker_count=worker_count,
             efficiency_score=efficiency,
-            next_tasks=["Regular monitoring", "Scheduled maintenance"]
+            next_tasks=next_tasks
         )
     
     def generate_training_sample(self, scenario: str = "normal") -> Tuple[List, List, Dict]:
@@ -226,26 +276,46 @@ class TrainingDataGenerator:
         action_type = 0  # no_action
         action_intensity = 0.0
         
+        # Feed pressure heuristics (used for adjust_feed labeling)
+        biomass = (feed.shrimp_count * feed.average_weight) / 1000.0  # kg
+        feed_per_biomass = float(feed.feed_amount / max(biomass, 0.001))  # g/kg per feeding (rough)
+        
+        # Priority order is chosen to ensure ammonia-driven actions are learnable:
+        # DO<4 stays emergency, but high ammonia can override mild low-DO.
         if wq.dissolved_oxygen < 4.0:
             action_type = 5  # emergency_response
             action_intensity = 1.0
-        elif wq.dissolved_oxygen < 5.0:
-            action_type = 1  # increase_aeration
-            action_intensity = 0.8
         elif wq.ammonia > 0.3:
             action_type = 3  # water_exchange
             action_intensity = 0.9
+        elif wq.dissolved_oxygen < 5.0:
+            action_type = 1  # increase_aeration
+            action_intensity = 0.8
         elif wq.ammonia > 0.2:
-            action_type = 3  # water_exchange
-            action_intensity = 0.6
+            # Moderate ammonia: prefer reducing feeding load first; escalate to exchange when high.
+            if wq.ammonia >= 0.26:
+                action_type = 3  # water_exchange
+                action_intensity = 0.6
+            else:
+                action_type = 4  # adjust_feed
+                action_intensity = 0.6
         elif wq.status.value == 'critical':
             action_type = 5  # emergency_response
             action_intensity = 1.0
         elif wq.status.value == 'poor':
             action_type = 1  # increase_aeration
             action_intensity = 0.5
+        # Labor capacity constraints (backlog / low efficiency)
+        elif labor.efficiency_score < 0.7 or len(labor.next_tasks) >= 5:
+            action_type = 6  # allocate_workers
+            action_intensity = 0.5 if labor.efficiency_score < 0.6 else 0.4
+        # Energy issues can also be addressed by allocating workers (maintenance/inspection).
         elif energy.efficiency_score < 0.6:
             action_type = 6  # allocate_workers
+            action_intensity = 0.4
+        # Feed issues under otherwise-stable conditions
+        elif feed_per_biomass > 15.0 or feed_per_biomass < 7.0:
+            action_type = 4  # adjust_feed
             action_intensity = 0.4
         elif wq.status.value in ['fair', 'poor']:
             action_type = 7  # monitor_closely
@@ -274,8 +344,12 @@ class TrainingDataGenerator:
             urgency = 1.0
         elif wq.status.value == 'poor':
             urgency = 0.6
+        elif labor.efficiency_score < 0.7 or len(labor.next_tasks) >= 5:
+            urgency = 0.4
         elif energy.efficiency_score < 0.6:
             urgency = 0.4
+        elif action_type == 4:
+            urgency = 0.3
         
         # Feed amount (normalized)
         normalized_feed = feed.feed_amount / 50.0  # Assuming max 50g per feeding

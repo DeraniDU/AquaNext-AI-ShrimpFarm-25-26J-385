@@ -8,7 +8,7 @@ import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
 import { formatDateTime } from './lib/format'
-import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
+import type { DashboardApiResponse } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
 
@@ -36,19 +36,17 @@ export default function App() {
 	}, [pondIds, selectedPond])
 
 	const connection = error ? 'bad' : loading ? 'info' : data ? 'good' : 'warn'
-	const connectionLabel = error ? 'API error' : loading ? 'Loading…' : data ? 'Connected' : 'Waiting'
-	const subtitle = data?.dashboard?.timestamp ? `Snapshot: ${formatDateTime(data.dashboard.timestamp)}` : 'API: /api/dashboard'
+	const connectionLabel = error ? 'Error' : loading ? 'Loading…' : data ? 'Ready' : 'Waiting'
+	const subtitle = data?.dashboard?.timestamp ? `Snapshot: ${formatDateTime(data.dashboard.timestamp)}` : 'Using mock data'
 
 	const renderView = () => {
 		if (!data) {
 			return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 		}
 
-		const historyWithLive = mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data)
-
 		const viewProps = {
 			data: data as DashboardApiResponse,
-			history: historyWithLive,
+			history: historyData?.items ?? [],
 			pondFilter: selectedPond === 'all' ? null : selectedPond
 		}
 
@@ -57,8 +55,8 @@ export default function App() {
 				return <DashboardView {...viewProps} />
 			case 'forecasting':
 				return <ForecastingView {...viewProps} />
-		case 'optimization':
-			return <OptimizationView {...viewProps} ponds={ponds} />
+			case 'optimization':
+				return <OptimizationView {...viewProps} />
 			case 'water-quality':
 				return <WaterQualityView {...viewProps} />
 			case 'feeding':
@@ -165,11 +163,10 @@ export default function App() {
 							<div className="cardInner">
 								<div className="cardHeader">
 									<h2>Couldn't load dashboard</h2>
-									<span className="badge bad">API</span>
+									<span className="badge bad">ERROR</span>
 								</div>
 								<div className="muted">
-									{error}. Make sure the backend is running:{' '}
-									<span className="mono">.\\venv\\Scripts\\python.exe -m uvicorn api.server:app --reload --port 8000</span>
+									{error}. Please refresh the page or check the console for details.
 								</div>
 							</div>
 						</div>
@@ -193,61 +190,6 @@ export default function App() {
 			</div>
 		</div>
 	)
-}
-
-function mergeHistoryWithLiveSnapshot(history: SavedFarmSnapshot[], data: DashboardApiResponse): SavedFarmSnapshot[] {
-	const live: SavedFarmSnapshot = {
-		source: 'live',
-		timestamp: data.dashboard.timestamp,
-		water_quality: data.water_quality.map((w) => ({
-			pond_id: w.pond_id,
-			ph: w.ph,
-			temperature: w.temperature,
-			dissolved_oxygen: w.dissolved_oxygen,
-			salinity: w.salinity,
-			status: w.status,
-			alerts: w.alerts ?? []
-		})),
-		feed: data.feed.map((f) => ({
-			pond_id: f.pond_id,
-			shrimp_count: f.shrimp_count,
-			average_weight: f.average_weight,
-			feed_amount: f.feed_amount,
-			feed_type: f.feed_type,
-			feeding_frequency: f.feeding_frequency
-		})),
-		energy: data.energy.map((e) => ({
-			pond_id: e.pond_id,
-			total_energy: e.total_energy,
-			cost: e.cost,
-			efficiency_score: e.efficiency_score
-		})),
-		labor: data.labor.map((l) => ({
-			pond_id: l.pond_id,
-			tasks_completed: l.tasks_completed ?? [],
-			time_spent: l.time_spent,
-			worker_count: l.worker_count,
-			efficiency_score: l.efficiency_score
-		}))
-	}
-
-	const combined = [...history, live].filter((s) => Boolean(s?.timestamp))
-
-	// Dedupe per-day (YYYY-MM-DD) keeping the latest timestamp for that day.
-	const byDay = new Map<string, SavedFarmSnapshot>()
-	for (const snap of combined) {
-		const dayKey = String(snap.timestamp).slice(0, 10)
-		const existing = byDay.get(dayKey)
-		if (!existing) {
-			byDay.set(dayKey, snap)
-			continue
-		}
-		const a = new Date(existing.timestamp).getTime()
-		const b = new Date(snap.timestamp).getTime()
-		if (!Number.isNaN(b) && (Number.isNaN(a) || b > a)) byDay.set(dayKey, snap)
-	}
-
-	return Array.from(byDay.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 }
 
 

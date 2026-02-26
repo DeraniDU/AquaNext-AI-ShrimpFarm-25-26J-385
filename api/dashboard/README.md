@@ -96,3 +96,4 @@ The easiest way is to serve the HTML from the same server as the API:
 The FastAPI server should be configured to serve static files from the dashboard directory.
 
 
+

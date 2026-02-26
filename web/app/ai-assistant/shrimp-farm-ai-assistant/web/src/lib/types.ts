@@ -117,12 +117,38 @@ export type LaborData = {
 	next_tasks: string[]
 }
 
+/** Per-pond result from AI labor optimization (CrewAI + rule-based). */
+export type LaborOptimizationResult = {
+	pond_id: number
+	ai_plan: string | null
+	schedule: {
+		morning_shift?: { time: string; tasks: string[]; workers: number }
+		afternoon_shift?: { time: string; tasks: string[]; workers: number }
+		evening_shift?: { time: string; tasks: string[]; workers: number }
+	}
+	recommendations: Array<{
+		category: string
+		priority: string
+		recommendation: string
+		expected_improvement?: string
+		implementation?: string
+	}>
+	metrics: {
+		tasks_per_hour: number
+		tasks_per_worker: number
+		cost_per_task: number
+		efficiency_score: number
+		total_labor_cost: number
+	}
+}
+
 export type DashboardApiResponse = {
 	dashboard: ShrimpFarmDashboard
 	water_quality: WaterQualityData[]
 	feed: FeedData[]
 	energy: EnergyData[]
 	labor: LaborData[]
+	labor_optimization?: LaborOptimizationResult[]
 	decision_agent_type?: string | null
 	decisions?: MultiPondDecision | null
 	decision_recommendations?: DecisionRecommendation[]
@@ -212,6 +238,38 @@ export type ForecastsResponse = {
 	}
 	timestamp: string
 	forecast_days: number
+}
+
+// ---------------------------------------------------------------------------
+// Feeding Optimization types
+// ---------------------------------------------------------------------------
+
+export type FeedingScheduleEntry = {
+	time: string        // "07:00"
+	amount_kg: number
+	amount_g: number
+	notes: string
+}
+
+export type FeedingPlan = {
+	pond_id: number
+	daily_feed_kg: number
+	current_daily_feed_kg: number
+	current_biomass_kg: number
+	feed_type: string
+	fcr_current: number
+	fcr_target: number
+	schedule: FeedingScheduleEntry[]
+	adjustment_factor: number
+	adjustment_reason: string
+}
+
+export type FeedingOptimizationResponse = {
+	timestamp: string
+	plans: FeedingPlan[]
+	overall_fcr: number
+	potential_savings_pct: number
+	top_recommendation: string
 }
 
 
