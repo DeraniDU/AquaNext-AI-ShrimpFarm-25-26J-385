@@ -1,7 +1,9 @@
 """
-Generate 300 samples each for feed, energy, and labor data and insert them into MongoDB Atlas.
+Generate feed, energy, and labor samples and insert them into MongoDB.
+Uses the same collection names as DataRepository: feed, energy, labor.
 """
 
+import argparse
 import random
 from datetime import datetime, timedelta
 from typing import List, Dict, Any

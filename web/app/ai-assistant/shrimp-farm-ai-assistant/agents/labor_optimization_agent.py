@@ -44,26 +44,50 @@ class LaborOptimizationAgent:
                 llm=self.llm,
             )
     
-    def create_labor_optimization_task(self, pond_id: int, water_quality_data: WaterQualityData,
-                                     energy_data: EnergyData, current_labor_data: LaborData) -> Task:
+    def create_labor_optimization_task(
+        self,
+        pond_id: int,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+        labor_data_list: List[LaborData],
+    ) -> Task:
+        """Build task description from recent labor history (one or more snapshots)."""
+        if not labor_data_list:
+            labor_section = "No recent labor history available (use current conditions only)."
+        elif len(labor_data_list) == 1:
+            d = labor_data_list[0]
+            labor_section = f"""
+            Current Labor Status:
+            - Tasks Completed: {', '.join(d.tasks_completed)}
+            - Time Spent: {d.time_spent} hours
+            - Worker Count: {d.worker_count}
+            - Efficiency Score: {d.efficiency_score}
+            - Next Tasks: {', '.join(d.next_tasks)}
+            """
+        else:
+            lines = ["Recent labor history (most recent first); use trends in your analysis:\n"]
+            for i, d in enumerate(labor_data_list, 1):
+                ts = d.timestamp.strftime("%Y-%m-%d %H:%M") if hasattr(d.timestamp, "strftime") else str(d.timestamp)
+                lines.append(
+                    f"  Snapshot {i} ({ts}): Tasks: {', '.join(d.tasks_completed)}; "
+                    f"Time: {d.time_spent}h; Workers: {d.worker_count}; "
+                    f"Efficiency: {d.efficiency_score}; Next: {', '.join(d.next_tasks)}"
+                )
+            labor_section = "\n".join(lines)
+
         return Task(
             description=f"""
             Analyze and optimize labor allocation for Pond {pond_id}:
-            
-            Current Labor Status:
-            - Tasks Completed: {', '.join(current_labor_data.tasks_completed)}
-            - Time Spent: {current_labor_data.time_spent} hours
-            - Worker Count: {current_labor_data.worker_count}
-            - Efficiency Score: {current_labor_data.efficiency_score}
-            - Next Tasks: {', '.join(current_labor_data.next_tasks)}
-            
+
+            {labor_section}
+
             Farm Conditions:
             - Water Quality: pH={water_quality_data.ph:.2f}, Temp={water_quality_data.temperature:.1f}°C
             - Energy Status: {energy_data.efficiency_score:.2f} efficiency
             - Alerts: {len(water_quality_data.alerts)} active alerts
-            
+
             Optimization Analysis Required:
-            1. Analyze current labor efficiency and task completion rates
+            1. Analyze labor efficiency and task completion rates (use recent history trends if available)
             2. Identify bottlenecks and inefficiencies in task scheduling
             3. Recommend optimal worker allocation based on farm conditions
             4. Suggest task prioritization based on urgency and impact
@@ -71,11 +95,11 @@ class LaborOptimizationAgent:
             6. Calculate potential productivity improvements
             7. Ensure worker safety and workload balance
             8. Provide scheduling recommendations for next 24-48 hours
-            
+
             Return comprehensive labor optimization plan with scheduling and efficiency recommendations.
             """,
             agent=self.agent,
-            expected_output="Detailed labor optimization plan with scheduling, task prioritization, and efficiency improvements"
+            expected_output="Detailed labor optimization plan with scheduling, task prioritization, and efficiency improvements",
         )
 
     def optimize_labor(
@@ -86,28 +110,39 @@ class LaborOptimizationAgent:
         labor_data: LaborData,
     ) -> Dict[str, Any]:
         """
-        Run AI labor optimization (CrewAI + LLM) for one pond, plus rule-based schedule and recommendations.
-        Returns a dict with ai_plan (str or None), schedule, recommendations, and metrics.
+        Run AI labor optimization (CrewAI + LLM) for one pond. Returns a dict with ai_plan
+        plus rule-based schedule, recommendations, and metrics for API/UI compatibility.
         """
         result: Dict[str, Any] = {
             "pond_id": pond_id,
             "ai_plan": None,
-            "schedule": self.generate_work_schedule(labor_data, water_quality_data),
-            "recommendations": self.generate_optimization_recommendations(
+            "schedule": self._build_schedule(labor_data, water_quality_data, energy_data),
+            "recommendations": self._build_recommendations(
                 labor_data, water_quality_data, energy_data
             ),
-            "metrics": self.calculate_productivity_metrics(labor_data),
+            "metrics": self._build_metrics(labor_data),
         }
         if self.agent and OPENAI_API_KEY:
             try:
+                labor_history = self.get_recent_labor_data(pond_id, limit=7)
+                # Always put current snapshot first; add DB history without duplicating by timestamp
+                combined: List[LaborData] = [labor_data]
+                if labor_history:
+                    for L in labor_history:
+                        if L.timestamp != labor_data.timestamp:
+                            combined.append(L)
+                    combined = combined[:7]
                 task = self.create_labor_optimization_task(
-                    pond_id, water_quality_data, energy_data, labor_data
+                    pond_id, water_quality_data, energy_data, combined
                 )
                 crew = Crew(agents=[self.agent], tasks=[task], verbose=True)
                 plan_result = crew.kickoff()
                 result["ai_plan"] = str(plan_result) if plan_result else None
             except Exception as e:
                 print(f"[LaborOptimizationAgent] AI optimization failed for pond {pond_id}: {e}")
+        else:
+            if not OPENAI_API_KEY:
+                print("[LaborOptimizationAgent] OPENAI_API_KEY not set; labor optimization requires an API key.")
         return result
 
     def optimize_all_labor(
@@ -124,6 +159,16 @@ class LaborOptimizationAgent:
             )
         return results
     
+    def get_recent_labor_data(self, pond_id: int, limit: int = 7) -> List[LaborData]:
+        """Get recent labor history from MongoDB (most recent first). Returns [] if DB unavailable or no data."""
+        if not self.repository or not self.repository.is_available:
+            return []
+        try:
+            return self.repository.get_labor_data(pond_id=pond_id, limit=limit)
+        except Exception as e:
+            print(f"[Labor] Could not fetch recent labor history for pond {pond_id}: {e}")
+            return []
+
     def get_labor_data(self, pond_id: int, water_quality_data: Optional[WaterQualityData] = None,
                       energy_data: Optional[EnergyData] = None) -> LaborData:
         """Get labor data from MongoDB. Raises if DB unavailable or no data."""
@@ -207,6 +252,137 @@ class LaborOptimizationAgent:
                 print(f"[Labor] DB fetch failed for pond {pond_id}, generating: {e}")
         return self.generate_labor_data(pond_id, water_quality_data, energy_data)
     
+    def _build_schedule(
+        self,
+        labor_data: LaborData,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> Dict[str, Any]:
+        """Build morning/afternoon/evening shift schedule from labor data and conditions."""
+        tasks = list(labor_data.next_tasks) if labor_data.next_tasks else list(labor_data.tasks_completed)
+        if not tasks:
+            tasks = ["Water quality testing", "Feed distribution", "Data recording"]
+
+        # Assign tasks to shifts by type when possible; otherwise round-robin
+        morning_keywords = ["feeding", "feed", "aeration", "equipment", "safety", "water quality testing"]
+        afternoon_keywords = ["maintenance", "audit", "optimization", "pH", "treatment"]
+        evening_keywords = ["recording", "data", "next feeding", "check"]
+
+        def which_shift(task: str) -> int:
+            t = task.lower()
+            for k in morning_keywords:
+                if k in t:
+                    return 0
+            for k in afternoon_keywords:
+                if k in t:
+                    return 1
+            for k in evening_keywords:
+                if k in t:
+                    return 2
+            return -1
+
+        shifts_tasks: List[List[str]] = [[], [], []]
+        for task in tasks:
+            idx = which_shift(task)
+            if idx >= 0:
+                shifts_tasks[idx].append(task)
+            else:
+                min_idx = min(range(3), key=lambda j: len(shifts_tasks[j]))
+                shifts_tasks[min_idx].append(task)
+
+        # If no tasks were assigned (all unclassified and empty), spread by index
+        if tasks and sum(len(s) for s in shifts_tasks) == 0:
+            for i, t in enumerate(tasks):
+                shifts_tasks[i % 3].append(t)
+
+        w = max(1, labor_data.worker_count)
+        morning_workers = min(1, w)
+        w -= morning_workers
+        afternoon_workers = min(1, w)
+        w -= afternoon_workers
+        evening_workers = w
+
+        schedule: Dict[str, Any] = {}
+        if shifts_tasks[0] or morning_workers > 0:
+            schedule["morning_shift"] = {
+                "time": "06:00",
+                "tasks": shifts_tasks[0] or ["Water quality testing", "Feed distribution"],
+                "workers": morning_workers if shifts_tasks[0] else 1,
+            }
+        if shifts_tasks[1] or afternoon_workers > 0:
+            schedule["afternoon_shift"] = {
+                "time": "12:00",
+                "tasks": shifts_tasks[1] or ["Equipment maintenance", "Monitoring"],
+                "workers": afternoon_workers if shifts_tasks[1] else 1,
+            }
+        if shifts_tasks[2] or evening_workers > 0:
+            schedule["evening_shift"] = {
+                "time": "18:00",
+                "tasks": shifts_tasks[2] or ["Data recording", "Next feeding cycle"],
+                "workers": evening_workers if shifts_tasks[2] else 1,
+            }
+        return schedule
+
+    def _build_recommendations(
+        self,
+        labor_data: LaborData,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> List[Dict[str, Any]]:
+        """Build rule-based recommendations for API compatibility."""
+        recs: List[Dict[str, Any]] = []
+        if labor_data.efficiency_score < 0.7:
+            recs.append({
+                "category": "Labor efficiency",
+                "priority": "high",
+                "recommendation": "Improve task batching and reduce idle time to raise efficiency score.",
+                "expected_improvement": "10–15% efficiency gain",
+            })
+        if labor_data.worker_count >= 2 and len(labor_data.tasks_completed) < 3:
+            recs.append({
+                "category": "Workforce allocation",
+                "priority": "medium",
+                "recommendation": "Consider reallocating workers or adding higher-priority tasks.",
+            })
+        if water_quality_data.status.value in ["poor", "critical"]:
+            recs.append({
+                "category": "Labor priority",
+                "priority": "high",
+                "recommendation": "Prioritize water quality and aeration tasks in the next shifts.",
+            })
+        if energy_data.efficiency_score < 0.7:
+            recs.append({
+                "category": "Energy",
+                "priority": "medium",
+                "recommendation": "Schedule equipment inspection and energy audit in afternoon shift.",
+            })
+        if not recs:
+            recs.append({
+                "category": "Maintenance",
+                "priority": "low",
+                "recommendation": "Keep current schedule; ensure safety equipment check is done daily.",
+            })
+        return recs
+
+    def _build_metrics(self, labor_data: LaborData) -> Dict[str, Any]:
+        """Build labor metrics for API compatibility."""
+        n_tasks = len(labor_data.tasks_completed) or 1
+        hours = max(0.1, labor_data.time_spent)
+        workers = max(1, labor_data.worker_count)
+        tasks_per_hour = round(n_tasks / hours, 1)
+        tasks_per_worker = round(n_tasks / workers, 1)
+        # Placeholder cost: assume $15/hour per worker
+        cost_per_hour = 15.0
+        total_labor_cost = round(workers * hours * cost_per_hour, 2)
+        cost_per_task = round(total_labor_cost / n_tasks, 2) if n_tasks else 0
+        return {
+            "tasks_per_hour": tasks_per_hour,
+            "tasks_per_worker": tasks_per_worker,
+            "cost_per_task": cost_per_task,
+            "efficiency_score": labor_data.efficiency_score,
+            "total_labor_cost": total_labor_cost,
+        }
+
     def _calculate_labor_efficiency(self, completed_tasks: List[str], time_spent: float, 
                                   worker_count: int, water_quality_data: WaterQualityData) -> float:
         """Calculate labor efficiency score"""
@@ -271,108 +447,3 @@ class LaborOptimizationAgent:
         next_tasks.append("Safety equipment check")
         
         return next_tasks[:5]  # Limit to 5 next tasks
-    
-    def generate_optimization_recommendations(self, labor_data: LaborData, 
-                                           water_quality_data: WaterQualityData,
-                                           energy_data: EnergyData) -> List[Dict]:
-        """Generate specific labor optimization recommendations"""
-        recommendations = []
-        
-        # Efficiency improvements
-        if labor_data.efficiency_score < 0.7:
-            recommendations.append({
-                "category": "Efficiency Improvement",
-                "priority": "High",
-                "recommendation": "Implement task batching and reduce task switching",
-                "expected_improvement": "15-20% efficiency gain",
-                "implementation": "Low"
-            })
-        
-        # Worker allocation
-        if labor_data.worker_count > 2 and len(labor_data.tasks_completed) < 4:
-            recommendations.append({
-                "category": "Worker Allocation",
-                "priority": "Medium", 
-                "recommendation": "Optimize worker allocation - consider reducing team size",
-                "expected_improvement": "Cost reduction without productivity loss",
-                "implementation": "Low"
-            })
-        
-        # Automation opportunities
-        if "Water quality testing" in labor_data.tasks_completed:
-            recommendations.append({
-                "category": "Automation",
-                "priority": "Medium",
-                "recommendation": "Implement automated water quality monitoring",
-                "expected_improvement": "Reduce manual testing by 60%",
-                "implementation": "High"
-            })
-        
-        # Scheduling optimization
-        if water_quality_data.status.value in ["poor", "critical"]:
-            recommendations.append({
-                "category": "Scheduling",
-                "priority": "High",
-                "recommendation": "Implement priority-based task scheduling",
-                "expected_improvement": "Faster response to critical issues",
-                "implementation": "Medium"
-            })
-        
-        # Training recommendations
-        if labor_data.efficiency_score < 0.8:
-            recommendations.append({
-                "category": "Training",
-                "priority": "Medium",
-                "recommendation": "Provide additional training on equipment operation",
-                "expected_improvement": "Improved task execution speed",
-                "implementation": "Medium"
-            })
-        
-        return recommendations
-    
-    def calculate_productivity_metrics(self, labor_data: LaborData) -> Dict:
-        """Calculate productivity metrics and KPIs"""
-        tasks_per_hour = len(labor_data.tasks_completed) / max(labor_data.time_spent, 0.1)
-        tasks_per_worker = len(labor_data.tasks_completed) / max(labor_data.worker_count, 1)
-        
-        # Calculate cost efficiency (assuming $15/hour worker cost)
-        hourly_cost = labor_data.worker_count * 15
-        cost_per_task = (labor_data.time_spent * hourly_cost) / max(len(labor_data.tasks_completed), 1)
-        
-        return {
-            "tasks_per_hour": round(tasks_per_hour, 2),
-            "tasks_per_worker": round(tasks_per_worker, 2),
-            "cost_per_task": round(cost_per_task, 2),
-            "efficiency_score": round(labor_data.efficiency_score, 2),
-            "total_labor_cost": round(labor_data.time_spent * hourly_cost, 2)
-        }
-    
-    def generate_work_schedule(self, labor_data: LaborData, water_quality_data: WaterQualityData) -> Dict:
-        """Generate optimized work schedule for next 24 hours"""
-        schedule = {
-            "morning_shift": {
-                "time": "06:00-12:00",
-                "tasks": ["Water quality testing", "Feed distribution", "Equipment check"],
-                "workers": 1 if water_quality_data.status.value in ["excellent", "good"] else 2
-            },
-            "afternoon_shift": {
-                "time": "12:00-18:00", 
-                "tasks": ["Data recording", "Maintenance tasks"],
-                "workers": 1
-            },
-            "evening_shift": {
-                "time": "18:00-22:00",
-                "tasks": ["Final feeding", "Security check"],
-                "workers": 1
-            }
-        }
-        
-        # Adjust based on water quality
-        if water_quality_data.status.value == "critical":
-            schedule["morning_shift"]["tasks"].append("Emergency response")
-            schedule["morning_shift"]["workers"] = 2
-        
-        if water_quality_data.dissolved_oxygen < 5:
-            schedule["afternoon_shift"]["tasks"].append("Aeration monitoring")
-        
-        return schedule

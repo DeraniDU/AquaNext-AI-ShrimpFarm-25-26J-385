@@ -7,6 +7,7 @@ import { WaterQualityView } from './components/WaterQualityView'
 import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
+import { BenchmarkingView } from './components/BenchmarkingView'
 import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
@@ -59,6 +60,8 @@ export default function App() {
 				return <ForecastingView {...viewProps} />
 		case 'optimization':
 			return <OptimizationView {...viewProps} ponds={ponds} />
+			case 'benchmarking':
+			return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
 				return <WaterQualityView {...viewProps} />
 			case 'feeding':

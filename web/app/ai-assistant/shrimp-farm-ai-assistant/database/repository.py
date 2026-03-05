@@ -508,7 +508,8 @@ class DataRepository:
                             tasks_completed=doc.get('tasks_completed', 5),
                             time_spent=doc.get('time_spent', 4.0),
                             worker_count=doc.get('worker_count', 2),
-                            efficiency_score=doc.get('efficiency_score', 0.8)
+                            efficiency_score=doc.get('efficiency_score', 0.8),
+                            next_tasks=doc.get('next_tasks', [])
                         ))
                 except Exception as e:
                     print(f"Error parsing document from {collection_name}: {e}")

@@ -126,6 +126,40 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 		: []
 	const primaryLaborOpt = laborOptimization.length > 0 ? laborOptimization[0] : null
 
+	const workerNames = ['Eric', 'Sarah', 'Alex', 'Ryan', 'Luis']
+
+	const buildShiftAssignments = (tasks: string[] | undefined, workers: number | undefined) => {
+		const assignments = Array(workerNames.length).fill('-')
+		if (!tasks || tasks.length === 0) {
+			return assignments
+		}
+		const nWorkers =
+			workers && workers > 0 ? Math.min(workerNames.length, workers) : workerNames.length
+		for (let i = 0; i < nWorkers; i++) {
+			assignments[i] = tasks[i % tasks.length]
+		}
+		return assignments
+	}
+
+	const morningAssignments = primaryLaborOpt?.schedule
+		? buildShiftAssignments(
+				primaryLaborOpt.schedule.morning_shift?.tasks,
+				primaryLaborOpt.schedule.morning_shift?.workers,
+		  )
+		: Array(workerNames.length).fill('-')
+	const afternoonAssignments = primaryLaborOpt?.schedule
+		? buildShiftAssignments(
+				primaryLaborOpt.schedule.afternoon_shift?.tasks,
+				primaryLaborOpt.schedule.afternoon_shift?.workers,
+		  )
+		: Array(workerNames.length).fill('-')
+	const eveningAssignments = primaryLaborOpt?.schedule
+		? buildShiftAssignments(
+				primaryLaborOpt.schedule.evening_shift?.tasks,
+				primaryLaborOpt.schedule.evening_shift?.workers,
+		  )
+		: Array(workerNames.length).fill('-')
+
 	// Feeding optimization data from backend
 	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } = useFeedingOptimization(ponds)
 	// Filter to selected pond if a pond filter is active
@@ -990,49 +1024,79 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 								<div style={{ fontWeight: 600, fontSize: 20, color: 'var(--muted)', padding: '8px 4px', textAlign: 'center' }}>Evening<br />(6:00 PM - 12:00 AM)</div>
 								<div style={{ fontWeight: 600, fontSize: 20, color: 'var(--muted)', padding: '8px 4px', textAlign: 'center' }}>Night<br />(12:00 AM - 6:00 AM)</div>
 								
-								{/* Worker rows */}
-								{['Eric', 'Sarah', 'Alex', 'Ryan', 'Luis'].map((worker, idx) => (
+								{/* Worker rows (driven by AI schedule when available) */}
+								{workerNames.map((worker, idx) => (
 									<>
-										<div key={`worker-${idx}`} style={{ fontSize: 13, fontWeight: 600, padding: '8px 4px', display: 'flex', alignItems: 'center' }}>
+										<div
+											key={`worker-${idx}`}
+											style={{
+												fontSize: 13,
+												fontWeight: 600,
+												padding: '8px 4px',
+												display: 'flex',
+												alignItems: 'center',
+											}}
+										>
 											{worker}
 										</div>
 										<div key={`morning-${idx}`} style={{ padding: '8px 4px' }}>
-											{idx < 3 ? (
-												<div style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(34, 197, 94, 0.4)' }}>
-													Pond Cleaning
-												</div>
-											) : idx === 3 ? (
-												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
-													Feeding
+											{morningAssignments[idx] !== '-' ? (
+												<div
+													style={{
+														backgroundColor: 'rgba(34, 197, 94, 0.2)',
+														padding: '6px 8px',
+														borderRadius: 4,
+														fontSize: 20,
+														textAlign: 'center',
+														border: '1px solid rgba(34, 197, 94, 0.4)',
+													}}
+												>
+													{morningAssignments[idx]}
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
+													-
+												</div>
 											)}
 										</div>
 										<div key={`afternoon-${idx}`} style={{ padding: '8px 4px' }}>
-											{idx === 0 ? (
-												<div style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-													Water Quality Sampling
-												</div>
-											) : idx < 3 ? (
-												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
-													Feeding
+											{afternoonAssignments[idx] !== '-' ? (
+												<div
+													style={{
+														backgroundColor: 'rgba(59, 130, 246, 0.2)',
+														padding: '6px 8px',
+														borderRadius: 4,
+														fontSize: 20,
+														textAlign: 'center',
+														border: '1px solid rgba(59, 130, 246, 0.4)',
+													}}
+												>
+													{afternoonAssignments[idx]}
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
+													-
+												</div>
 											)}
 										</div>
 										<div key={`evening-${idx}`} style={{ padding: '8px 4px' }}>
-											{idx === 2 ? (
-												<div style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(139, 92, 246, 0.4)' }}>
-													Harvest Preparation
-												</div>
-											) : idx < 2 ? (
-												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
-													Feeding
+											{eveningAssignments[idx] !== '-' ? (
+												<div
+													style={{
+														backgroundColor: 'rgba(139, 92, 246, 0.2)',
+														padding: '6px 8px',
+														borderRadius: 4,
+														fontSize: 20,
+														textAlign: 'center',
+														border: '1px solid rgba(139, 92, 246, 0.4)',
+													}}
+												>
+													{eveningAssignments[idx]}
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
+													-
+												</div>
 											)}
 										</div>
 										<div key={`night-${idx}`} style={{ padding: '8px 4px' }}>

@@ -272,6 +272,55 @@ export type FeedingOptimizationResponse = {
 	top_recommendation: string
 }
 
+// ---------------------------------------------------------------------------
+// Benchmarking types
+// ---------------------------------------------------------------------------
+
+export type BenchmarkScores = {
+	water_quality: number
+	feed: number
+	energy: number
+	labor: number
+	overall: number
+}
+
+export type BenchmarkComparisons = {
+	water_quality: {
+		ph: { current: number | null; target: string }
+		temperature: { current: number | null; target: string }
+		dissolved_oxygen: { current: number | null; target_min: number }
+	}
+	feed: {
+		ponds: number
+		total_feed_kg: number
+		avg_weight_g: number | null
+	}
+	energy: {
+		total_kwh: number
+		total_cost: number
+		avg_efficiency: number | null
+	}
+	labor: {
+		total_hours: number
+		total_workers: number
+		avg_efficiency: number | null
+	}
+}
+
+export type BenchmarkResult = {
+	timestamp: string
+	scores: BenchmarkScores
+	comparisons: BenchmarkComparisons
+	ai_analysis: string | null
+	ai_recommendations: string[]
+}
+
+export type BenchmarkApiResponse = {
+	benchmark: BenchmarkResult
+	timestamp: string
+	ponds: number
+}
+
 
 
 
