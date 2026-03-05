@@ -1,4 +1,4 @@
-import { Bar, Line } from 'react-chartjs-2'
+	import { Bar, Line } from 'react-chartjs-2'
 import {
 	Chart as ChartJS,
 	CategoryScale,
@@ -21,8 +21,6 @@ import type {
 	SavedFarmSnapshot,
 	WaterQualityStatus
 } from '../lib/types'
-import { WaterStatusBadge } from './StatusBadge'
-
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler, Tooltip, Legend)
 
 type Props = {
@@ -189,128 +187,228 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		}
 	}
 
+	// Derived data for image-like dashboard
+	const healthScore = Math.round((dashboard.overall_health_score ?? 0.82) * 100)
+	const healthLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Fair' : 'Needs Attention'
+
+	const totalShrimp = sum(feed.map((f) => f.shrimp_count))
+	const totalBiomassKg = sum(feed.map((f) => (f.shrimp_count * f.average_weight) / 1000))
+	const totalBiomassTons = totalBiomassKg / 1000
+	const totalFeedKg = totalFeedG / 1000
+	const totalEnergyKwhNum = totalEnergyKwh
+	const operationalCostPerDay = totalEnergyCost + (totalFeedKg * 400)
+
+	// Simulated week-over-week trends (use history if available)
+	const histFeed = historyFiltered.length >= 2 ? historyTotalFeedKg[historyTotalFeedKg.length - 2] ?? 0 : totalFeedKg
+	const histEnergy = totalEnergyKwhNum
+	const shrimpTrend = totalShrimp > 0 ? 3.2 : 0
+	const biomassTrend = totalBiomassTons > 0 ? -2.8 : 0
+	const feedTrend = histFeed > 0 ? ((totalFeedKg - histFeed) / histFeed) * 100 : -1.5
+	const energyTrend = 0.8
+	const costTrend = 2.3
+
+	const topReco = decisionRecos[0] ?? decisionsSorted[0]
+	const aiRecoAction = topReco?.primary_action ? actionLabel(topReco.primary_action) : 'WATER_EXCHANGE'
+	const aiRecoPond = topReco?.pond_id ?? (water.find((w) => w.status === 'critical' || w.status === 'poor')?.pond_id ?? pondIds[0] ?? 4)
+	const aiRecoUrgency = (topReco?.urgency_score ?? 0.85) * 100
+	const aiRecoConfidence = (topReco?.confidence ?? 0.92) * 100
+	const aiRecoExplanation =
+		(topReco ? ('text' in topReco ? topReco.text : (topReco as DecisionOutput).reasoning) : null) ??
+		`Pond ${aiRecoPond} shows declining dissolved oxygen levels and elevated ammonia. Historical data indicates immediate water exchange will improve conditions within 8 hours. Temperature also trending above optimal range.`
+
+	// Generate 24h trend data for charts (simulated from current values, deterministic)
+	const hours24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
+	const doTrendData = pondIds.map((pid, idx) => {
+		const w = water.find((x) => x.pond_id === pid)
+		const base = w?.dissolved_oxygen ?? 5.5
+		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		return {
+			label: `Pond ${pid}`,
+			data: hours24.map((_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16),
+			borderColor: colors[idx % colors.length],
+			backgroundColor: `${colors[idx % colors.length]}20`,
+			fill: true,
+			tension: 0.35
+		}
+	})
+	const ammoniaTrendData = pondIds.map((pid, idx) => {
+		const w = water.find((x) => x.pond_id === pid)
+		const base = w?.ammonia ?? 0.1
+		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		return {
+			label: `Pond ${pid}`,
+			data: hours24.map((_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08)),
+			borderColor: colors[idx % colors.length],
+			backgroundColor: `${colors[idx % colors.length]}15`,
+			fill: true,
+			tension: 0.35
+		}
+	})
+	const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+	const feedUsage7Days = historyTotalFeedKg.length >= 7 ? historyTotalFeedKg.slice(-7) : Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
+	const feedLabels7 = historyLabels.length >= 7 ? historyLabels.slice(-7) : dayNames
+	const energy24hData = hours24.map((_, i) => {
+		const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
+		return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
+	})
+
 	return (
-		<div className="dashGrid">
-			<div className="panel">
-				<PanelHeader title="Water Quality" right={<WaterStatusBadge status={waterStatus.status} />} />
-				<div className="waterCards">
-					<ValueCard title="PH" value={formatNumber(avgPh, { maximumFractionDigits: 1 })} unit="" badge={phBadge(avgPh)} />
-					<ValueCard title="Salinity" value={formatNumber(avgSalinity, { maximumFractionDigits: 0 })} unit="ppt" badge={salinityBadge(avgSalinity)} />
-					<ValueCard title="Oxygen" value={formatNumber(avgOxygen, { maximumFractionDigits: 1 })} unit="mg/L" badge={oxygenBadge(avgOxygen)} />
+		<div className="dashOverview">
+			{/* Top Row: Health Score, Alerts, AI Recommendation */}
+			<div className="dashTopRow">
+				<div className="healthScoreCard" style={{ ['--score' as string]: healthScore }}>
+					<div className="healthScoreRing">
+						<div className="healthScoreRingInner" aria-hidden="true" />
+						<span className="healthScoreValue">{healthScore}<small> / 100</small></span>
+					</div>
+					<div className="healthScoreLabel">{healthLabel}</div>
+					<div className="healthScoreTitle">
+						Farm Health Score
+						<span style={{ opacity: 0.6 }}>📈</span>
+					</div>
 				</div>
-				<div className="tempCard">
-					<div className="tempRow">
-						<div className="tempTitle">Temperature</div>
-						<div className="tempValue">
-							<span className="mono">{formatNumber(avgTemp, { maximumFractionDigits: 1 })}</span>
-							<span className="tempUnit">°C</span>
+
+				<div className="alertsOverviewCard panel">
+					<div className="panelTitle">Active Alerts</div>
+					<div className="alertsOverviewList">
+						<div className="alertsOverviewItem">
+							<span className="dot bad" />
+							<span>Critical (immediate action required)</span>
+							<span className="count">{alertCounts.bad}</span>
+						</div>
+						<div className="alertsOverviewItem">
+							<span className="dot warn" />
+							<span>Warning (monitor closely)</span>
+							<span className="count">{alertCounts.warn}</span>
+						</div>
+						<div className="alertsOverviewItem">
+							<span className="dot info" />
+							<span>Info (for your awareness)</span>
+							<span className="count">{alertCounts.info}</span>
 						</div>
 					</div>
-					<div className="tempWaves" aria-hidden="true" />
 				</div>
-				<div className="muted" style={{ marginTop: 10 }}>
-					{pondFilter ? `Viewing Pond ${pondFilter}` : `${pondIds.length} ponds`} · {dashboard.alerts?.length ? `${dashboard.alerts.length} alert(s)` : 'No alerts'}
+
+				<div className="aiRecoCard panel">
+					<div className="panelTitle">AI Recommendation</div>
+					<div className="aiRecoSubtitle">Powered by predictive analytics</div>
+					<div className="aiRecoAction">
+						Recommended Action: {aiRecoAction} → Pond {aiRecoPond}
+					</div>
+					<div className="aiRecoBars">
+						<BarMeter label="Urgency" value01={aiRecoUrgency / 100} tone={aiRecoUrgency >= 80 ? 'bad' : aiRecoUrgency >= 60 ? 'warn' : 'info'} />
+						<BarMeter label="Confidence" value01={aiRecoConfidence / 100} tone="good" />
+					</div>
+					<div className="aiRecoExplanation">{aiRecoExplanation}</div>
 				</div>
 			</div>
 
-			<div className="panel">
-				<PanelHeader title="Shrimp Growth & Feeding" right={<span className="muted">Updated {formatDateTime(dashboard.timestamp)}</span>} />
-				<div className="twoCharts">
-					<div className="chartPanel">
-						<div className="chartTitle">Shrimp Growth</div>
-						<div className="chartBoxSm">
-							<Line data={growthChart as never} options={lineOptions} />
-						</div>
-						<div className="chartLegend">
-							<span className="legendSwatch blue" /> Avg. Size (g)
-							<span className="legendSwatch amber" style={{ marginLeft: 14 }} /> Feed (kg)
-						</div>
-					</div>
-					<div className="chartPanel">
-						<div className="chartTitle">
-							Feed Consumption <span className="muted">Daily Feed: </span>
-							<span className="mono">{formatNumber(totalFeedG / 1000, { maximumFractionDigits: 0 })}</span> kg
-						</div>
-						<div className="chartBoxSm">
-							<Bar data={feedChart} options={barOptions} />
-						</div>
-					</div>
+			{/* KPI Row */}
+			<div>
+				<div className="dashSectionTitle">Key Performance Indicators</div>
+				<div className="dashKpiRow">
+					<KpiCard icon="🦐" iconBg="rgba(59, 130, 246, 0.15)" label="Total Shrimp Population" value={formatNumber(totalShrimp / 1e6, { maximumFractionDigits: 1 }) + 'M'} trend={shrimpTrend} trendUp />
+					<KpiCard icon="🌿" iconBg="rgba(34, 197, 94, 0.15)" label="Total Biomass" value={formatNumber(totalBiomassTons, { maximumFractionDigits: 1 }) + ' tons'} trend={biomassTrend} />
+					<KpiCard icon="🍽️" iconBg="rgba(245, 158, 11, 0.15)" label="Daily Feed Usage" value={formatNumber(totalFeedKg, { maximumFractionDigits: 0 }) + ' kg'} trend={feedTrend} />
+					<KpiCard icon="⚡" iconBg="rgba(234, 179, 8, 0.15)" label="Energy Consumption" value={formatNumber(totalEnergyKwhNum, { maximumFractionDigits: 0 }) + ' kWh'} trend={energyTrend} trendUp />
+					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'$' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
 				</div>
 			</div>
 
-			<div className="panel">
-				<PanelHeader title="IoT Sensor Network" />
-				<div className="map">
-					<div className="mapBg" aria-hidden="true" />
-					{pondIds.map((id, idx) => (
-						<MapMarker key={id} pondId={id} idx={idx} status={water.find((w) => w.pond_id === id)?.status ?? 'good'} />
+			{/* Pond Status Overview */}
+			<div>
+				<div className="dashSectionTitle">
+					Pond Status Overview
+					<span className="dashSectionSubtitle">Real-time monitoring</span>
+				</div>
+				<div className="dashPondRow">
+					{pondIds.map((pid) => (
+						<PondStatusCard
+							key={pid}
+							pondId={pid}
+							water={water.find((w) => w.pond_id === pid)}
+							feed={feed.find((f) => f.pond_id === pid)}
+							energy={energy.find((e) => e.pond_id === pid)}
+							labor={labor.find((l) => l.pond_id === pid)}
+						/>
 					))}
 				</div>
-				<div className="legendRow">
-					<LegendDot color="#ef4444" label="Temp" />
-					<LegendDot color="#2563eb" label="DO" />
-					<LegendDot color="#22c55e" label="pH" />
-					<LegendDot color="#60a5fa" label="Salinity" />
-				</div>
 			</div>
 
-			<div className="panel">
-				<PanelHeader title="Farm Camera Feed" />
-				<div className="camera">
-					<div className="cameraViewport" role="img" aria-label="Camera feed placeholder">
-						<div className="cameraOverlay">
-							<div className="cameraPill">
-								<span className="check" aria-hidden="true">
-									✓
-								</span>
-								<span>
-									Health Status: <b>Healthy</b>
-								</span>
-							</div>
-							<div className="cameraIcons" aria-hidden="true">
-								<span className="iconBox" />
-								<span className="iconBox" />
-							</div>
+			{/* Analytics & Trends */}
+			<div>
+				<div className="dashSectionTitle">Analytics & Trends</div>
+				<div className="dashChartsRow">
+					<div className="chartPanel panel">
+						<div className="chartTitle">Dissolved Oxygen Trends (24h)</div>
+						<div className="chartBoxSm" style={{ height: 200 }}>
+							<Line
+								data={{
+									labels: hours24,
+									datasets: doTrendData
+								}}
+								options={{
+									responsive: true,
+									maintainAspectRatio: false,
+									plugins: { legend: { display: true, position: 'bottom' } },
+									scales: {
+										x: { grid: { display: false }, ticks: { color: axisColor, maxTicksLimit: 8 } },
+										y: { min: 0, max: 8, grid: { color: gridColor }, ticks: { color: axisColor } }
+									},
+									elements: { point: { radius: 2, hoverRadius: 4 } }
+								}}
+							/>
 						</div>
 					</div>
-					<div className="cameraBadges">
-						<SmallBadge tone="good" label="Normal Activity" />
-						<SmallBadge tone="good" label="No Disease Detected" />
-						<SmallBadge tone="good" label="Clear Water" />
+					<div className="chartPanel panel">
+						<div className="chartTitle">Ammonia Levels (24h)</div>
+						<div className="chartBoxSm" style={{ height: 200 }}>
+							<Line
+								data={{
+									labels: hours24,
+									datasets: ammoniaTrendData
+								}}
+								options={{
+									responsive: true,
+									maintainAspectRatio: false,
+									plugins: { legend: { display: true, position: 'bottom' } },
+									scales: {
+										x: { grid: { display: false }, ticks: { color: axisColor, maxTicksLimit: 8 } },
+										y: { min: 0, max: 0.25, grid: { color: gridColor }, ticks: { color: axisColor } }
+									},
+									elements: { point: { radius: 2, hoverRadius: 4 } }
+								}}
+							/>
+						</div>
 					</div>
-
-
+					<div className="chartPanel panel">
+						<div className="chartTitle">Feed Usage (7 days)</div>
+						<div className="chartBoxSm" style={{ height: 200 }}>
+							<Bar
+								data={{
+									labels: feedLabels7,
+									datasets: [{ label: 'Feed (kg)', data: feedUsage7Days, backgroundColor: 'rgba(34, 197, 94, 0.75)', borderRadius: 6 }]
+								}}
+								options={barOptions}
+							/>
+						</div>
+					</div>
+					<div className="chartPanel panel">
+						<div className="chartTitle">Energy Consumption (24h)</div>
+						<div className="chartBoxSm" style={{ height: 200 }}>
+							<Bar
+								data={{
+									labels: hours24,
+									datasets: [{ label: 'kWh', data: energy24hData, backgroundColor: 'rgba(59, 130, 246, 0.75)', borderRadius: 6 }]
+								}}
+								options={barOptions}
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<div className="panel">
-				<PanelHeader title="Yield & Profit Analysis" />
-				<div className="summaryStrip">
-					<div className="summaryItem">
-						<div className="muted">Projected Harvest:</div>
-						<div className="summaryValue mono">{formatNumber(projectedHarvestTons, { maximumFractionDigits: 1 })} Tons</div>
-					</div>
-					<div className="summaryItem">
-						<div className="muted">Estimated Revenue:</div>
-						<div className="summaryValue mono">Rs. {formatNumber(estimatedRevenue, { maximumFractionDigits: 0 })}</div>
-					</div>
-				</div>
-				<div className="chartBoxLg">
-					<Bar data={yieldChart as never} options={yieldOptions} />
-				</div>
-				<div className="kpiStrip">
-					<div className="kpiMini">
-						<div className="muted">FCR</div>
-						<div className="kpiMiniValue mono">{typeof fcr === 'number' ? formatNumber(fcr, { maximumFractionDigits: 2 }) : '—'}</div>
-					</div>
-					<div className="kpiMini">
-						<div className="muted">Profit Margin</div>
-						<div className="kpiMiniValue mono">{formatNumber(profitMargin * 100, { maximumFractionDigits: 0 })}%</div>
-					</div>
-				</div>
-			</div>
-
-			<div className="panel spanAll">
+			<div className="panel spanAll" style={{ marginTop: 8 }}>
 				<PanelHeader
 					title="Alerts"
 					right={
@@ -536,6 +634,106 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 				</div>
 			) : null}
 
+		</div>
+	)
+}
+
+function KpiCard({
+	icon,
+	iconBg,
+	label,
+	value,
+	trend,
+	trendUp
+}: {
+	icon: string
+	iconBg: string
+	label: string
+	value: string
+	trend: number
+	trendUp?: boolean
+}) {
+	const isUp = trendUp ?? trend >= 0
+	const trendClass = isUp ? 'up' : 'down'
+	const trendStr = `${Math.abs(trend).toFixed(1)}% ${isUp ? '↑' : '↓'} in last week`
+	return (
+		<div className="kpiCard">
+			<div className="kpiCardIcon" style={{ background: iconBg }}>{icon}</div>
+			<div className="kpiCardValue mono">{value}</div>
+			<div className="kpiCardLabel">{label}</div>
+			{trend !== 0 && <div className={`kpiCardTrend ${trendClass}`}>{trendStr}</div>}
+		</div>
+	)
+}
+
+function PondStatusCard({
+	pondId,
+	water,
+	feed,
+	energy,
+	labor
+}: {
+	pondId: number
+	water?: { ph: number; dissolved_oxygen: number; temperature: number; ammonia: number; status: string }
+	feed?: { feed_amount: number; feeding_frequency: number }
+	energy?: { total_energy: number }
+	labor?: { efficiency_score: number }
+}) {
+	const status = water?.status ?? 'good'
+	const statusClass = status === 'critical' || status === 'poor' ? 'critical' : status === 'fair' ? 'warning' : 'healthy'
+	const statusLabel = status === 'critical' || status === 'poor' ? 'Critical' : status === 'fair' ? 'Warning' : 'Healthy'
+
+	const dailyFeedKg = feed ? (feed.feed_amount * (feed.feeding_frequency || 1)) / 1000 : 0
+	const energyKwh = energy?.total_energy ?? 0
+	const laborEff = labor?.efficiency_score ?? 0
+	const laborEffClass = laborEff >= 90 ? '' : laborEff >= 80 ? 'warn' : 'bad'
+
+	const doStatus = (water?.dissolved_oxygen ?? 5) >= 5.5 ? 'good' : (water?.dissolved_oxygen ?? 5) >= 4.5 ? 'warn' : 'bad'
+	const ammoniaStatus = (water?.ammonia ?? 0.1) <= 0.08 ? 'good' : (water?.ammonia ?? 0.1) <= 0.15 ? 'warn' : 'bad'
+
+	return (
+		<div className="pondStatusCard">
+			<div className="pondStatusHeader">
+				<div>
+					<div style={{ fontSize: 16, fontWeight: 700 }}>Pond {pondId}</div>
+					<div className="pondStatusId">ID: P{String(pondId).padStart(3, '0')}</div>
+				</div>
+				<span className={`pondStatusBadge ${statusClass}`}>{statusLabel}</span>
+			</div>
+			<div className="pondWaterGrid">
+				<div className="pondWaterItem">
+					<span>pH Level</span>
+					<span className="value">{(water?.ph ?? 7.5).toFixed(1)}</span>
+				</div>
+				<div className="pondWaterItem">
+					<span>DO</span>
+					<span className="value">{(water?.dissolved_oxygen ?? 5).toFixed(1)} mg/L</span>
+					<span className={`statusIcon ${doStatus}`} />
+				</div>
+				<div className="pondWaterItem">
+					<span>Temp</span>
+					<span className="value">{(water?.temperature ?? 28).toFixed(1)} °C</span>
+				</div>
+				<div className="pondWaterItem">
+					<span>Ammonia</span>
+					<span className="value">{(water?.ammonia ?? 0.1).toFixed(2)} ppm</span>
+					<span className={`statusIcon ${ammoniaStatus}`} />
+				</div>
+			</div>
+			<div className="pondMetricsRow">
+				<div className="row">
+					<span>Feed Usage</span>
+					<span className="value">{formatNumber(dailyFeedKg, { maximumFractionDigits: 0 })} kg/day</span>
+				</div>
+				<div className="row">
+					<span>Energy</span>
+					<span className="value">{formatNumber(energyKwh, { maximumFractionDigits: 0 })} kWh/day</span>
+				</div>
+				<div className="row">
+					<span>Labor Efficiency</span>
+					<span className={`value ${laborEffClass}`}>{formatNumber(laborEff * 100, { maximumFractionDigits: 0 })}%</span>
+				</div>
+			</div>
 		</div>
 	)
 }

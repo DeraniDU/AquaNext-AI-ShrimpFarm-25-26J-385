@@ -14,6 +14,7 @@ from agents.labor_optimization_agent import LaborOptimizationAgent
 from agents.manager_agent import ManagerAgent
 from agents.decision_recommendation_agent import DecisionRecommendationAgent
 from agents.forecasting_agent import ForecastingAgent
+from agents.benchmarking_agent import BenchmarkingAgent
 from config import FARM_CONFIG
 
 app = FastAPI(title="Shrimp Farm Management API", version="0.1.0")
@@ -373,6 +374,68 @@ def get_labor_optimization(
 
 	return {
 		"labor_optimization": labor_optimization,
+		"timestamp": datetime.utcnow().isoformat(),
+		"ponds": ponds,
+	}
+
+
+@app.get("/api/benchmark")
+def get_benchmark(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	"""
+	Run AI-powered benchmarking: compare farm performance against targets and best practices.
+
+	Returns computed scores (water quality, feed, energy, labor, overall), current vs target
+	comparisons, and optional AI-generated analysis and recommendations when OPENAI_API_KEY is set.
+
+	Query params:
+	- ponds: Number of ponds to benchmark
+	- seed: Optional RNG seed for reproducible simulation
+	"""
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	water_quality_agent = WaterQualityAgent()
+	feed_agent = FeedPredictionAgent()
+	energy_agent = EnergyOptimizationAgent()
+	labor_agent = LaborOptimizationAgent()
+	manager_agent = ManagerAgent()
+
+	water_quality_data = []
+	feed_data = []
+	energy_data = []
+	labor_data = []
+
+	for pond_id in range(1, ponds + 1):
+		wq = water_quality_agent.get_water_quality_data(pond_id)
+		water_quality_data.append(wq)
+		feed = feed_agent.get_feed_data(pond_id, wq)
+		feed_data.append(feed)
+		energy = energy_agent.get_energy_data(pond_id, wq)
+		energy_data.append(energy)
+		labor = labor_agent.get_or_generate_labor_data(pond_id, wq, energy)
+		labor_data.append(labor)
+
+	dashboard = manager_agent.create_dashboard(
+		water_quality_data, feed_data, energy_data, labor_data
+	)
+	historical_snapshots = _load_saved_snapshots(limit=14)
+
+	benchmarking_agent = BenchmarkingAgent()
+	benchmark_result = benchmarking_agent.run_benchmark(
+		dashboard=dashboard,
+		water_quality_data=water_quality_data,
+		feed_data=feed_data,
+		energy_data=energy_data,
+		labor_data=labor_data,
+		historical_snapshots=historical_snapshots,
+	)
+
+	return {
+		"benchmark": benchmark_result,
 		"timestamp": datetime.utcnow().isoformat(),
 		"ponds": ponds,
 	}
