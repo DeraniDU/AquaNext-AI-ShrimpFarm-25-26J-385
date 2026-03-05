@@ -1,6 +1,7 @@
 """
 IoT Gateway API - Receives sensor data from ESP32 and stores in MongoDB
 Handles TDS, Conductivity, and Temperature readings
+Integrates physics-based calculations for water quality parameters
 """
 
 from flask import Flask, request, jsonify
@@ -10,6 +11,7 @@ from datetime import datetime
 import os
 import logging
 from dotenv import load_dotenv
+from physics_calculator import PhysicsCalculator
 
 # Load environment variables
 load_dotenv()
@@ -325,6 +327,146 @@ def get_sensor_stats():
     
     except Exception as e:
         logger.error(f"❌ Error calculating stats: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/physics/calculate", methods=["POST"])
+def calculate_physics_parameters():
+    """
+    Calculate physics-based water quality parameters from sensor readings.
+    
+    Expected JSON:
+    {
+        "temperature_c": 28.5,
+        "ph": 8.0,
+        "dissolved_oxygen_mg_l": 6.5,
+        "salinity_ppt": 20,
+        "conductivity_us_cm": 4000,
+        "tan_mg_l": 0.3
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        
+        # Calculate comprehensive physics report
+        report = PhysicsCalculator.calculate_comprehensive_report(data)
+        
+        # Optionally save to MongoDB
+        if collection:
+            physics_record = {
+                "device_id": data.get("device_id", "physics_calc"),
+                "input_parameters": data,
+                "calculated_parameters": report,
+                "timestamp": datetime.utcnow()
+            }
+            collection.insert_one(physics_record)
+        
+        return jsonify({
+            "status": "success",
+            "data": report
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"❌ Error in physics calculation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/physics/nh3", methods=["POST"])
+def calculate_nh3():
+    """
+    Calculate un-ionized ammonia (toxic NH₃) concentration.
+    
+    Expected JSON:
+    {
+        "tan_mg_l": 0.5,           # Total Ammonia Nitrogen
+        "temperature_c": 28,
+        "ph": 8.0,
+        "salinity_ppt": 20         # Optional
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        result = PhysicsCalculator.calculate_nh3(
+            tan_mg_l=data.get("tan_mg_l", 0),
+            temp_c=data.get("temperature_c", 28),
+            ph=data.get("ph", 8.0),
+            salinity_ppt=data.get("salinity_ppt", 0)
+        )
+        
+        return jsonify({
+            "status": "success",
+            "data": result
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"❌ Error calculating NH3: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/physics/do-saturation", methods=["POST"])
+def calculate_do_saturation():
+    """
+    Calculate DO saturation and saturation percentage.
+    
+    Expected JSON:
+    {
+        "temperature_c": 28,
+        "dissolved_oxygen_mg_l": 6.5,  # Measured value
+        "salinity_ppt": 20              # Optional
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Get saturation info
+        sat_info = PhysicsCalculator.calculate_do_saturation_percent(
+            do_measured_mg_l=data.get("dissolved_oxygen_mg_l", 6.0),
+            temp_c=data.get("temperature_c", 28),
+            salinity_ppt=data.get("salinity_ppt", 0)
+        )
+        
+        return jsonify({
+            "status": "success",
+            "data": sat_info
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"❌ Error calculating DO saturation: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/physics/conductivity-to-tds", methods=["POST"])
+def convert_conductivity():
+    """
+    Convert conductivity to TDS (Total Dissolved Solids).
+    
+    Expected JSON:
+    {
+        "conductivity_us_cm": 4000,
+        "temperature_c": 28,
+        "conversion_factor": 0.5    # Optional (default 0.5)
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        result = PhysicsCalculator.calculate_conductivity_to_tds(
+            conductivity_us_cm=data.get("conductivity_us_cm", 0),
+            temp_c=data.get("temperature_c", 28),
+            conversion_factor=data.get("conversion_factor", 0.5)
+        )
+        
+        return jsonify({
+            "status": "success",
+            "data": result
+        }), 200
+    
+    except Exception as e:
+        logger.error(f"❌ Error converting conductivity: {e}")
         return jsonify({"error": str(e)}), 500
 
 
