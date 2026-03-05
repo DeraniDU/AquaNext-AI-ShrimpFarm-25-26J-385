@@ -1,56 +1,136 @@
 # Feeding System Backend (FastAPI)
-This folder contains the **Feeding System** backend for the AquaNext AI Shrimp Farm project.  
-It is a FastAPI service that exposes all feeding-related APIs (batches, AI feeding, motor status, analytics, etc.).
+
+This folder contains the **Feeding System backend** for the **AquaNext AI Shrimp Farm** project.
+It is a **FastAPI-based microservice** responsible for handling all feeding-related operations such as:
+
+* Feeding batch management
+* AI-based feeding recommendations
+* Motor control and feeder status
+* Feeding analytics and monitoring
+
+This service exposes REST APIs that are consumed by the **Feeding System Frontend (React/Vite)**.
+
 ---
-## 1. Prerequisites
-- Python 3.10+ installed
-- `pip` available in PATH
+
+# 1. Prerequisites
+
+Make sure the following are installed on your machine:
+
+* Python **3.10 or higher**
+* `pip` (Python package manager)
+* Git (optional but recommended)
+
 ---
-## 2. How to run the backend (local)
-### Step 1 – Go to this folder
-From the root of the repo:
-```bash
+
+# 2. Running the Backend Locally
+
+### Step 1 — Navigate to the Feeding System Directory
+
+From the root of the repository:
+
+```
 cd feeding-system
-Step 2 – Create and activate virtual environment
+```
+
+---
+
+### Step 2 — Create a Virtual Environment
+
+```
 python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate   # Linux/Mac
-Step 3 – Install dependencies
+```
+
+Activate it:
+
+**Windows**
+
+```
+venv\Scripts\activate
+```
+
+**Linux / Mac**
+
+```
+source venv/bin/activate
+```
+
+---
+
+### Step 3 — Install Dependencies
+
+```
 pip install -r requirements.txt
-Step 4 – Start FastAPI server
+```
+
+---
+
+### Step 4 — Start the FastAPI Server
+
+```
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-The API documentation will be available at:
+```
 
+---
+
+### API Documentation
+
+After starting the server, open:
+
+```
 http://127.0.0.1:8000/docs
-3. Relation to Frontend
-The current feeding frontend (React/Vite) is in a separate project (not in this repo):
+```
 
-Local path on developer machine (example):
+This will show the **Swagger API documentation** generated automatically by FastAPI.
+
+---
+
+# 3. Frontend Integration
+
+The **Feeding System Frontend** is currently maintained in a separate project.
+
+Example local path:
+
+```
 D:\Year4\PP1\shrimp_feeding_fastapi\frontend
-That frontend expects this backend at:
+```
 
+The frontend expects the backend API at:
+
+```
 http://127.0.0.1:8000
-So for local development:
+```
 
-Start this backend (steps above).
+### Running Frontend (Example)
 
-In another terminal, start the frontend:
+Open a new terminal:
 
+```
 cd D:\Year4\PP1\shrimp_feeding_fastapi\frontend
-npm install     # first time only
+npm install
 npm run dev
-4. Project Structure (this component)
+```
+
+---
+
+# 4. Project Structure
+
+```
 feeding-system/
-  api/
-    server.py           # Optional runner for uvicorn
-  app/                  # FastAPI backend package
-    main.py             # FastAPI app entrypoint
-    core/
-    database/
-    routes/
-    schemas/
-    services/
-    utils/
-    models/
-  requirements.txt       # Python dependencies
-  README.md              # How to run this component
+│
+├── api/
+│   └── server.py           # Optional script to run FastAPI server
+│
+├── app/                    # Main FastAPI application package
+│   ├── main.py             # Application entry point
+│   ├── core/               # Configuration and core settings
+│   ├── database/           # Database connection and repositories
+│   ├── routes/             # API route definitions
+│   ├── schemas/            # Pydantic request/response models
+│   ├── services/           # Business logic
+│   ├── utils/              # Helper utilities
+│   └── models/             # Data models
+│
+├── requirements.txt        # Python dependencies
+└── README.md               # Documentation for this component
+```
+
