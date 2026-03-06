@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import time
@@ -193,6 +194,9 @@ def get_dashboard(
 	- seed: optional RNG seed for reproducible simulation (affects cache key)
 	- cache_ttl_s: snapshot TTL in seconds (0 disables caching)
 	"""
+	# Prevent browser from caching so Refresh always gets latest KPIs
+	_dashboard_headers = {"Cache-Control": "no-store"}
+
 	cache_key = (int(ponds), int(seed) if seed is not None else None)
 	now = time.time()
 
@@ -201,7 +205,7 @@ def get_dashboard(
 		if ts is not None and (now - ts) <= cache_ttl_s:
 			cached = _DASHBOARD_CACHE.get(cache_key)
 			if cached is not None:
-				return cached
+				return JSONResponse(content=cached, headers=_dashboard_headers)
 
 	# Optional deterministic seeding for repeatable simulations.
 	if seed is not None:
@@ -291,7 +295,7 @@ def get_dashboard(
 		_DASHBOARD_CACHE[cache_key] = payload
 		_DASHBOARD_CACHE_TS[cache_key] = now
 
-	return payload
+	return JSONResponse(content=payload, headers=_dashboard_headers)
 
 
 @app.get("/api/feeding-optimization")

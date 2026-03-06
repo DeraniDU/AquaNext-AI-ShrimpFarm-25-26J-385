@@ -26,7 +26,11 @@ export function useDashboardData(params: { ponds: number; autoRefreshMs: number 
 
 			setState((s) => ({ ...s, loading: true, error: null }))
 			try {
-				const res = await fetch(url, { signal: controller.signal })
+				const res = await fetch(url, {
+					signal: controller.signal,
+					// Prevent browser cache so Refresh always gets latest KPIs from server
+					...(fresh ? { cache: 'no-store' as RequestCache } : {}),
+				})
 				if (!res.ok) throw new Error(`API ${res.status}`)
 				const json = (await res.json()) as DashboardApiResponse
 				setState({ data: json, loading: false, error: null, lastUpdatedAt: new Date().toISOString() })
@@ -40,7 +44,7 @@ export function useDashboardData(params: { ponds: number; autoRefreshMs: number 
 	)
 
 	const refresh = useCallback(async () => {
-		// User-initiated refresh should request a fresh snapshot from the API.
+		// User-initiated refresh requests fresh=1 so the API bypasses its cache and KPIs can update.
 		await load({ fresh: true })
 	}, [load])
 

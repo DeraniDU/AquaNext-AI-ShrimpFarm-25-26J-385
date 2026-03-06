@@ -316,10 +316,13 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const nextTasks = labor.flatMap(l => l.next_tasks)
 	const urgentNextTasks = nextTasks.filter(t => t.toLowerCase().includes('urgent') || t.toLowerCase().includes('emergency') || t.toLowerCase().includes('critical')).length
 	
-	// Benchmarking calculations
+	// Benchmarking calculations (use dashboard.survival_rate when backend provides it so KPIs can update)
 	const totalShrimpCount = feed.reduce((sum, f) => sum + f.shrimp_count, 0)
-	const initialShrimpCount = totalShrimpCount * 1.22 // Estimate initial count (assuming 82% survival)
-	const survivalRate = totalShrimpCount > 0 && initialShrimpCount > 0 ? (totalShrimpCount / initialShrimpCount) * 100 : 82
+	const survivalRateFromDashboard = typeof (dashboard as Record<string, unknown>)['survival_rate'] === 'number'
+		? (dashboard as Record<string, unknown>)['survival_rate'] as number
+		: null
+	const initialShrimpCount = totalShrimpCount * 1.22 // Estimate initial count (assuming 82% survival) when survival not provided
+	const survivalRate = survivalRateFromDashboard ?? (totalShrimpCount > 0 && initialShrimpCount > 0 ? (totalShrimpCount / initialShrimpCount) * 100 : 82)
 	const yieldKgHa = projectedYieldTons > 0 && pondIds.length > 0 ? (projectedYieldTons * 1000) / (pondIds.length * 0.5) : 5200 // Assume 0.5 ha per pond
 	const costPerKgShrimp = projectedYieldTons > 0 ? (totalFeedCost + totalLaborCost + totalEnergyCost) / (projectedYieldTons * 1000) : 1150
 	const energyPerKgShrimp = projectedYieldTons > 0 && totalEnergyKwh > 0 ? totalEnergyKwh / (projectedYieldTons * 1000) : 3.2
@@ -1399,6 +1402,9 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 								</tbody>
 							</table>
 						</div>
+						<p style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+							KPIs are from the current dashboard snapshot. Click <strong>Refresh</strong> in the top bar after new data is saved, or run a monitoring cycle, to see updated values.
+						</p>
 						<div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
 							<div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 6, backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 6 }}>
 								<span style={{ fontSize: 20 }}>✅</span>

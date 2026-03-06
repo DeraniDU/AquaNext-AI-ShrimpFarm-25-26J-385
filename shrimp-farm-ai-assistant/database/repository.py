@@ -125,7 +125,7 @@ class DataRepository:
         limit: int = 100
     ) -> List[WaterQualityData]:
         """
-        Retrieve water quality data from MongoDB.
+        Retrieve water quality data from MongoDB (water_quality_readings collection).
         
         Args:
             pond_id: Optional pond ID to filter by
@@ -140,7 +140,7 @@ class DataRepository:
             return []
         
         try:
-            collection = self.db.water_quality
+            collection = self.db.water_quality_readings
             query = {}
             
             if pond_id is not None:
@@ -228,12 +228,12 @@ class DataRepository:
         end_time: Optional[datetime] = None,
         limit: int = 100
     ) -> List[FeedData]:
-        """Retrieve feed data from MongoDB."""
+        """Retrieve feed data from MongoDB (feed_readings collection)."""
         if not self.is_available:
             return []
         
         try:
-            collection = self.db.feed
+            collection = self.db.feed_readings
             query = {}
             
             if pond_id is not None:
@@ -272,7 +272,7 @@ class DataRepository:
             return False
         
         try:
-            collection = self.db.energy
+            collection = self.db.energy_readings
             doc = {
                 'pond_id': data.pond_id,
                 'timestamp': data.timestamp,
@@ -317,7 +317,7 @@ class DataRepository:
             return []
         
         try:
-            collection = self.db.energy
+            collection = self.db.energy_readings
             query = {}
             
             if pond_id is not None:
@@ -356,7 +356,7 @@ class DataRepository:
             return False
         
         try:
-            collection = self.db.labor
+            collection = self.db.labor_readings
             doc = {
                 'pond_id': data.pond_id,
                 'timestamp': data.timestamp,
@@ -400,7 +400,7 @@ class DataRepository:
             return []
         
         try:
-            collection = self.db.labor
+            collection = self.db.labor_readings
             query = {}
             
             if pond_id is not None:
@@ -438,6 +438,7 @@ class DataRepository:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         limit: Optional[int] = None,
+        pond_id: Optional[int] = None,
         data_type: str = "water_quality"
     ) -> List[Any]:
         """
@@ -450,7 +451,8 @@ class DataRepository:
         try:
             collection = self.db[collection_name]
             query = {}
-            
+            if pond_id is not None:
+                query['pond_id'] = pond_id
             if start_time or end_time:
                 query['timestamp'] = {}
                 if start_time:
@@ -497,6 +499,9 @@ class DataRepository:
                         results.append(EnergyData(
                             timestamp=doc.get('timestamp', datetime.now()),
                             pond_id=doc.get('pond_id', 1),
+                            aerator_usage=doc.get('aerator_usage', 20.0),
+                            pump_usage=doc.get('pump_usage', 12.0),
+                            heater_usage=doc.get('heater_usage', 10.0),
                             total_energy=doc.get('total_energy', 20.0),
                             cost=doc.get('cost', 2.0),
                             efficiency_score=doc.get('efficiency_score', 0.8)
@@ -505,11 +510,11 @@ class DataRepository:
                         results.append(LaborData(
                             timestamp=doc.get('timestamp', datetime.now()),
                             pond_id=doc.get('pond_id', 1),
-                            tasks_completed=doc.get('tasks_completed', 5),
+                            tasks_completed=doc.get('tasks_completed', []) or [],
                             time_spent=doc.get('time_spent', 4.0),
                             worker_count=doc.get('worker_count', 2),
                             efficiency_score=doc.get('efficiency_score', 0.8),
-                            next_tasks=doc.get('next_tasks', [])
+                            next_tasks=doc.get('next_tasks', []) or []
                         ))
                 except Exception as e:
                     print(f"Error parsing document from {collection_name}: {e}")
@@ -588,7 +593,7 @@ class DataRepository:
             energy_all = []
             labor_all = []
             
-            # Try primary collection names (water_quality, feed, energy, labor)
+            # Read only from _readings collections
             water_quality_all = self.get_water_quality_data(
                 start_time=start_time,
                 end_time=end_time,
@@ -610,74 +615,9 @@ class DataRepository:
                 limit=data_limit
             )
             
-            print(f"[DEBUG] Primary collections - water_quality={len(water_quality_all)}, feed={len(feed_all)}, energy={len(energy_all)}, labor={len(labor_all)}")
+            print(f"[DEBUG] _readings collections - water_quality_readings={len(water_quality_all)}, feed_readings={len(feed_all)}, energy_readings={len(energy_all)}, labor_readings={len(labor_all)}")
             if start_time:
                 print(f"[DEBUG] Time range: {start_time} to {end_time or 'now'}")
-            
-            # Also check alternative collection names and merge data
-            # This handles cases where sample data is in different collections
-            alt_water = self._get_data_from_collection(
-                collection_name="water_quality_readings",
-                start_time=start_time,
-                end_time=end_time,
-                limit=data_limit,
-                data_type="water_quality"
-            )
-            alt_feed = self._get_data_from_collection(
-                collection_name="feed_readings",
-                start_time=start_time,
-                end_time=end_time,
-                limit=data_limit,
-                data_type="feed"
-            )
-            alt_energy = self._get_data_from_collection(
-                collection_name="energy_readings",
-                start_time=start_time,
-                end_time=end_time,
-                limit=data_limit,
-                data_type="energy"
-            )
-            alt_labor = self._get_data_from_collection(
-                collection_name="labor_readings",
-                start_time=start_time,
-                end_time=end_time,
-                limit=data_limit,
-                data_type="labor"
-            )
-            
-            print(f"[DEBUG] Alternative collections - water_quality_readings={len(alt_water)}, feed_readings={len(alt_feed)}, energy_readings={len(alt_energy)}, labor_readings={len(alt_labor)}")
-            
-            # Merge data from both collection names (avoid duplicates by using set of (timestamp, pond_id))
-            if alt_water:
-                # Create a set of existing (timestamp, pond_id) tuples to avoid duplicates
-                existing_keys = {(wq.timestamp, wq.pond_id) for wq in water_quality_all}
-                for wq in alt_water:
-                    if (wq.timestamp, wq.pond_id) not in existing_keys:
-                        water_quality_all.append(wq)
-                        existing_keys.add((wq.timestamp, wq.pond_id))
-            
-            if alt_feed:
-                existing_keys = {(f.timestamp, f.pond_id) for f in feed_all}
-                for f in alt_feed:
-                    if (f.timestamp, f.pond_id) not in existing_keys:
-                        feed_all.append(f)
-                        existing_keys.add((f.timestamp, f.pond_id))
-            
-            if alt_energy:
-                existing_keys = {(e.timestamp, e.pond_id) for e in energy_all}
-                for e in alt_energy:
-                    if (e.timestamp, e.pond_id) not in existing_keys:
-                        energy_all.append(e)
-                        existing_keys.add((e.timestamp, e.pond_id))
-            
-            if alt_labor:
-                existing_keys = {(l.timestamp, l.pond_id) for l in labor_all}
-                for l in alt_labor:
-                    if (l.timestamp, l.pond_id) not in existing_keys:
-                        labor_all.append(l)
-                        existing_keys.add((l.timestamp, l.pond_id))
-            
-            print(f"[DEBUG] After merge - water_quality={len(water_quality_all)}, feed={len(feed_all)}, energy={len(energy_all)}, labor={len(labor_all)}")
             
             # Group data by day (daily snapshots for weekly view)
             # Round timestamps to start of day for grouping

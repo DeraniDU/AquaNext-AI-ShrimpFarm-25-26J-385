@@ -12,7 +12,7 @@ import {
  		RadialLinearScale,
 	type ChartOptions
 } from 'chart.js'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { DashboardApiResponse, SavedFarmSnapshot, FeedingPlan } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
 import { useFeedingOptimization } from '../lib/useFeedingOptimization'
@@ -338,6 +338,57 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const costScore = costPerKgShrimp > 0 ? (benchmarkCostPerKg / costPerKgShrimp) * 100 : 92 // Lower is better
 	const energyScore = energyPerKgShrimp > 0 ? (benchmarkEnergyPerKg / energyPerKgShrimp) * 100 : 85 // Lower is better
 	const overallPerformanceIndex = Math.min(100, (fcrScore + survivalScore + yieldScore + costScore + energyScore) / 5)
+
+	// Performance trends from history + current (so charts reflect real data from _readings / dashboard)
+	const performanceTrends = useMemo(() => {
+		const snapshots = [...(history || [])].sort(
+			(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+		).slice(-5)
+		const n = snapshots.length
+		const pondCount = Math.max(1, pondIds.length)
+		const defaultFcr = 1.5
+		const defaultSurvival = 78
+		const defaultYield = 4800
+		const defaultEnergy = 3.5
+		const fcrTrend: number[] = []
+		const survivalTrend: number[] = []
+		const yieldTrend: number[] = []
+		const energyTrend: number[] = []
+		for (let i = 0; i < snapshots.length; i++) {
+			const snap = snapshots[i]
+			const feedList = snap.feed || []
+			const energyList = snap.energy || []
+			const totalFeedKg = feedList.reduce(
+				(sum, f) => sum + (f.feed_amount * (f.feeding_frequency ?? 1)) / 1000,
+				0
+			)
+			const totalBiomass = feedList.reduce(
+				(sum, f) => sum + (f.shrimp_count * f.average_weight) / 1000,
+				0
+			)
+			const totalEnergy = energyList.reduce((s, e) => s + (e.total_energy ?? 0), 0)
+			const fcrVal = totalFeedKg > 0 && totalBiomass > 0 ? totalFeedKg / totalBiomass : defaultFcr
+			const yieldVal = totalBiomass > 0 ? (totalBiomass * 1000) / (pondCount * 0.5) : defaultYield
+			const energyVal = totalBiomass > 0 && totalEnergy > 0 ? totalEnergy / (totalBiomass * 1000) : defaultEnergy
+			fcrTrend.push(fcrVal)
+			survivalTrend.push(i === n - 1 ? survivalRate : defaultSurvival)
+			yieldTrend.push(yieldVal)
+			energyTrend.push(energyVal)
+		}
+		// Pad to 5 points so we always show Cycle 1..5 (use first value or default)
+		while (fcrTrend.length < 5) {
+			fcrTrend.unshift(fcrTrend[0] ?? defaultFcr)
+			survivalTrend.unshift(survivalTrend[0] ?? defaultSurvival)
+			yieldTrend.unshift(yieldTrend[0] ?? defaultYield)
+			energyTrend.unshift(energyTrend[0] ?? defaultEnergy)
+		}
+		return {
+			fcr: fcrTrend.slice(-5),
+			survival: survivalTrend.slice(-5),
+			yield: yieldTrend.slice(-5),
+			energy: energyTrend.slice(-5)
+		}
+	}, [history, survivalRate, pondIds.length])
 	
 	// Use decision recommendations from API if available
 	const decisionRecommendations = data.decision_recommendations || []
@@ -1399,6 +1450,9 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 								</tbody>
 							</table>
 						</div>
+						<p style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+							KPIs are from the current dashboard snapshot. Click <strong>Refresh</strong> in the top bar after new data is saved, or run a monitoring cycle, to see updated values.
+						</p>
 						<div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
 							<div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 6, backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 6 }}>
 								<span style={{ fontSize: 20 }}>✅</span>
@@ -1441,10 +1495,10 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 					<div style={{ padding: '8px 0' }}>
 						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 							{[
-								{ label: 'Feed Conversion Ratio', data: [1.50, 1.48, 1.46, 1.45, fcr], color: '#16a34a' },
-								{ label: 'Survival Rate (%)', data: [78, 79, 80, 81, survivalRate], color: '#3b82f6' },
-								{ label: 'Yield (kg/ha/cycle)', data: [4800, 4900, 5000, 5100, yieldKgHa], color: '#8b5cf6' },
-								{ label: 'Energy per kg shrimp', data: [3.8, 3.6, 3.4, 3.3, energyPerKgShrimp], color: '#f59e0b' }
+								{ label: 'Feed Conversion Ratio', data: performanceTrends.fcr, color: '#16a34a' },
+								{ label: 'Survival Rate (%)', data: performanceTrends.survival, color: '#3b82f6' },
+								{ label: 'Yield (kg/ha/cycle)', data: performanceTrends.yield, color: '#8b5cf6' },
+								{ label: 'Energy per kg shrimp', data: performanceTrends.energy, color: '#f59e0b' }
 							].map((metric, idx) => (
 								<div key={idx} style={{ padding: 6, backgroundColor: 'rgba(255, 255, 255, 0.5)', borderRadius: 6, border: '1px solid rgba(17, 24, 39, 0.1)' }}>
 									<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>{metric.label}</div>
