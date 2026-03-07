@@ -124,7 +124,7 @@ export default function Motor() {
                 onClick={fetchMotorData}
                 className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
               >
-                🔄 {t("motor.refreshNow")}
+                 {t("motor.refreshNow")}
               </button>
             </div>
           </div>

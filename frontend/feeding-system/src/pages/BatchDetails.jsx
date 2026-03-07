@@ -211,7 +211,7 @@ export default function BatchDetails() {
       
       // Log fetched events for debugging
       if (events.length > 0) {
-        console.log(`📋 Fetched ${events.length} motor events:`, events.slice(0, 3).map(e => ({
+        console.log(`Fetched ${events.length} motor events:`, events.slice(0, 3).map(e => ({
           state: e.state || e.to_state,
           speed: e.motor_speed,
           time: e.created_at,
@@ -223,7 +223,7 @@ export default function BatchDetails() {
       const hasNewEvents = events.length > lastMotorHistoryCount;
       if (hasNewEvents && events.length > 0) {
         const latestEvent = events[0];
-        console.log(`🆕 New Motor Event Added!`, {
+        console.log(` New Motor Event Added!`, {
           state: latestEvent.state || latestEvent.to_state,
           speed: latestEvent.motor_speed,
           time: latestEvent.created_at,
@@ -369,9 +369,9 @@ export default function BatchDetails() {
           setLiveMotorStatus({ state: newMotorState, speed: newMotorSpeed });
           
           if (motorChanged) {
-            const motorActionText = newMotorState === "feeding_fast" ? "🟢 Motor changed to FAST (100%)" :
-                                   newMotorState === "feeding_slow" ? "🟡 Motor changed to SLOW (40%)" :
-                                   "🔴 Motor STOPPED (0%)";
+            const motorActionText = newMotorState === "feeding_fast" ? " Motor changed to FAST (100%)" :
+                                   newMotorState === "feeding_slow" ? " Motor changed to SLOW (40%)" :
+                                   " Motor STOPPED (0%)";
             console.log(`Motor Status Changed: ${motorActionText}`);
           } else {
             console.log(`Motor Status Confirmed: ${newMotorState} (no change - motor already ${newMotorState})`);
@@ -419,18 +419,18 @@ export default function BatchDetails() {
 
       // Update motor status and history AFTER processing is complete
       // Wait longer to ensure backend has saved all events
-      console.log(`⏳ Waiting for backend to save events...`);
+      console.log(` Waiting for backend to save events...`);
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Fetch multiple times to ensure we get the latest events
-      console.log(`🔄 Fetching motor status (attempt 1)...`);
+      console.log(` Fetching motor status (attempt 1)...`);
       await fetchMotorStatus();
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`🔄 Fetching motor status (attempt 2)...`);
+      console.log(`Fetching motor status (attempt 2)...`);
       await fetchMotorStatus();
       
       // Refresh feeding history to show new feeding record
-      console.log(`🔄 Refreshing feeding history...`);
+      console.log(` Refreshing feeding history...`);
       await fetchFeedingHistory();
       
       console.log(` Processing complete - Final state: ${finalState} (${finalSpeed * 100}%)`);
@@ -440,7 +440,7 @@ export default function BatchDetails() {
       // This ensures user sees the current state even if no new database event was created
       setTimeout(() => {
         setFinalProcessedState(null);
-        console.log(`🧹 Cleared final processed state display`);
+        console.log(` Cleared final processed state display`);
       }, 30000); // 30 seconds instead of 10
 
       // Clear file selection
@@ -476,7 +476,7 @@ export default function BatchDetails() {
     setIsTestingAI(true);
     try {
       await API.post(`/ai-decision/?prediction=${prediction}&confidence=${confidence}`);
-      alert(`✅ Simulated AI Decision: ${prediction.toUpperCase()} (${(confidence * 100).toFixed(0)}% confidence)\n\nStatus will update in a few seconds!`);
+      alert(` Simulated AI Decision: ${prediction.toUpperCase()} (${(confidence * 100).toFixed(0)}% confidence)\n\nStatus will update in a few seconds!`);
       // Refresh status immediately
       setTimeout(() => {
         fetchMotorStatus();
@@ -780,13 +780,13 @@ export default function BatchDetails() {
     const normalized = normalizeFeedingState(state);
     switch (normalized) {
       case "HIGH":
-        return `🟢 ${t("batchDetails.feedingFastDesc")}`;
+        return ` ${t("batchDetails.feedingFastDesc")}`;
       case "LOW":
-        return `🟡 ${t("batchDetails.feedingSlowDesc")}`;
+        return ` ${t("batchDetails.feedingSlowDesc")}`;
       case "NO":
-        return `🔴 ${t("batchDetails.notFeedingDesc")}`;
+        return ` ${t("batchDetails.notFeedingDesc")}`;
       default:
-        return `🔴 ${t("batchDetails.notFeedingDesc")}`;
+        return ` ${t("batchDetails.notFeedingDesc")}`;
     }
   };
 
@@ -1139,7 +1139,7 @@ export default function BatchDetails() {
             ) : feedings.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📊</span>
+                  <span className="text-2xl"></span>
                 </div>
                 <p className="text-gray-600 font-semibold mb-2">{t("batchDetails.noFeedingRecords")}</p>
                 <p className="text-sm text-gray-500">{t("batchDetails.startRecording")}</p>
@@ -1275,7 +1275,7 @@ export default function BatchDetails() {
                     <p className="text-sm text-gray-600 mb-4 font-semibold">
                       {t("batchDetails.aiDetectionStatus")}
                       {isLiveProcessing && (
-                        <span className="ml-2 text-blue-600 animate-pulse">🔴 {t("batchDetails.live")}</span>
+                        <span className="ml-2 text-blue-600 animate-pulse"> {t("batchDetails.live")}</span>
                       )}
                     </p>
                     <div className={`inline-block px-6 sm:px-12 py-4 sm:py-6 rounded-xl border-4 mb-4 sm:mb-6 ${
@@ -1293,9 +1293,9 @@ export default function BatchDetails() {
                       <p className="text-lg font-semibold text-gray-700">
                         {isLiveProcessing && liveProcessingChunks.length > 0 ? (
                           <>
-                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status === "Initializing" && `🔄 ${t("batchDetails.initializing")}`}
-                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status?.includes("Waiting") && `⏳ ${t("batchDetails.waiting")}`}
-                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status === "Confirmed" && `✅ ${t("batchDetails.confirmed")}`}
+                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status === "Initializing" && ` ${t("batchDetails.initializing")}`}
+                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status?.includes("Waiting") && ` ${t("batchDetails.waiting")}`}
+                            {liveProcessingChunks[liveProcessingChunks.length - 1].decision_status === "Confirmed" && ` ${t("batchDetails.confirmed")}`}
                           </>
                         ) : (
                           getFeedingStateDescription(motorStatus?.state || motorStatus?.to_state)
@@ -1321,13 +1321,13 @@ export default function BatchDetails() {
                           : "text-red-600"
                         }`}>
                           {isLiveProcessing ? (
-                            liveMotorStatus.state === "feeding_fast" ? "🟢 ON (Fast)" :
-                            liveMotorStatus.state === "feeding_slow" ? "🟡 ON (Slow)" :
-                            "🔴 OFF"
+                            liveMotorStatus.state === "feeding_fast" ? " ON (Fast)" :
+                            liveMotorStatus.state === "feeding_slow" ? " ON (Slow)" :
+                            " OFF"
                           ) : (
-                            isHigh ? "🟢 ON (Fast)"
-                            : isLow ? "🟡 ON (Slow)"
-                            : "🔴 OFF"
+                            isHigh ? " ON (Fast)"
+                            : isLow ? " ON (Slow)"
+                            : " OFF"
                           )}
                         </p>
                       </div>
@@ -1386,7 +1386,7 @@ export default function BatchDetails() {
 
             {/* TEST: Quick Test Buttons (Simulate AI Decisions) */}
             <div className="bg-yellow-50 rounded-xl p-4 sm:p-6 border-4 border-yellow-300 mt-5 sm:mt-6">
-              <h4 className="text-lg sm:text-xl font-bold text-yellow-800 mb-2 text-center">⚡ {t("batchDetails.quickTest")}</h4>
+              <h4 className="text-lg sm:text-xl font-bold text-yellow-800 mb-2 text-center"> {t("batchDetails.quickTest")}</h4>
               <p className="text-xs sm:text-sm text-yellow-700 text-center mb-4">
                 {t("batchDetails.quickTestDescription")}
               </p>
@@ -1397,7 +1397,7 @@ export default function BatchDetails() {
                   disabled={isTestingAI}
                   className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 active:from-green-800 active:to-green-900 text-white font-bold py-4 px-4 sm:px-6 rounded-xl shadow-sm active:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
                 >
-                  {isTestingAI ? "⏳..." : `🟢 ${t("batchDetails.testHigh")}`}
+                  {isTestingAI ? "..." : ` ${t("batchDetails.testHigh")}`}
                   <p className="text-xs mt-1 opacity-90">{t("motor.feedingFast")}</p>
                 </button>
                 
@@ -1406,7 +1406,7 @@ export default function BatchDetails() {
                   disabled={isTestingAI}
                   className="bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 active:from-yellow-800 active:to-yellow-900 text-white font-bold py-4 px-4 sm:px-6 rounded-xl shadow-sm active:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
                 >
-                  {isTestingAI ? "⏳..." : `🟡 ${t("batchDetails.testLow")}`}
+                  {isTestingAI ? "..." : ` ${t("batchDetails.testLow")}`}
                   <p className="text-xs mt-1 opacity-90">{t("motor.feedingSlow")}</p>
                 </button>
                 
@@ -1415,7 +1415,7 @@ export default function BatchDetails() {
                   disabled={isTestingAI}
                   className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 active:from-red-800 active:to-red-900 text-white font-bold py-4 px-4 sm:px-6 rounded-xl shadow-sm active:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
                 >
-                  {isTestingAI ? "⏳..." : `🔴 ${t("batchDetails.testNo")}`}
+                  {isTestingAI ? "..." : ` ${t("batchDetails.testNo")}`}
                   <p className="text-xs mt-1 opacity-90">{t("motor.stopped")}</p>
                 </button>
               </div>
@@ -1433,10 +1433,10 @@ export default function BatchDetails() {
                   <p className={`text-lg font-bold ${
                     isLiveProcessing ? "text-purple-600 animate-pulse" : "text-blue-600"
                   }`}>
-                    ⏱️ {isLiveProcessing ? liveProcessingTimer : detectionTimer}s
+                    {isLiveProcessing ? liveProcessingTimer : detectionTimer}s
                   </p>
                   {isLiveProcessing && (
-                    <p className="text-xs text-purple-600 mt-1">🔴 {t("batchDetails.live")}</p>
+                    <p className="text-xs text-purple-600 mt-1"> {t("batchDetails.live")}</p>
                   )}
                 </div>
               </div>
@@ -1464,13 +1464,13 @@ export default function BatchDetails() {
                           <p className="text-xs text-gray-500 mt-1">
                             {(selectedAudioFile.size / 1024 / 1024).toFixed(2)} MB
                             {(selectedAudioFile.size / (1024 * 1024)) > 10 && (
-                              <span className="text-yellow-600 ml-2">⚠️ {t("batchDetails.largeFileWarning")}</span>
+                              <span className="text-yellow-600 ml-2"> {t("batchDetails.largeFileWarning")}</span>
                             )}
                           </p>
                         </div>
                       ) : (
                         <div>
-                          <p className="text-sm font-semibold text-purple-700">📁 {t("batchDetails.clickToSelectAudio")}</p>
+                          <p className="text-sm font-semibold text-purple-700"> {t("batchDetails.clickToSelectAudio")}</p>
                           <p className="text-xs text-gray-500 mt-1">{t("batchDetails.audioFormats")}</p>
                         </div>
                       )}
@@ -1488,12 +1488,12 @@ export default function BatchDetails() {
                       <span className="flex items-center gap-2">
                         {isLiveProcessing ? (
                           <>
-                            <span className="animate-pulse">🔴</span>
+                            <span className="animate-pulse"></span>
                             {t("batchDetails.liveProcessing")}... ({currentProcessingIndex + 1}/{liveProcessingChunks.length + 1})
                           </>
                         ) : (
                           <>
-                            <span className="animate-spin">⏳</span>
+                            <span className="animate-spin"></span>
                             {t("batchDetails.processingAudio")}
                           </>
                         )}
@@ -1511,7 +1511,7 @@ export default function BatchDetails() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4">
                       <div className="flex items-center gap-3">
                         <span className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></span>
-                        <p className="text-base sm:text-lg font-bold text-blue-800">🔴 LIVE PROCESSING</p>
+                        <p className="text-base sm:text-lg font-bold text-blue-800"> LIVE PROCESSING</p>
                       </div>
                       <p className="text-sm sm:text-base text-blue-600 font-semibold bg-white px-3 py-1.5 rounded-lg">
                         {t("batchDetails.processingChunk")} {currentProcessingIndex + 1} {t("batchDetails.of")} {liveProcessingChunks.length + (isUploadingAudio ? 1 : 0)}
@@ -1528,9 +1528,9 @@ export default function BatchDetails() {
                             liveMotorStatus.state === "feeding_slow" ? "text-yellow-600" :
                             "text-red-600"
                           }`}>
-                            {liveMotorStatus.state === "feeding_fast" ? "🟢 FAST" :
-                             liveMotorStatus.state === "feeding_slow" ? "🟡 SLOW" :
-                             "🔴 OFF"} ({Math.round(liveMotorStatus.speed * 100)}%)
+                            {liveMotorStatus.state === "feeding_fast" ? " FAST" :
+                             liveMotorStatus.state === "feeding_slow" ? " SLOW" :
+                             " OFF"} ({Math.round(liveMotorStatus.speed * 100)}%)
                           </span>
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -1549,7 +1549,7 @@ export default function BatchDetails() {
                         ? "bg-green-50 border-green-400 text-green-800" 
                         : "bg-red-50 border-red-400 text-red-800"
                     }`}>
-                      <p className="font-semibold">{uploadResult.success ? `✅ ${t("common.success")}!` : `❌ ${t("common.error")}`}</p>
+                      <p className="font-semibold">{uploadResult.success ? ` ${t("common.success")}!` : ` ${t("common.error")}`}</p>
                       <p className="text-sm mt-1">{uploadResult.message}</p>
                     </div>
                   </div>
@@ -1649,9 +1649,9 @@ export default function BatchDetails() {
             {/* EMERGENCY MANUAL CONTROL - Only for emergencies */}
             <div className="bg-red-50 rounded-xl p-4 sm:p-6 border-4 border-red-400 mt-5 sm:mt-6">
               <div className="text-center mb-4">
-                <h4 className="text-xl sm:text-2xl font-bold text-red-800 mb-2">🚨 {t("batchDetails.emergencyManualControl")}</h4>
+                <h4 className="text-xl sm:text-2xl font-bold text-red-800 mb-2"> {t("batchDetails.emergencyManualControl")}</h4>
                 <p className="text-xs sm:text-sm text-red-700 font-semibold">
-                  ⚠️ {t("batchDetails.emergencyWarning")}
+                   {t("batchDetails.emergencyWarning")}
                 </p>
                 <p className="text-xs text-red-600 mt-2">
                   {t("batchDetails.emergencyDescription")}
@@ -1666,7 +1666,7 @@ export default function BatchDetails() {
                   isControllingMotor ? "cursor-wait" : ""
                 }`}
               >
-                {isControllingMotor ? `⏳ ${t("batchDetails.starting")}` : ` ${t("batchDetails.startFeeding")}`}
+                {isControllingMotor ? ` ${t("batchDetails.starting")}` : ` ${t("batchDetails.startFeeding")}`}
               </button>
               
               <button
@@ -1676,12 +1676,12 @@ export default function BatchDetails() {
                   isControllingMotor ? "cursor-wait" : ""
                 }`}
               >
-                {isControllingMotor ? `⏳ ${t("batchDetails.stopping")}` : ` ${t("batchDetails.stopFeeding")}`}
+                {isControllingMotor ? ` ${t("batchDetails.stopping")}` : ` ${t("batchDetails.stopFeeding")}`}
               </button>
               </div>
               
               <p className="text-center text-xs text-red-600 mt-4 font-semibold">
-                ⚠️ {t("batchDetails.emergencyDescription")}
+                 {t("batchDetails.emergencyDescription")}
               </p>
             </div>
           </div>
@@ -1696,7 +1696,7 @@ export default function BatchDetails() {
                 disabled={isLoadingMotor}
                 className="text-blue-600 hover:text-blue-800 active:text-blue-900 text-sm font-semibold disabled:opacity-50 touch-manipulation min-h-[44px]"
               >
-                {isLoadingMotor ? t("common.loading") : `🔄 ${t("common.refresh")}`}
+                {isLoadingMotor ? t("common.loading") : ` ${t("common.refresh")}`}
               </button>
             </div>
             
@@ -1721,7 +1721,7 @@ export default function BatchDetails() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-bold text-lg text-gray-800">{liveNormalized}</p>
                         <span className="text-xs px-2 py-1 rounded-full font-semibold bg-blue-200 text-blue-700 animate-pulse">
-                          🔴 LIVE
+                          LIVE
                         </span>
                         <span className="text-sm text-gray-600">
                           ({liveNormalized === "HIGH" ? "Feeding Fast" : 
@@ -1737,7 +1737,7 @@ export default function BatchDetails() {
                         )}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-500 font-semibold">🔴 Processing...</span>
+                    <span className="text-xs text-gray-500 font-semibold"> Processing...</span>
                   </div>
                 </div>
               );
@@ -1779,7 +1779,7 @@ export default function BatchDetails() {
                           </span>
                         ) : (
                           <span className="text-xs px-2 py-1 rounded-full font-semibold bg-yellow-200 text-yellow-700">
-                            ⚠️ No change (motor already {finalNormalized})
+                             No change (motor already {finalNormalized})
                           </span>
                         )}
                         <span className="text-sm text-gray-600">
@@ -1844,7 +1844,7 @@ export default function BatchDetails() {
                           <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
                             isAI ? "bg-blue-200 text-blue-700" : "bg-purple-200 text-purple-700"
                           }`}>
-                            {isAI ? "🤖 AI" : "👤 Manual"}
+                            {isAI ? "AI" : " Manual"}
                           </span>
                           <span className="text-sm text-gray-600">
                             ({getMotorStatusLabel(eventState)})
@@ -1876,7 +1876,7 @@ export default function BatchDetails() {
         <h2 className="text-2xl font-bold mb-4">Daily Records</h2>
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">📋</span>
+              <span className="text-2xl"></span>
       </div>
             <p className="text-gray-600 font-semibold mb-2">
               {batch.status === "draft" 

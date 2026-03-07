@@ -575,7 +575,7 @@ export default function Analytics() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-4">
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                📊 {t("analytics.title")}: {viewMode === "system" ? t("analytics.systemOverview") : (analytics?.batchName || t("common.loading"))}
+                 {t("analytics.title")}: {viewMode === "system" ? t("analytics.systemOverview") : (analytics?.batchName || t("common.loading"))}
               </h1>
               <p className="text-sm sm:text-base text-gray-600">
                 {viewMode === "system" 
@@ -602,7 +602,7 @@ export default function Analytics() {
                   }`}
                   title="See all batches combined - farm overview"
                 >
-                  🌐 {t("analytics.systemView")}
+                   {t("analytics.systemView")}
                 </button>
                 <button
                   onClick={() => {
@@ -618,14 +618,14 @@ export default function Analytics() {
                   }`}
                   title="See one specific batch - detailed analysis"
                 >
-                  🎯 {t("analytics.batchView")}
+                   {t("analytics.batchView")}
                 </button>
               </div>
             </div>
             
             {/* Quick Help */}
             <div className="text-xs text-gray-500 flex items-center gap-1">
-              <span>💡</span>
+              <span></span>
               <span>
                 {viewMode === "system" 
                   ? t("analytics.systemViewHelp")
@@ -809,7 +809,7 @@ export default function Analytics() {
                   </p>
                   <p className="text-xs text-teal-600 mt-0.5">{t("analytics.averageBodyWeight")}</p>
                 </div>
-                <span className="text-xl sm:text-2xl">📈</span>
+                <span className="text-xl sm:text-2xl"></span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-teal-800">
                 {abwData && abwData.length > 0
@@ -832,7 +832,7 @@ export default function Analytics() {
                   </p>
                   <p className="text-xs text-blue-600 mt-0.5">{t("analytics.totalShrimpWeight")}</p>
                 </div>
-                <span className="text-xl sm:text-2xl">⚖️</span>
+                <span className="text-xl sm:text-2xl"></span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-blue-800">
                 {biomassData && biomassData.length > 0
@@ -862,7 +862,7 @@ export default function Analytics() {
                   <p className="text-xs sm:text-sm font-semibold text-purple-700">{t("analytics.avgFCR")}</p>
                   <p className="text-xs text-purple-600 mt-0.5">{t("analytics.feedConversionRatio")}</p>
                 </div>
-                <span className="text-xl sm:text-2xl">📊</span>
+                <span className="text-xl sm:text-2xl"></span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-purple-800">
                 {fcrData && fcrData.length > 0
@@ -889,7 +889,7 @@ export default function Analytics() {
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
-                  <span>📈</span>
+                  <span></span>
                   <span>{t("analytics.abwGrowth")}</span>
                 </span>
               </button>
@@ -915,7 +915,7 @@ export default function Analytics() {
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 whitespace-nowrap">
-                  <span>📊</span>
+                  <span></span>
                   <span>{t("analytics.fcrTrends")}</span>
                 </span>
               </button>

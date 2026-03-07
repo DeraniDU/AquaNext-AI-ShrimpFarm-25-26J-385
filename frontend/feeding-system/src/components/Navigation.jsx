@@ -12,8 +12,8 @@ export default function Navigation() {
 
   // Configurable navigation items - Easy to extend for future features
   const navItems = [
-    { path: "/dashboard", labelKey: "nav.dashboard", icon: "🏠" },
-    { path: "/farmer-setup", labelKey: "nav.batches", icon: "🦐" },
+    { path: "/dashboard", labelKey: "nav.dashboard", icon: "" },
+    { path: "/farmer-setup", labelKey: "nav.batches", icon: "" },
   ];
 
   // Check if current path matches nav item (handles nested routes)
@@ -31,7 +31,7 @@ export default function Navigation() {
           {/* Logo/Brand */}
           <div className="flex items-center flex-1 min-w-0">
             <Link to="/dashboard" className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
-              <span className="text-xl sm:text-2xl flex-shrink-0">🦐</span>
+              <span className="text-xl sm:text-2xl flex-shrink-0"></span>
               <span className="text-base sm:text-xl font-bold text-gray-800 truncate">
                 {getTranslation(language, "nav.shrimpSystem")}
               </span>

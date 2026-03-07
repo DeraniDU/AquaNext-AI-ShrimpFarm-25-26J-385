@@ -38,7 +38,7 @@ export default function Dashboard() {
       } else if (batchesRes.data && Array.isArray(batchesRes.data.batches)) {
         allTanks = batchesRes.data.batches;
       } else {
-        console.error("❌ API response is not an array:", batchesRes.data);
+        console.error(" API response is not an array:", batchesRes.data);
         console.error("Response type:", typeof batchesRes.data);
         console.error("Full response:", batchesRes);
         // If API call failed, set empty array to prevent filter errors
@@ -47,7 +47,7 @@ export default function Dashboard() {
       
       // Ensure tanks is always an array
       if (!Array.isArray(allTanks)) {
-        console.error("⚠️ Tanks is not an array, setting to empty array");
+        console.error(" Tanks is not an array, setting to empty array");
         allTanks = [];
       }
       
@@ -65,14 +65,14 @@ export default function Dashboard() {
           
           // Debug logging
           if (motorData) {
-            console.log(`✅ Motor status for ${tank.batchName}:`, {
+            console.log(` Motor status for ${tank.batchName}:`, {
               state: motorData.state,
               speed: motorData.motor_speed,
               batchId: motorData.batchId,
               updated_at: motorData.updated_at
             });
           } else {
-            console.log(`⚠️ No motor status found for ${tank.batchName} (batchId: ${tank.id})`);
+            console.log(` No motor status found for ${tank.batchName} (batchId: ${tank.id})`);
           }
         } catch (error) {
           console.error(`Error fetching motor status for ${tank.batchName}:`, error);
@@ -166,15 +166,15 @@ export default function Dashboard() {
       ? motorStatus[tank.id] 
       : (typeof motorStatus === 'object' && motorStatus?.state ? motorStatus : null);
     
-    if (!tankMotorStatus) return { text: "Unknown", icon: "❓", color: "text-gray-500" };
+    if (!tankMotorStatus) return { text: "Unknown", icon: "", color: "text-gray-500" };
     
     const state = tankMotorStatus.state || "";
     if (state === "feeding_fast" || state === "high") {
-      return { text: t("dashboard.feedingNow"), icon: "🟢", color: "text-green-600" };
+      return { text: t("dashboard.feedingNow"), icon: "", color: "text-green-600" };
     } else if (state === "feeding_slow" || state === "low") {
-      return { text: t("dashboard.feedingSlow"), icon: "🟡", color: "text-yellow-600" };
+      return { text: t("dashboard.feedingSlow"), icon: "", color: "text-yellow-600" };
     } else {
-      return { text: t("dashboard.notFeeding"), icon: "⏸", color: "text-red-500" };
+      return { text: t("dashboard.notFeeding"), icon: "", color: "text-red-500" };
     }
   };
 
@@ -209,7 +209,7 @@ export default function Dashboard() {
                 disabled={isRefreshing}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-3 rounded-xl font-semibold disabled:opacity-50 text-base min-h-[48px] touch-manipulation shadow-sm"
               >
-                {isRefreshing ? t("dashboard.refreshing") : `🔄 ${t("dashboard.refresh")}`}
+                {isRefreshing ? t("dashboard.refreshing") : ` ${t("dashboard.refresh")}`}
               </button>
               <button
                 onClick={() => navigate("/farmer-setup")}

@@ -14,10 +14,10 @@ const Toast = ({ message, type = 'info', duration = 3000, onClose }) => {
   }, [duration, onClose]);
 
   const icons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️',
+    success: '',
+    error: '',
+    warning: '',
+    info: '',
   };
 
   const colors = {
