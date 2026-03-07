@@ -40,6 +40,19 @@ export default function App() {
 	const subtitle = data?.dashboard?.timestamp ? `Snapshot: ${formatDateTime(data.dashboard.timestamp)}` : 'API: /api/dashboard'
 
 	const renderView = () => {
+		// Always show feeding app when Feeding is selected (no dependency on dashboard data)
+		if (activeView === 'feeding') {
+			return (
+				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+					<iframe
+						src="http://localhost:5174"
+						title="Feeding System"
+						style={{ width: '100%', height: '100%', border: 'none' }}
+					/>
+				</div>
+			)
+		}
+
 		if (!data) {
 			return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 		}
@@ -63,16 +76,6 @@ export default function App() {
 				return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
 				return <WaterQualityView {...viewProps} />
-			case 'feeding':
-				return (
-					<div style={{ width: '100%', height: '100vh', border: 'none' }}>
-						<iframe
-							src="http://localhost:5174"
-							title="Feeding System"
-							style={{ width: '100%', height: '100%', border: 'none' }}
-						/>
-					</div>
-				)
 			case 'disease-detection':
 				return <DiseaseDetectionView {...viewProps} />
 			case 'settings':
@@ -170,7 +173,7 @@ export default function App() {
 				</div>
 
 				<div className="container">
-					{error && (
+					{activeView !== 'feeding' && error && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -184,7 +187,7 @@ export default function App() {
 							</div>
 						</div>
 					)}
-					{historyError && (
+					{activeView !== 'feeding' && historyError && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">

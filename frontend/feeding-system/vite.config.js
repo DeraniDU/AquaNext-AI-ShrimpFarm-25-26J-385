@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     host: '0.0.0.0', // Allow external connections (for mobile access via IP)
-    port: 5173,
+    port: 5174, // Fixed port so main app (5173) can embed this in an iframe
     strictPort: false
   },
   plugins: [
