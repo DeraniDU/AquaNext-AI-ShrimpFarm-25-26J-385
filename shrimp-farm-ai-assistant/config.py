@@ -52,8 +52,8 @@ DECISION_MODEL_CONFIG = {
     "enable_auto_actions": os.getenv("ENABLE_AUTO_ACTIONS", "false").lower() == "true",
 }
 
-# MongoDB configuration
+# MongoDB configuration (Shrimp-farm-ai-assistant uses only MongoDB for data)
 MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
-USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"  # Enable MongoDB data fetching
+USE_MONGODB = os.getenv("USE_MONGODB", "true").lower() == "true"  # Data is read/written only via MongoDB
 

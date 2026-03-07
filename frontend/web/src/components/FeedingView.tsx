@@ -1,6 +1,7 @@
 import { Bar, Line } from 'react-chartjs-2'
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
+import { useFeedingSystemBatches } from '../lib/useFeedingSystemBatches'
 
 type Props = {
 	data: DashboardApiResponse
@@ -9,6 +10,7 @@ type Props = {
 }
 
 export function FeedingView({ data, history, pondFilter }: Props) {
+	const { data: feedingSystemData, loading: feedingSystemLoading, error: feedingSystemError, refresh: refreshFeedingSystem } = useFeedingSystemBatches()
 	const { dashboard } = data
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 
@@ -133,6 +135,62 @@ export function FeedingView({ data, history, pondFilter }: Props) {
 					<div className="summaryItem">
 						<div className="muted">Feed Efficiency</div>
 						<div className="summaryValue mono">{formatNumber(dashboard.feed_efficiency * 100, { maximumFractionDigits: 0 })}%</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Feeding System (batches & motor via API gateway) */}
+			<div className="panel spanAll">
+				<div className="panelHeader">
+					<div className="panelTitle">Feeding System (Backend)</div>
+					<div className="panelRight">
+						<button type="button" onClick={refreshFeedingSystem} disabled={feedingSystemLoading}>
+							{feedingSystemLoading ? 'Loading…' : 'Refresh'}
+						</button>
+					</div>
+				</div>
+				<div style={{ padding: 16 }}>
+					{feedingSystemError && (
+						<div style={{ color: 'var(--color-danger, #dc2626)', marginBottom: 12 }}>
+							{feedingSystemError}
+						</div>
+					)}
+					{feedingSystemData.motorStatus != null && (
+						<div style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(17, 24, 39, 0.05)', borderRadius: 8 }}>
+							<div style={{ fontWeight: 600, marginBottom: 8 }}>Motor Status</div>
+							<div className="muted" style={{ fontSize: '0.875rem' }}>
+								State: {feedingSystemData.motorStatus.state ?? '—'}
+								{feedingSystemData.motorStatus.motor_speed != null && (
+									<> · Speed: {(feedingSystemData.motorStatus.motor_speed * 100).toFixed(0)}%</>
+								)}
+							</div>
+						</div>
+					)}
+					<div style={{ fontWeight: 600, marginBottom: 8 }}>Batches ({feedingSystemData.batches.length})</div>
+					{feedingSystemData.batches.length === 0 && !feedingSystemLoading && (
+						<div className="muted">No batches from feeding system. Start the feeding-system backend and API gateway.</div>
+					)}
+					<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+						{feedingSystemData.batches.map((b) => (
+							<div
+								key={b.id}
+								style={{
+									padding: 14,
+									backgroundColor: 'rgba(255, 255, 255, 0.6)',
+									borderLeft: `4px solid ${b.status === 'active' ? 'rgba(34, 197, 94, 0.8)' : b.status === 'completed' ? 'rgba(107, 114, 128, 0.6)' : 'rgba(59, 130, 246, 0.6)'}`,
+									borderRadius: 8
+								}}
+							>
+								<div style={{ fontWeight: 600, marginBottom: 6 }}>{b.batchName}</div>
+								<div className="muted" style={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
+									<div>Status: {b.status}</div>
+									<div>Species: {b.species}</div>
+									<div>Pond: {b.pondSize} {b.pondSizeUnit}</div>
+									{b.daysPassed != null && <div>Days: {b.daysPassed}</div>}
+									{b.feedAmount != null && b.feedAmount > 0 && <div>Feed: {formatNumber(b.feedAmount, { maximumFractionDigits: 1 })}</div>}
+								</div>
+							</div>
+						))}
 					</div>
 				</div>
 			</div>

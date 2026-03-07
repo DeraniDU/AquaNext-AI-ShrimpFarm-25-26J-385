@@ -34,10 +34,12 @@ def get_mongo_client() -> MongoClient:
             "Example: MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/"
         )
     
-    # Create client with Atlas connection
+    # Create client with Atlas connection; use short timeouts to avoid long DNS/connection hangs
     client = MongoClient(
         MONGO_URI,
-        server_api=ServerApi('1')  # Use stable API version
+        server_api=ServerApi('1'),  # Use stable API version
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
     )
     
     return client

@@ -14,11 +14,11 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 from crewai import Crew
-# LangChain has moved OpenAI chat models across packages over time.
-# Try the modern import first, then fall back for older LangChain versions.
+# LangChain: prefer langchain_openai to avoid deprecation warning from langchain_community.
 try:
     from langchain_openai import ChatOpenAI  # type: ignore
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
+    print("Hint: pip install langchain-openai to avoid LangChain deprecation warning.")
     from langchain.chat_models import ChatOpenAI  # type: ignore
 
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, AGENT_CONFIG

@@ -18,28 +18,29 @@ class DataRepository:
     """
     Repository for accessing farm data from MongoDB.
     
-    Provides methods to save and retrieve water quality, feed, energy, and labor data.
-    Falls back gracefully if MongoDB is not configured or unavailable.
+    Shrimp-farm-ai-assistant uses only MongoDB for data. When USE_MONGODB is true,
+    MONGO_URI must be set and the connection must succeed; otherwise the repository raises.
     """
-    
+
     def __init__(self):
-        """Initialize the repository with MongoDB connection."""
+        """Initialize the repository with MongoDB connection. Requires MongoDB when USE_MONGODB is true."""
         self.client = None
         self.db = None
         self.is_available = False
-        
-        if not USE_MONGODB or not MONGO_URI:
+
+        if not USE_MONGODB:
             return
-        
+        if not MONGO_URI or not MONGO_URI.strip():
+            raise ValueError(
+                "MONGO_URI must be set when USE_MONGODB is true. "
+                "Shrimp-farm-ai-assistant uses only MongoDB for data. Set MONGO_URI in .env"
+            )
         try:
             self.client = get_mongo_client()
             self.db = get_database(self.client)
-            # Test connection
             self.client.admin.command('ping')
             self.is_available = True
         except Exception as e:
-            print(f"Warning: Could not connect to MongoDB: {e}")
-            self.is_available = False
             if self.client:
                 try:
                     self.client.close()
@@ -47,6 +48,9 @@ class DataRepository:
                     pass
             self.client = None
             self.db = None
+            raise RuntimeError(
+                f"Could not connect to MongoDB (USE_MONGODB is true). Shrimp-farm-ai-assistant uses only MongoDB. Error: {e}"
+            ) from e
     
     def __enter__(self):
         """Context manager entry."""

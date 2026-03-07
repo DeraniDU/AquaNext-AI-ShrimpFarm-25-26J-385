@@ -18,13 +18,10 @@ class LaborOptimizationAgent:
         self.agent = None
         self.repository = None
         
-        # Initialize MongoDB repository if enabled
+        # Shrimp-farm-ai-assistant uses only MongoDB for data when USE_MONGODB is true
         if USE_MONGODB:
-            try:
-                from database.repository import DataRepository
-                self.repository = DataRepository()
-            except Exception as e:
-                print(f"Warning: Could not initialize MongoDB repository: {e}")
+            from database.repository import DataRepository
+            self.repository = DataRepository()
 
         if OPENAI_API_KEY:
             self.llm = ChatOpenAI(
@@ -241,16 +238,21 @@ class LaborOptimizationAgent:
         water_quality_data: WaterQualityData,
         energy_data: EnergyData,
     ) -> LaborData:
-        """Get labor data from MongoDB, or generate from WQ and energy if unavailable."""
-        if self.repository and self.repository.is_available:
-            try:
-                data = self.repository.get_latest_labor_data(pond_id)
-                if data:
-                    print(f"[DB] Fetched labor data for pond {pond_id} from MongoDB")
-                    return data
-            except Exception as e:
-                print(f"[Labor] DB fetch failed for pond {pond_id}, generating: {e}")
-        return self.generate_labor_data(pond_id, water_quality_data, energy_data)
+        """Get labor data from MongoDB only (no simulated fallback)."""
+        if not self.repository or not self.repository.is_available:
+            raise ValueError(
+                f"MongoDB repository not available. Cannot fetch labor data for pond {pond_id}. "
+                "Shrimp-farm-ai-assistant uses only MongoDB for data."
+            )
+        try:
+            data = self.repository.get_latest_labor_data(pond_id)
+            if data:
+                print(f"[DB] Fetched labor data for pond {pond_id} from MongoDB")
+                return data
+            raise ValueError(f"No labor data found in database for pond {pond_id}")
+        except Exception as e:
+            print(f"Error: Could not fetch labor data from MongoDB: {e}")
+            raise
     
     def _build_schedule(
         self,
