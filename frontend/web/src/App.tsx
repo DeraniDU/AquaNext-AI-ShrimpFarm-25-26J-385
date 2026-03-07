@@ -4,7 +4,6 @@ import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
 import { OptimizationView } from './components/OptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
-import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
 import { BenchmarkingView } from './components/BenchmarkingView'
@@ -58,14 +57,22 @@ export default function App() {
 				return <DashboardView {...viewProps} />
 			case 'forecasting':
 				return <ForecastingView {...viewProps} />
-		case 'optimization':
-			return <OptimizationView {...viewProps} ponds={ponds} />
+			case 'optimization':
+				return <OptimizationView {...viewProps} ponds={ponds} />
 			case 'benchmarking':
-			return <BenchmarkingView ponds={ponds} />
+				return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
 				return <WaterQualityView {...viewProps} />
 			case 'feeding':
-				return <FeedingView {...viewProps} />
+				return (
+					<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+						<iframe
+							src="http://localhost:5174"
+							title="Feeding System"
+							style={{ width: '100%', height: '100%', border: 'none' }}
+						/>
+					</div>
+				)
 			case 'disease-detection':
 				return <DiseaseDetectionView {...viewProps} />
 			case 'settings':
@@ -252,5 +259,3 @@ function mergeHistoryWithLiveSnapshot(history: SavedFarmSnapshot[], data: Dashbo
 
 	return Array.from(byDay.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 }
-
-
