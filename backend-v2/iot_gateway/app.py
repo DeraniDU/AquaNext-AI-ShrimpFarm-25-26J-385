@@ -132,28 +132,92 @@ class SensorReading:
         import math
         temp = self.temperature if self.temperature is not None else 28.0
         salinity = self.salinity_ppt if self.salinity_ppt is not None else 20.0
-        ph = self.ph if self.ph is not None else 8.0
-        alkalinity = self.alkalinity if self.alkalinity is not None else 120.0
-        turbidity = self.turbidity_ntu if self.turbidity_ntu is not None else 10.0
-        secchi = self.secchi_cm if self.secchi_cm is not None else 30.0
-        chlorophyll = self.chlorophyll_a_ug_l if self.chlorophyll_a_ug_l is not None else 15.0
-        tan = self.tan_mg_l if self.tan_mg_l is not None else 0.5
         
-        nh3 = self.nh3_mg_l if self.nh3_mg_l is not None else 0.05
-        if self.physics_calculations and 'nh3' in self.physics_calculations:
-            nh3 = self.physics_calculations['nh3'].get('nh3_mg_l', nh3)
+        # ─── Synthesize pH if missing ───
+        # Shrimp ponds fluctuate: Higher in late afternoon (photosynthesis removes CO2)
+        # Lower at night to early morning (respiration adds CO2 back)
+        if self.ph is None:
+            base_ph = 7.8  # standard baseline
             
-        no2 = self.no2_mg_l if self.no2_mg_l is not None else 0.1
-        no3 = self.no3_mg_l if self.no3_mg_l is not None else 5.0
-        orp = self.orp_mv if self.orp_mv is not None else 250.0
+            # Predict the hour impact (highest at 15:00, lowest at 03:00)
+            hour = self.timestamp.hour
+            # shift the curve so peak is in afternoon
+            diurnal_shift = math.sin((hour - 9) / 24.0 * 2 * math.pi) * 0.4
+            
+            # slight salinity buffering (marine water resists drops better)
+            salinity_buffer = (salinity - 15) * 0.01 
+            
+            estimated_ph = base_ph + diurnal_shift + salinity_buffer
+            
+            # slight temp effect on CO2 solubility (warmer = less co2 = slightly higher pH)
+            if self.temperature is not None:
+                estimated_ph += (self.temperature - 25.0) * 0.015
+                
+            # Clamp to safe boundaries
+            self.ph = max(7.0, min(8.6, round(estimated_ph, 2)))
+        
+        ph = self.ph
+        
+        hour = self.timestamp.hour
+        month = self.timestamp.month
+        
+        # ─── Data-Driven Proxies for Missing Sensors ───
+        # Equations derived via Multiple Linear Regression on cleaned_data.csv
+        # (Sri Lankan shrimp farm dataset, ~26-33°C, 17-32 ppt salinity)
+        
+        # 1. Alkalinity — weak correlation; primarily buffered by salinity
+        if self.alkalinity is None:
+            self.alkalinity = max(64.3, min(154.3, round(
+                106.69 + (temp * -0.463) + (salinity * 0.047) + (ph * 2.066), 1)))
+            
+        # 2. Chlorophyll-a — strongest predictor: Temperature + pH (R²≈0.93)
+        if self.chlorophyll_a_ug_l is None:
+            self.chlorophyll_a_ug_l = max(10.0, min(190.4, round(
+                -821.44 + (temp * 10.392) + (salinity * 2.625) + (ph * 68.745), 1)))
+            
+        # 3. Turbidity — driven by Temperature & pH (corr ~0.49 each)
+        if self.turbidity_ntu is None:
+            self.turbidity_ntu = max(17.9, min(194.7, round(
+                -216.92 + (temp * 3.991) + (salinity * 0.809) + (ph * 22.980), 1)))
+            
+        # 4. Secchi Depth — inverse of Turbidity drivers (corr ~-0.44 with temp)
+        if self.secchi_cm is None:
+            self.secchi_cm = max(8.0, min(13.2, round(
+                21.23 + (temp * -0.137) + (salinity * -0.031) + (ph * -0.973), 2)))
+            
+        # 5. Total Ammonia Nitrogen (TAN) — mainly driven by NH3 in data
+        if self.tan_mg_l is None:
+            self.tan_mg_l = max(0.0, min(1.3, round(
+                0.59 + (temp * -0.001) + (salinity * 0.001) + (ph * 0.002), 3)))
+            
+        # 6. NH3 (toxic fraction) — use physics calculation override if available
+        if self.nh3_mg_l is None:
+            self.nh3_mg_l = 0.03
+        if self.physics_calculations and 'nh3' in self.physics_calculations:
+            self.nh3_mg_l = self.physics_calculations['nh3'].get('nh3_mg_l', self.nh3_mg_l)
+            
+        # 7. Nitrite (NO2) — weak correlation; small regression estimate
+        if self.no2_mg_l is None:
+            self.no2_mg_l = max(0.0, min(1.8, round(
+                0.81 + (temp * -0.002) + (salinity * 0.002) + (ph * 0.000), 3)))
+            
+        # 8. Nitrate (NO3) — moderate correlation with Temperature
+        if self.no3_mg_l is None:
+            self.no3_mg_l = max(26.7, min(240.0, round(
+                136.04 + (temp * 3.990) + (salinity * 1.015) + (ph * -15.533), 1)))
+            
+        # 9. ORP — very strong correlation with DO (0.86) and pH (0.74)
+        if self.orp_mv is None:
+            self.orp_mv = max(153.9, min(319.9, round(
+                -333.01 + (temp * -1.698) + (salinity * -2.850) + (ph * 88.162), 1)))
         
         hour = self.timestamp.hour
         month = self.timestamp.month
         hour_sin = math.sin((2 * math.pi * hour) / 24.0)
         hour_cos = math.cos((2 * math.pi * hour) / 24.0)
         
-        return np.array([[temp, salinity, ph, alkalinity, turbidity, secchi, chlorophyll, 
-                          tan, nh3, no2, no3, orp, hour_sin, hour_cos, month]])
+        return np.array([[temp, salinity, ph, self.alkalinity, self.turbidity_ntu, self.secchi_cm, self.chlorophyll_a_ug_l, 
+                          self.tan_mg_l, self.nh3_mg_l, self.no2_mg_l, self.no3_mg_l, self.orp_mv, hour_sin, hour_cos, month]])
     
     def to_dict(self):
         """Convert to dictionary for MongoDB storage"""
@@ -182,15 +246,169 @@ class SensorReading:
 
 
 # ═══════════════════════════════════════════════════
-# API ENDPOINTS
+# ALERT SYSTEM
 # ═══════════════════════════════════════════════════
+
+# Sri Lankan shrimp farm water quality thresholds
+SHRIMP_THRESHOLDS = {
+    "temperature":    {"min": 28.0,  "max": 33.0,  "unit": "°C",    "label": "Temperature"},
+    "ph":             {"min": 7.5,   "max": 8.5,   "unit": "",     "label": "pH"},
+    "do_mg_l":        {"min": 5.0,   "max": 15.0,  "unit": "mg/L", "label": "Dissolved Oxygen"},
+    "salinity_ppt":   {"min": 10.0,  "max": 25.0,  "unit": "ppt",  "label": "Salinity"},
+    "nh3_mg_l":       {"min": 0.0,   "max": 0.1,   "unit": "mg/L", "label": "Ammonia (NH₃)"},
+    "no2_mg_l":       {"min": 0.0,   "max": 1.0,   "unit": "mg/L", "label": "Nitrite (NO₂)"},
+    "secchi_cm":      {"min": 25.0,  "max": 45.0,  "unit": "cm",   "label": "Water Transparency (Secchi)"},
+    "alkalinity":     {"min": 100.0, "max": 200.0, "unit": "mg/L", "label": "Alkalinity"},
+}
+
+def generate_alerts(reading):
+    """Check all sensor values against Sri Lankan shrimp farm thresholds.
+    
+    Returns a list of alert dicts, each containing:
+      - parameter: field name
+      - label: human-readable name
+      - value: measured / inferred value
+      - unit: measurement unit
+      - status: 'critical_high' | 'warning_high' | 'critical_low' | 'warning_low'
+      - message: human-readable alert string
+    """
+    alerts = []
+    
+    # Map field names to their current values after all inference is done
+    values = {
+        "temperature":  reading.temperature,
+        "ph":           reading.ph,
+        # Prefer the ML-predicted DO if available, else the measured value
+        "do_mg_l":      (
+            reading.ml_predictions.get("predicted_do_mg_l")
+            if reading.ml_predictions and "predicted_do_mg_l" in reading.ml_predictions
+            else reading.do_mg_l
+        ),
+        "salinity_ppt": reading.salinity_ppt,
+        "nh3_mg_l":     reading.nh3_mg_l,
+        "no2_mg_l":     reading.no2_mg_l,
+        "secchi_cm":    reading.secchi_cm,
+        "alkalinity":   reading.alkalinity,
+    }
+    
+    for field, val in values.items():
+        if val is None:
+            continue
+        thresh = SHRIMP_THRESHOLDS.get(field)
+        if not thresh:
+            continue
+        
+        label = thresh["label"]
+        unit  = thresh["unit"]
+        lo    = thresh["min"]
+        hi    = thresh["max"]
+        
+        if val < lo:
+            alerts.append({
+                "parameter": field,
+                "label": label,
+                "value": round(val, 3),
+                "optimal_min": lo,
+                "optimal_max": hi,
+                "unit": unit,
+                "status": "critical_low" if val < lo * 0.9 else "warning_low",
+                "message": f"⚠️ {label} too LOW: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
+            })
+        elif val > hi:
+            alerts.append({
+                "parameter": field,
+                "label": label,
+                "value": round(val, 3),
+                "optimal_min": lo,
+                "optimal_max": hi,
+                "unit": unit,
+                "status": "critical_high" if val > hi * 1.1 else "warning_high",
+                "message": f"🚨 {label} too HIGH: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
+            })
+    
+    # ─── Compound / Multi-Parameter Rules ───
+    temp  = values.get("temperature")
+    do    = values.get("do_mg_l")
+    ph    = values.get("ph")
+    tan   = reading.tan_mg_l
+    orp   = reading.orp_mv
+    secchi = values.get("secchi_cm")
+    
+    # Rule 1: Possible Low Oxygen (Temperature + ORP combo)
+    if temp is not None and orp is not None:
+        if temp > 32.0 and orp < 220.0:
+            alerts.append({
+                "parameter": "compound_low_oxygen_risk",
+                "label": "Low Oxygen Risk",
+                "status": "warning_compound",
+                "trigger": f"Temp={round(temp,1)}°C > 32 AND ORP={round(orp,1)} mV < 220",
+                "message": "🚨 Possible LOW OXYGEN: High temperature + low ORP detected. Check aerators!"
+            })
+    
+    # Rule 2: Ammonia Danger (pH + TAN combo)
+    if ph is not None and tan is not None:
+        if ph > 8.5 and tan > 0.5:
+            alerts.append({
+                "parameter": "compound_ammonia_danger",
+                "label": "Ammonia Danger",
+                "status": "critical_compound",
+                "trigger": f"pH={round(ph,2)} > 8.5 AND TAN={round(tan,3)} mg/L > 0.5",
+                "message": "☠️ AMMONIA DANGER: High pH amplifies ammonia toxicity. Immediate action required!"
+            })
+    
+    # Rule 3: Algae Bloom (Secchi depth too low)
+    if secchi is not None:
+        if secchi < 20.0:
+            alerts.append({
+                "parameter": "compound_algae_bloom",
+                "label": "Algae Bloom",
+                "status": "warning_compound",
+                "trigger": f"Secchi={round(secchi,1)} cm < 20",
+                "message": "🟢 ALGAE BLOOM: Water too turbid (Secchi < 20 cm). Reduce feeding and check aeration."
+            })
+    
+    return alerts
+
+
+# ═══════════════════════════════════════════════════
+# RELAY CONTROL
+# ═══════════════════════════════════════════════════
+
+# In-memory relay state (ESP32 polls this)
+relay_state = {
+    "aerator": "OFF",        # Main aerator relay
+    "reason": None,           # Why was it turned on?
+    "triggered_at": None,     # Timestamp of last trigger
+    "do_level": None          # DO level that caused the trigger
+}
+
+DO_CRITICAL_LOW = 4.0   # mg/L — turn aerator ON below this
+DO_SAFE_LEVEL   = 5.5   # mg/L — turn aerator OFF above this (hysteresis)
+
+def update_relay_from_do(do_value):
+    """Automatically manage aerator relay based on DO level."""
+    global relay_state
+    if do_value is None:
+        return
+    if do_value < DO_CRITICAL_LOW and relay_state["aerator"] != "ON":
+        relay_state["aerator"]     = "ON"
+        relay_state["reason"]      = f"DO critically low: {round(do_value, 2)} mg/L (< {DO_CRITICAL_LOW})"
+        relay_state["triggered_at"] = datetime.utcnow().isoformat()
+        relay_state["do_level"]    = round(do_value, 3)
+        logger.warning(f"🔴 RELAY ON — Aerator activated! {relay_state['reason']}")
+    elif do_value >= DO_SAFE_LEVEL and relay_state["aerator"] == "ON":
+        relay_state["aerator"]     = "OFF"
+        relay_state["reason"]      = f"DO recovered: {round(do_value, 2)} mg/L (>= {DO_SAFE_LEVEL})"
+        relay_state["triggered_at"] = datetime.utcnow().isoformat()
+        relay_state["do_level"]    = round(do_value, 3)
+        logger.info(f"🟢 RELAY OFF — Aerator deactivated. {relay_state['reason']}")
+
 
 @app.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint"""
     try:
         if client is not None:
-            # Test MongoDB connection
             client.admin.command('ping')
             db_status = "connected"
         else:
@@ -200,14 +418,45 @@ def health_check():
             "status": "healthy",
             "api": "running",
             "database": db_status,
+            "relay": relay_state,
             "timestamp": datetime.utcnow().isoformat()
         }), 200
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return jsonify({
-            "status": "unhealthy",
-            "error": str(e)
-        }), 500
+        return jsonify({"status": "unhealthy", "error": str(e)}), 500
+
+
+@app.route("/api/relay/status", methods=["GET"])
+def get_relay_status():
+    """ESP32 polls this endpoint every few seconds to know if it should switch ON/OFF.
+    
+    Returns:
+        {"aerator": "ON" | "OFF", "reason": "...", "do_level": 3.8, ...}
+    """
+    return jsonify(relay_state), 200
+
+
+@app.route("/api/relay/command", methods=["POST"])
+def set_relay_command():
+    """Manual override: farmer/dashboard forces the relay ON or OFF.
+    
+    Body: {"aerator": "ON" | "OFF", "reason": "manual"}
+    """
+    global relay_state
+    data = request.get_json()
+    if not data or "aerator" not in data:
+        return jsonify({"error": "Provide {\"aerator\": \"ON\" or \"OFF\"}"}), 400
+    
+    cmd = data["aerator"].upper()
+    if cmd not in ("ON", "OFF"):
+        return jsonify({"error": "aerator must be ON or OFF"}), 400
+    
+    relay_state["aerator"]      = cmd
+    relay_state["reason"]       = data.get("reason", "manual override")
+    relay_state["triggered_at"] = datetime.utcnow().isoformat()
+    relay_state["do_level"]     = None
+    logger.info(f"Manual relay command: aerator={cmd}")
+    return jsonify({"status": "ok", "relay": relay_state}), 200
 
 
 @app.route("/api/sensor/reading", methods=["POST"])
@@ -260,10 +509,13 @@ def receive_sensor_data():
         # Validate
         reading.validate()
         
+        # Ensure synthetic variables (like pH) are generated BEFORE physics calculations
+        features = reading.calculate_ml_features()
+        
         # Run Physics Calculations
         physics_input = {
             "temperature_c": reading.temperature if reading.temperature is not None else 28.0,
-            "ph": reading.ph if reading.ph is not None else 8.0,
+            "ph": reading.ph if reading.ph is not None else 7.8,
             "dissolved_oxygen_mg_l": reading.do_mg_l if reading.do_mg_l is not None else 6.0,
             "salinity_ppt": reading.salinity_ppt if reading.salinity_ppt is not None else 20.0,
             "conductivity_us_cm": reading.conductivity if reading.conductivity is not None else 4000.0,
@@ -275,7 +527,6 @@ def receive_sensor_data():
         # Run ML Predictions
         if rf_model and scaler:
             try:
-                features = reading.calculate_ml_features()
                 features_scaled = scaler.transform(features)
                 predicted_do = rf_model.predict(features_scaled)[0]
                 reading.ml_predictions = {
@@ -289,6 +540,23 @@ def receive_sensor_data():
         # Save to MongoDB
         result = collection.insert_one(reading.to_dict())
         
+        # Generate threshold alerts AFTER saving base reading
+        alerts = generate_alerts(reading)
+        
+        # Auto-control aerator relay based on predicted DO
+        current_do = (
+            reading.ml_predictions.get("predicted_do_mg_l")
+            if reading.ml_predictions and "predicted_do_mg_l" in reading.ml_predictions
+            else reading.do_mg_l
+        )
+        update_relay_from_do(current_do)
+        
+        if alerts or True:  # Always patch to keep relay_state fresh in DB
+            patch = {"alerts": alerts, "relay_state": relay_state}
+            collection.update_one({"_id": result.inserted_id}, {"$set": patch})
+            for a in alerts:
+                logger.warning(a["message"])
+        
         logger.info(f"✅ Saved sensor reading: {result.inserted_id}")
         
         response_data = {
@@ -297,6 +565,8 @@ def receive_sensor_data():
             "id": str(result.inserted_id),
             "timestamp": reading.timestamp.isoformat(),
             "physics_calculations": reading.physics_calculations,
+            "alerts": alerts,
+            "relay": relay_state,
         }
         if reading.ml_predictions:
             response_data["ml_predictions"] = reading.ml_predictions

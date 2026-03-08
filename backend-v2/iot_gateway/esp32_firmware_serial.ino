@@ -37,8 +37,15 @@ void loop() {
   doc["device_id"] = "esp32_serial_device";
   doc["temperature"] = temperature;
   doc["tds_value"] = tdsValue;
-  // Conductivity is related to TDS, standard conversion is Conductivity = TDS / 0.5
-  doc["conductivity"] = tdsValue / 0.5;
+  
+  // Conductivity is related to TDS, standard conversion is Conductivity = TDS / 0.5 (µS/cm)
+  float conductivity = tdsValue / 0.5;
+  doc["conductivity"] = conductivity;
+
+  // Approximate Salinity from Conductivity
+  // General conversion factor for brackish/shrimp water is often 0.00055 to convert µS/cm to ppt
+  float salinity = conductivity * 0.00055;
+  doc["salinity_ppt"] = salinity;
 
   // Print the JSON string entirely on ONE SINGLE LINE to the Serial monitor
   serializeJson(doc, Serial);
