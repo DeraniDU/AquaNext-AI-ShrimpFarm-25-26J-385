@@ -12,6 +12,17 @@ import os
 import logging
 from dotenv import load_dotenv
 from physics_calculator import PhysicsCalculator
+import joblib
+import numpy as np
+
+# Load ML Models
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "../water_quality_testing/saved_models")
+try:
+    rf_model = joblib.load(os.path.join(MODEL_DIR, "rf_regressor.pkl"))
+    scaler = joblib.load(os.path.join(MODEL_DIR, "regression_scaler.pkl"))
+except Exception as e:
+    rf_model = None
+    scaler = None
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +34,11 @@ CORS(app)
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+if rf_model and scaler:
+    logger.info("✅ ML Models loaded successfully")
+else:
+    logger.warning("⚠️ ML Models could not be loaded")
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -65,32 +81,79 @@ connect_to_mongodb()
 class SensorReading:
     """Validates and represents a sensor reading"""
     
-    def __init__(self, device_id, tds_value, conductivity, temperature=None, battery=None):
+    def __init__(self, device_id, tds_value=None, conductivity=None, temperature=None, battery=None,
+                 ph=None, alkalinity=None, turbidity_ntu=None, secchi_cm=None,
+                 chlorophyll_a_ug_l=None, tan_mg_l=None, nh3_mg_l=None,
+                 no2_mg_l=None, no3_mg_l=None, orp_mv=None, salinity_ppt=None, do_mg_l=None):
         self.device_id = device_id
-        self.tds_value = float(tds_value)  # TDS in ppm
-        self.conductivity = float(conductivity)  # Conductivity in µS/cm or mS/cm
-        self.temperature = float(temperature) if temperature else None  # in Celsius
-        self.battery = float(battery) if battery else None  # Battery percentage 0-100
+        self.tds_value = float(tds_value) if tds_value is not None else None
+        self.conductivity = float(conductivity) if conductivity is not None else None
+        self.temperature = float(temperature) if temperature is not None else None
+        self.battery = float(battery) if battery is not None else None
+        
+        self.ph = float(ph) if ph is not None else None
+        self.alkalinity = float(alkalinity) if alkalinity is not None else None
+        self.turbidity_ntu = float(turbidity_ntu) if turbidity_ntu is not None else None
+        self.secchi_cm = float(secchi_cm) if secchi_cm is not None else None
+        self.chlorophyll_a_ug_l = float(chlorophyll_a_ug_l) if chlorophyll_a_ug_l is not None else None
+        self.tan_mg_l = float(tan_mg_l) if tan_mg_l is not None else None
+        self.nh3_mg_l = float(nh3_mg_l) if nh3_mg_l is not None else None
+        self.no2_mg_l = float(no2_mg_l) if no2_mg_l is not None else None
+        self.no3_mg_l = float(no3_mg_l) if no3_mg_l is not None else None
+        self.orp_mv = float(orp_mv) if orp_mv is not None else None
+        self.salinity_ppt = float(salinity_ppt) if salinity_ppt is not None else None
+        self.do_mg_l = float(do_mg_l) if do_mg_l is not None else None
+
         self.timestamp = datetime.utcnow()
+        self.physics_calculations = None
+        self.ml_predictions = None
     
     def validate(self):
         """Validate sensor readings"""
         if not self.device_id:
             raise ValueError("device_id is required")
         
-        if self.tds_value < 0 or self.tds_value > 50000:
+        if self.tds_value is not None and (self.tds_value < 0 or self.tds_value > 50000):
             raise ValueError(f"TDS value {self.tds_value} out of realistic range (0-50000 ppm)")
         
-        if self.conductivity < 0 or self.conductivity > 200000:
+        if self.conductivity is not None and (self.conductivity < 0 or self.conductivity > 200000):
             raise ValueError(f"Conductivity {self.conductivity} out of range")
         
-        if self.temperature and (self.temperature < -10 or self.temperature > 50):
+        if self.temperature is not None and (self.temperature < -10 or self.temperature > 50):
             raise ValueError(f"Temperature {self.temperature} unrealistic for water")
         
-        if self.battery and (self.battery < 0 or self.battery > 100):
+        if self.battery is not None and (self.battery < 0 or self.battery > 100):
             raise ValueError(f"Battery percentage must be 0-100")
         
         return True
+    
+    def calculate_ml_features(self):
+        """Prepare features array for RF regressor prediction."""
+        import math
+        temp = self.temperature if self.temperature is not None else 28.0
+        salinity = self.salinity_ppt if self.salinity_ppt is not None else 20.0
+        ph = self.ph if self.ph is not None else 8.0
+        alkalinity = self.alkalinity if self.alkalinity is not None else 120.0
+        turbidity = self.turbidity_ntu if self.turbidity_ntu is not None else 10.0
+        secchi = self.secchi_cm if self.secchi_cm is not None else 30.0
+        chlorophyll = self.chlorophyll_a_ug_l if self.chlorophyll_a_ug_l is not None else 15.0
+        tan = self.tan_mg_l if self.tan_mg_l is not None else 0.5
+        
+        nh3 = self.nh3_mg_l if self.nh3_mg_l is not None else 0.05
+        if self.physics_calculations and 'nh3' in self.physics_calculations:
+            nh3 = self.physics_calculations['nh3'].get('nh3_mg_l', nh3)
+            
+        no2 = self.no2_mg_l if self.no2_mg_l is not None else 0.1
+        no3 = self.no3_mg_l if self.no3_mg_l is not None else 5.0
+        orp = self.orp_mv if self.orp_mv is not None else 250.0
+        
+        hour = self.timestamp.hour
+        month = self.timestamp.month
+        hour_sin = math.sin((2 * math.pi * hour) / 24.0)
+        hour_cos = math.cos((2 * math.pi * hour) / 24.0)
+        
+        return np.array([[temp, salinity, ph, alkalinity, turbidity, secchi, chlorophyll, 
+                          tan, nh3, no2, no3, orp, hour_sin, hour_cos, month]])
     
     def to_dict(self):
         """Convert to dictionary for MongoDB storage"""
@@ -100,7 +163,21 @@ class SensorReading:
             "conductivity": self.conductivity,
             "temperature": self.temperature,
             "battery": self.battery,
+            "ph": self.ph,
+            "alkalinity": self.alkalinity,
+            "turbidity_ntu": self.turbidity_ntu,
+            "secchi_cm": self.secchi_cm,
+            "chlorophyll_a_ug_l": self.chlorophyll_a_ug_l,
+            "tan_mg_l": self.tan_mg_l,
+            "nh3_mg_l": self.nh3_mg_l,
+            "no2_mg_l": self.no2_mg_l,
+            "no3_mg_l": self.no3_mg_l,
+            "orp_mv": self.orp_mv,
+            "salinity_ppt": self.salinity_ppt,
+            "do_mg_l": self.do_mg_l,
             "timestamp": self.timestamp,
+            "physics_calculations": self.physics_calculations,
+            "ml_predictions": self.ml_predictions
         }
 
 
@@ -165,23 +242,66 @@ def receive_sensor_data():
             tds_value=data.get("tds_value"),
             conductivity=data.get("conductivity"),
             temperature=data.get("temperature"),
-            battery=data.get("battery")
+            battery=data.get("battery"),
+            ph=data.get("ph"),
+            alkalinity=data.get("alkalinity"),
+            turbidity_ntu=data.get("turbidity_ntu"),
+            secchi_cm=data.get("secchi_cm"),
+            chlorophyll_a_ug_l=data.get("chlorophyll_a_ug_l"),
+            tan_mg_l=data.get("tan_mg_l"),
+            nh3_mg_l=data.get("nh3_mg_l"),
+            no2_mg_l=data.get("no2_mg_l"),
+            no3_mg_l=data.get("no3_mg_l"),
+            orp_mv=data.get("orp_mv"),
+            salinity_ppt=data.get("salinity_ppt"),
+            do_mg_l=data.get("do_mg_l")
         )
         
         # Validate
         reading.validate()
+        
+        # Run Physics Calculations
+        physics_input = {
+            "temperature_c": reading.temperature if reading.temperature is not None else 28.0,
+            "ph": reading.ph if reading.ph is not None else 8.0,
+            "dissolved_oxygen_mg_l": reading.do_mg_l if reading.do_mg_l is not None else 6.0,
+            "salinity_ppt": reading.salinity_ppt if reading.salinity_ppt is not None else 20.0,
+            "conductivity_us_cm": reading.conductivity if reading.conductivity is not None else 4000.0,
+            "tan_mg_l": reading.tan_mg_l if reading.tan_mg_l is not None else 0.5
+        }
+        report = PhysicsCalculator.calculate_comprehensive_report(physics_input)
+        reading.physics_calculations = report.get("calculations", {})
+        
+        # Run ML Predictions
+        if rf_model and scaler:
+            try:
+                features = reading.calculate_ml_features()
+                features_scaled = scaler.transform(features)
+                predicted_do = rf_model.predict(features_scaled)[0]
+                reading.ml_predictions = {
+                    "predicted_do_mg_l": round(float(predicted_do), 3),
+                    "model_used": "RandomForestRegressor"
+                }
+            except Exception as e:
+                logger.error(f"⚠️ ML Prediction failed: {e}")
+                reading.ml_predictions = {"error": str(e)}
         
         # Save to MongoDB
         result = collection.insert_one(reading.to_dict())
         
         logger.info(f"✅ Saved sensor reading: {result.inserted_id}")
         
-        return jsonify({
+        response_data = {
             "status": "success",
             "message": "Sensor data saved",
             "id": str(result.inserted_id),
-            "timestamp": reading.timestamp.isoformat()
-        }), 201
+            "timestamp": reading.timestamp.isoformat(),
+            "physics_calculations": reading.physics_calculations,
+        }
+        if reading.ml_predictions:
+            response_data["ml_predictions"] = reading.ml_predictions
+            
+        return jsonify(response_data), 201
     
     except ValueError as e:
         logger.warning(f"⚠️ Validation error: {e}")
