@@ -190,8 +190,8 @@ export default function App() {
 									<span className="badge bad">API</span>
 								</div>
 								<div className="muted">
-									{error}. Make sure the backend is running:{' '}
-									<span className="mono">.\\venv\\Scripts\\python.exe -m uvicorn api.server:app --reload --port 8000</span>
+									{error}. For full stack (Dashboard + Feeding) use all 5 terminals from{' '}
+									<span className="mono">FEEDING_TAB_SETUP.md</span> (AI Assistant on 8001, Gateway on 8000).
 								</div>
 							</div>
 						</div>
