@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from app.database.feeding_event_repo import save_feeding_event
 from app.core.model_loader import load_ai_model
+from app.core.firebase_iot import update_stepper_from_feed_event
 from app.database.mongo import db
 from app.utils.feed_calculator import calculate_daily_feed
 
@@ -229,20 +230,25 @@ async def ai_feeding(
             # Note: lastFeedDate update moved to END of processing to avoid redundant updates
             # This is more efficient and ensures it's updated even if no confirmed chunks exist
             
-            # Only save motor event if motor actually changed (to avoid duplicate events during processing)
-            # This is the CORRECT logic: Motor event = confirmed decision + motor state change
+            # Map to correct state format for DB (MongoDB event save)
+            state_mapping = {
+                "high": "feeding_fast",
+                "low": "feeding_slow",
+                "no": "stopped"
+            }
+            state_for_db = state_mapping.get(active_label, "stopped")
+            print(f"🔍 Firebase: ..................................................................... Status Updating >..........................................................................")
+            # Firebase: set running + speed from model output (running=true when high/low, speed 0|1|2)
+            try:
+                update_stepper_from_feed_event(active_label, motor_speed)
+            except Exception as e:
+                print(f"⚠️ Firebase update failed: {e}", flush=True)
+            
+            # Only save motor event to MongoDB if motor actually changed (to avoid duplicate events)
             previous_speed = last_motor_speed if last_motor_speed is not None else initial_motor_speed
             print(f"🔍 Checking motor change: previous={previous_speed * 100}%, new={motor_speed * 100}%, active_label={active_label}")
             
             if abs(motor_speed - previous_speed) > 0.01:  # Use abs() and small threshold for float comparison
-                # Map to correct state format for database
-                state_mapping = {
-                    "high": "feeding_fast",
-                    "low": "feeding_slow",
-                    "no": "stopped"
-                }
-                state_for_db = state_mapping.get(active_label, "stopped")
-                
                 print(f"✅ Motor event created: {active_label} (speed: {previous_speed * 100}% → {motor_speed * 100}%)")
                 
                 # Prepare event data with batchId if provided

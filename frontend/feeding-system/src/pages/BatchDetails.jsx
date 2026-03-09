@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { useTranslation } from "../hooks/useTranslation";
+import { updateStepperFromChunk } from "../services/firebase";
 
 export default function BatchDetails() {
   const { batchId } = useParams();
@@ -367,6 +368,9 @@ export default function BatchDetails() {
           // ALWAYS update liveMotorStatus to reflect current confirmed state
           // This ensures we show the correct final state even if motor didn't change
           setLiveMotorStatus({ state: newMotorState, speed: newMotorSpeed });
+          
+          // Update Firebase /stepper (running + speed 0|1|2) so IoT/demo matches table
+          updateStepperFromChunk(chunk).catch((e) => console.warn("Firebase update:", e?.message));
           
           if (motorChanged) {
             const motorActionText = newMotorState === "feeding_fast" ? " Motor changed to FAST (100%)" :

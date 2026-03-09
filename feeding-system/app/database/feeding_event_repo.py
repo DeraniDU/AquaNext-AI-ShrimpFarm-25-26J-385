@@ -1,5 +1,6 @@
 from datetime import datetime
 from app.database.mongo import db
+from app.core.firebase_iot import update_stepper_from_feed_event
 
 feeding_events_collection = db["feeding_events"]
 
@@ -7,6 +8,19 @@ feeding_events_collection = db["feeding_events"]
 async def save_feeding_event(event: dict):
     event["created_at"] = datetime.utcnow()
     await feeding_events_collection.insert_one(event)
+    # Push to Firebase so IoT device (ESP32) gets running + speed
+    state = event.get("state") or event.get("to_state")
+    motor_speed = event.get("motor_speed")
+    try:
+        ok = update_stepper_from_feed_event(state, motor_speed)
+        if ok:
+            print(f"🔥 Firebase: stepper updated (state={state}, speed={motor_speed})")
+        else:
+            print(f"🔥 Firebase: update skipped or failed (state={state}) — check logs/config")
+    except Exception as e:
+        print(f"🔥 Firebase: error — {e}")
+        import traceback
+        traceback.print_exc()
 
 # ---------------- READ EVENTS ----------------
 async def get_feeding_events(limit: int = 50):
