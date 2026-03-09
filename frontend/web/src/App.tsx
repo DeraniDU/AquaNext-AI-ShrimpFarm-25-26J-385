@@ -42,6 +42,22 @@ export default function App() {
 
 	const renderView = () => {
 		const historyWithLive = data ? mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data) : (historyData?.items ?? [])
+		// Always show feeding app when Feeding is selected (no dependency on dashboard data)
+		if (activeView === 'feeding') {
+			return (
+				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+					<iframe
+						src="http://localhost:5174"
+						title="Feeding System"
+						style={{ width: '100%', height: '100%', border: 'none' }}
+					/>
+				</div>
+			)
+		}
+
+		if (!data) {
+			return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+		}
 
 		const viewProps = data ? {
 			data: data as DashboardApiResponse,
@@ -56,15 +72,17 @@ export default function App() {
 			case 'forecasting':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <ForecastingView {...viewProps} />
-		case 'optimization':
+
+			case 'optimization':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-			return <OptimizationView {...viewProps} ponds={ponds} />
+			return <OptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
 			case 'benchmarking':
-			return <BenchmarkingView ponds={ponds} />
+				return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
 				return <WaterQualityView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
 			case 'feeding':
 				return <FeedingView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
+
 			case 'disease-detection':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DiseaseDetectionView {...viewProps} />
@@ -164,7 +182,7 @@ export default function App() {
 				</div>
 
 				<div className="container">
-					{error && (
+					{activeView !== 'feeding' && error && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -178,7 +196,7 @@ export default function App() {
 							</div>
 						</div>
 					)}
-					{historyError && (
+					{activeView !== 'feeding' && historyError && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -253,5 +271,3 @@ function mergeHistoryWithLiveSnapshot(history: SavedFarmSnapshot[], data: Dashbo
 
 	return Array.from(byDay.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 }
-
-
