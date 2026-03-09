@@ -41,32 +41,32 @@ export default function App() {
 	const subtitle = data?.dashboard?.timestamp ? `Snapshot: ${formatDateTime(data.dashboard.timestamp)}` : 'API: /api/dashboard'
 
 	const renderView = () => {
-		if (!data) {
-			return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-		}
+		const historyWithLive = data ? mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data) : (historyData?.items ?? [])
 
-		const historyWithLive = mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data)
-
-		const viewProps = {
+		const viewProps = data ? {
 			data: data as DashboardApiResponse,
 			history: historyWithLive,
 			pondFilter: selectedPond === 'all' ? null : selectedPond
-		}
+		} : null
 
 		switch (activeView) {
 			case 'dashboard':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DashboardView {...viewProps} />
 			case 'forecasting':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <ForecastingView {...viewProps} />
 		case 'optimization':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 			return <OptimizationView {...viewProps} ponds={ponds} />
 			case 'benchmarking':
 			return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
-				return <WaterQualityView {...viewProps} />
+				return <WaterQualityView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
 			case 'feeding':
-				return <FeedingView {...viewProps} />
+				return <FeedingView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
 			case 'disease-detection':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DiseaseDetectionView {...viewProps} />
 			case 'settings':
 				return (
@@ -78,6 +78,7 @@ export default function App() {
 					/>
 				)
 			default:
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DashboardView {...viewProps} />
 		}
 	}

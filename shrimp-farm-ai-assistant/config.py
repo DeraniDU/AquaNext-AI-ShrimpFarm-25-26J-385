@@ -57,3 +57,7 @@ MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
 USE_MONGODB = os.getenv("USE_MONGODB", "true").lower() == "true"  # Data is read/written only via MongoDB
 
+# Orchestration: parallel data collection and optional LLM steps
+RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
+PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect
+

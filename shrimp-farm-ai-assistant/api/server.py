@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,6 +9,7 @@ import random
 
 import numpy as np
 
+from config import PARALLEL_DATA_COLLECTION
 from agents.water_quality_agent import WaterQualityAgent
 from agents.feed_prediction_agent import FeedPredictionAgent
 from agents.energy_optimization_agent import EnergyOptimizationAgent
@@ -24,7 +26,34 @@ app = FastAPI(title="Shrimp Farm Management API", version="0.1.0")
 # Keyed by (ponds, seed). Values are already-serialized JSON dictionaries.
 _DASHBOARD_CACHE: Dict[Tuple[int, Optional[int]], Dict[str, Any]] = {}
 _DASHBOARD_CACHE_TS: Dict[Tuple[int, Optional[int]], float] = {}
-_CACHE_TTL_S_DEFAULT = 300  # 5 minutes
+_CACHE_TTL_S_DEFAULT = 0  # Disabled so labor schedule and dashboard always reflect latest run
+
+# Reused agents for dashboard (lazy init to avoid creating per request).
+_dashboard_agents: Optional[Tuple[Any, ...]] = None
+
+
+def _get_dashboard_agents():
+	"""Return shared dashboard agents (water_quality, feed, energy, labor, manager)."""
+	global _dashboard_agents
+	if _dashboard_agents is None:
+		_dashboard_agents = (
+			WaterQualityAgent(),
+			FeedPredictionAgent(),
+			EnergyOptimizationAgent(),
+			LaborOptimizationAgent(),
+			ManagerAgent(),
+		)
+	return _dashboard_agents
+
+
+def _dashboard_fetch_feed(feed_agent: Any, water_quality_data: List) -> List:
+	"""Sync: fetch feed data for all ponds (for ThreadPoolExecutor)."""
+	return [feed_agent.get_feed_data(i + 1, wq) for i, wq in enumerate(water_quality_data)]
+
+
+def _dashboard_fetch_energy(energy_agent: Any, water_quality_data: List) -> List:
+	"""Sync: fetch energy data for all ponds (for ThreadPoolExecutor)."""
+	return [energy_agent.get_energy_data(i + 1, wq) for i, wq in enumerate(water_quality_data)]
 
 # Allow local dev origins (Vite default: http://localhost:5173)
 app.add_middleware(
@@ -186,8 +215,8 @@ def get_dashboard(
 	"""
 	Generate dashboard data using simulation (no API key needed).
 
-	By default this endpoint returns a cached snapshot so the React dashboard is
-	stable across browser reloads.
+	Caching is disabled by default so labor schedule and KPIs always reflect the latest run.
+	Use cache_ttl_s to re-enable caching if desired.
 
 	Query params:
 	- fresh: if true, bypass cache and generate a new snapshot
@@ -212,34 +241,53 @@ def get_dashboard(
 		random.seed(int(seed))
 		np.random.seed(int(seed))
 
-	water_quality_agent = WaterQualityAgent()
-	feed_agent = FeedPredictionAgent()
-	energy_agent = EnergyOptimizationAgent()
-	labor_agent = LaborOptimizationAgent()
-	manager_agent = ManagerAgent()
+	water_quality_agent, feed_agent, energy_agent, labor_agent, manager_agent = _get_dashboard_agents()
 
-	water_quality_data = []
-	feed_data = []
-	energy_data = []
-	labor_data = []
-
-	for pond_id in range(1, ponds + 1):
-		wq = water_quality_agent.get_water_quality_data(pond_id)
-		water_quality_data.append(wq)
-
-		feed = feed_agent.get_feed_data(pond_id, wq)
-		feed_data.append(feed)
-
-		energy = energy_agent.get_energy_data(pond_id, wq)
-		energy_data.append(energy)
-
-		labor = labor_agent.get_or_generate_labor_data(pond_id, wq, energy)
-		labor_data.append(labor)
-
-	# AI labor optimization: per-pond plans, schedules, and recommendations
-	labor_optimization = labor_agent.optimize_all_labor(
-		water_quality_data, energy_data, labor_data
-	)
+	if PARALLEL_DATA_COLLECTION and ponds >= 1:
+		max_workers = min(8, max(2, ponds * 2))
+		with ThreadPoolExecutor(max_workers=max_workers) as executor:
+			# Phase 1: water quality for all ponds in parallel
+			water_quality_data = list(
+				executor.map(
+					lambda pid: water_quality_agent.get_water_quality_data(pid),
+					range(1, ponds + 1),
+				)
+			)
+			# Phase 2: feed and energy in parallel (each over all ponds)
+			feed_fut = executor.submit(_dashboard_fetch_feed, feed_agent, water_quality_data)
+			energy_fut = executor.submit(_dashboard_fetch_energy, energy_agent, water_quality_data)
+			feed_data = feed_fut.result()
+			energy_data = energy_fut.result()
+			# Phase 3: labor for all ponds in parallel
+			labor_data = list(
+				executor.map(
+					lambda i: labor_agent.get_or_generate_labor_data(
+						i + 1, water_quality_data[i], energy_data[i]
+					),
+					range(ponds),
+				)
+			)
+		labor_optimization = labor_agent.optimize_all_labor(
+			water_quality_data, energy_data, labor_data
+		)
+	else:
+		water_quality_data = []
+		feed_data = []
+		energy_data = []
+		labor_data = []
+		for pond_id in range(1, ponds + 1):
+			wq = water_quality_agent.get_water_quality_data(pond_id)
+			water_quality_data.append(wq)
+			feed_data.append(feed_agent.get_feed_data(pond_id, wq))
+			energy_data.append(energy_agent.get_energy_data(pond_id, wq))
+			labor_data.append(
+				labor_agent.get_or_generate_labor_data(
+					pond_id, wq, energy_data[-1]
+				)
+			)
+		labor_optimization = labor_agent.optimize_all_labor(
+			water_quality_data, energy_data, labor_data
+		)
 
 	dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 
@@ -442,6 +490,55 @@ def get_benchmark(
 		"benchmark": benchmark_result,
 		"timestamp": datetime.utcnow().isoformat(),
 		"ponds": ponds,
+	}
+
+@app.get("/api/water-quality")
+def get_water_quality(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	water_quality_agent = WaterQualityAgent()
+	water_quality_data = []
+
+	for pond_id in range(1, ponds + 1):
+		wq = water_quality_agent.get_water_quality_data(pond_id)
+		water_quality_data.append(wq)
+
+	return {
+		"water_quality": [w.model_dump(mode="json") for w in water_quality_data],
+		"timestamp": datetime.utcnow().isoformat(),
+	}
+
+@app.get("/api/feeding-data")
+def get_feeding_data(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	water_quality_agent = WaterQualityAgent()
+	feed_agent = FeedPredictionAgent()
+	manager_agent = ManagerAgent()
+
+	feed_data = []
+
+	for pond_id in range(1, ponds + 1):
+		wq = water_quality_agent.get_water_quality_data(pond_id)
+		feed = feed_agent.get_feed_data(pond_id, wq)
+		feed_data.append(feed)
+
+	feed_efficiency = manager_agent._calculate_feed_efficiency(feed_data)
+
+	return {
+		"feed": [f.model_dump(mode="json") for f in feed_data],
+		"feed_efficiency": feed_efficiency,
+		"timestamp": datetime.utcnow().isoformat(),
 	}
 
 

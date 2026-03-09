@@ -187,12 +187,12 @@ class DataRepository:
             return []
     
     def save_feed_data(self, data: FeedData) -> bool:
-        """Save feed data to MongoDB."""
+        """Save feed data to MongoDB (feed_readings collection, same as get_feed_data reads)."""
         if not self.is_available:
             return False
         
         try:
-            collection = self.db.feed
+            collection = self.db.feed_readings
             doc = {
                 'pond_id': data.pond_id,
                 'timestamp': data.timestamp,

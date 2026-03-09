@@ -1,16 +1,22 @@
 import { Line } from 'react-chartjs-2'
-import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
+import type { SavedFarmSnapshot } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
 import { WaterStatusBadge } from './StatusBadge'
+import { useWaterQualityData } from '../lib/useWaterQualityData'
 
 type Props = {
-	data: DashboardApiResponse
+	ponds: number
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
 }
 
-export function WaterQualityView({ data, history, pondFilter }: Props) {
-	const { dashboard } = data
+export function WaterQualityView({ ponds, history, pondFilter }: Props) {
+	const { data, loading, error } = useWaterQualityData({ ponds, autoRefreshMs: 15000 })
+
+	if (loading && !data) return <div className="emptyState">Loading water quality data...</div>
+	if (error) return <div className="emptyState">Error: {error}</div>
+	if (!data) return null
+
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 
 	const historyFiltered = history.map((snap) => ({
@@ -142,7 +148,7 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 				<div className="panelHeader">
 					<div className="panelTitle">Water Quality Overview</div>
 					<div className="panelRight">
-						<span className="muted">Updated {formatDateTime(dashboard.timestamp)}</span>
+						<span className="muted">Updated {formatDateTime(data.timestamp)}</span>
 					</div>
 				</div>
 				<div className="waterCards" style={{ marginBottom: 20 }}>

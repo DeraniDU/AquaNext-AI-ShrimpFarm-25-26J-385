@@ -1,3 +1,5 @@
+import json
+import re
 from crewai import Agent, Task, Crew
 
 # LangChain has moved OpenAI chat models across packages over time.
@@ -99,6 +101,29 @@ class LaborOptimizationAgent:
             expected_output="Detailed labor optimization plan with scheduling, task prioritization, and efficiency improvements",
         )
 
+    def _minimal_fallback_schedule(self, labor_data: LaborData) -> Dict[str, Any]:
+        """Minimal schedule when LLM is unavailable or returns invalid. Uses worker_count (cap 5), no rule-based logic."""
+        w = min(5, max(1, labor_data.worker_count))
+        def _tasks(base: List[str], n: int) -> List[str]:
+            return [base[i % len(base)] for i in range(n)] if base else ["Monitoring"] * n
+        return {
+            "morning_shift": {
+                "time": "06:00",
+                "tasks": _tasks(["Water quality testing", "Feed distribution", "Data recording"], w),
+                "workers": w,
+            },
+            "afternoon_shift": {
+                "time": "12:00",
+                "tasks": _tasks(["Equipment maintenance", "Monitoring", "Aeration check"], w),
+                "workers": w,
+            },
+            "evening_shift": {
+                "time": "18:00",
+                "tasks": _tasks(["Data recording", "Next feeding cycle", "Safety equipment check"], w),
+                "workers": w,
+            },
+        }
+
     def optimize_labor(
         self,
         pond_id: int,
@@ -107,13 +132,21 @@ class LaborOptimizationAgent:
         labor_data: LaborData,
     ) -> Dict[str, Any]:
         """
-        Run AI labor optimization (CrewAI + LLM) for one pond. Returns a dict with ai_plan
-        plus rule-based schedule, recommendations, and metrics for API/UI compatibility.
+        Run AI labor optimization (CrewAI + LLM) for one pond. Returns a dict with ai_plan,
+        schedule (from LLM only; minimal fallback when LLM unavailable or fails), and metrics.
         """
+        schedule: Optional[Dict[str, Any]] = None
+        if self.llm is not None:
+            try:
+                schedule = self._build_schedule_with_llm(labor_data, water_quality_data, energy_data)
+            except Exception:
+                schedule = None
+        if schedule is None or not isinstance(schedule, dict):
+            schedule = self._minimal_fallback_schedule(labor_data)
         result: Dict[str, Any] = {
             "pond_id": pond_id,
             "ai_plan": None,
-            "schedule": self._build_schedule(labor_data, water_quality_data, energy_data),
+            "schedule": schedule,
             "recommendations": self._build_recommendations(
                 labor_data, water_quality_data, energy_data
             ),
@@ -253,7 +286,7 @@ class LaborOptimizationAgent:
         except Exception as e:
             print(f"Error: Could not fetch labor data from MongoDB: {e}")
             raise
-    
+
     def _build_schedule(
         self,
         labor_data: LaborData,
@@ -298,11 +331,10 @@ class LaborOptimizationAgent:
                 shifts_tasks[i % 3].append(t)
 
         w = max(1, labor_data.worker_count)
+        # Allow the same worker(s) to be shown across all three shifts so the schedule is always full
         morning_workers = min(1, w)
-        w -= morning_workers
         afternoon_workers = min(1, w)
-        w -= afternoon_workers
-        evening_workers = w
+        evening_workers = min(1, w)
 
         schedule: Dict[str, Any] = {}
         if shifts_tasks[0] or morning_workers > 0:
@@ -324,6 +356,111 @@ class LaborOptimizationAgent:
                 "workers": evening_workers if shifts_tasks[2] else 1,
             }
         return schedule
+
+    def _build_schedule_with_llm(
+        self,
+        labor_data: LaborData,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> Optional[Dict[str, Any]]:
+        """Build morning/afternoon/evening shift schedule using the LLM. Returns None if LLM unavailable or response invalid."""
+        if self.llm is None:
+            return None
+        tasks_ref = list(labor_data.next_tasks) if labor_data.next_tasks else list(labor_data.tasks_completed)
+        if not tasks_ref:
+            tasks_ref = ["Water quality testing", "Feed distribution", "Data recording"]
+        # Option 1: use fetched worker count (cap at 5 for UI) so schedule spreads across all available workers
+        display_workers = min(5, max(1, labor_data.worker_count))
+        example_json = (
+            '{"morning_shift": {"time": "06:00", "tasks": ["Feed distribution", "Water quality testing", "Data recording"], "workers": %s}, '
+            '"afternoon_shift": {"time": "12:00", "tasks": ["Equipment maintenance", "Monitoring", "Aeration check"], "workers": %s}, '
+            '"evening_shift": {"time": "18:00", "tasks": ["Data recording", "Next feeding cycle", "Safety equipment check"], "workers": %s}}'
+            % (display_workers, display_workers, display_workers)
+        )
+        prompt = f"""You are a labor scheduler for a shrimp farm. Assign tasks across ALL {display_workers} available workers for each shift. Given the following data, output a single JSON object with exactly three keys: morning_shift, afternoon_shift, evening_shift. Each shift must have: "time" (string like "06:00"), "tasks" (array of exactly {display_workers} task name strings, one per worker), "workers" (integer {display_workers}). Use concrete task names from the provided tasks or standard farm tasks (e.g. "Feed distribution", "Water quality testing", "Data recording", "Equipment maintenance", "Aeration check", "Monitoring"). Output only the JSON object, no markdown or other text.
+
+Data:
+- Available workers (assign ALL of them): {display_workers}
+- Tasks to schedule (prefer these): {', '.join(tasks_ref)}
+- Labor: efficiency_score={labor_data.efficiency_score}, time_spent={labor_data.time_spent}h
+- Water: pH={water_quality_data.ph:.2f}, temp={water_quality_data.temperature:.1f}C, dissolved_oxygen={water_quality_data.dissolved_oxygen:.2f}, status={water_quality_data.status.value}, alerts={len(water_quality_data.alerts)}
+- Energy: efficiency_score={energy_data.efficiency_score:.2f}, total_energy={energy_data.total_energy:.1f} kWh, cost={energy_data.cost:.1f}
+
+Example format (use workers: {display_workers} and {display_workers} tasks per shift):
+{example_json}
+"""
+        try:
+            try:
+                from langchain_core.messages import HumanMessage  # type: ignore
+                resp = self.llm.invoke([HumanMessage(content=prompt)])
+            except Exception:
+                try:
+                    from langchain.schema import HumanMessage  # type: ignore
+                    resp = self.llm.invoke([HumanMessage(content=prompt)])
+                except Exception:
+                    resp = self.llm.invoke(prompt)
+            text = str(resp.content).strip() if hasattr(resp, "content") else str(resp).strip()
+            json_match = re.search(r"\{[\s\S]*\}", text)
+            if not json_match:
+                return None
+            data = json.loads(json_match.group())
+            if not isinstance(data, dict):
+                return None
+            # Option 1: use fetched worker count (cap at 5) so schedule spreads across all available workers
+            max_workers = min(5, max(1, labor_data.worker_count))
+            default_times = {"morning_shift": "06:00", "afternoon_shift": "12:00", "evening_shift": "18:00"}
+            default_task_lists = {
+                "morning_shift": ["Water quality testing", "Feed distribution"],
+                "afternoon_shift": ["Equipment maintenance", "Monitoring"],
+                "evening_shift": ["Data recording", "Next feeding cycle"],
+            }
+            schedule: Dict[str, Any] = {}
+            for key in ("morning_shift", "afternoon_shift", "evening_shift"):
+                raw = data.get(key)
+                if raw is None or not isinstance(raw, dict):
+                    continue
+                workers = raw.get("workers")
+                try:
+                    workers = max(0, int(workers)) if workers is not None else 0
+                except (TypeError, ValueError):
+                    workers = 0
+                workers = min(workers, max_workers)
+                # Option 1: if LLM returned fewer workers than available, use all available
+                if workers < max_workers:
+                    workers = max_workers
+                tasks_raw = raw.get("tasks")
+                if isinstance(tasks_raw, list):
+                    tasks = [str(t) for t in tasks_raw if isinstance(t, str)]
+                else:
+                    tasks = default_task_lists.get(key, [])
+                if not tasks:
+                    tasks = default_task_lists.get(key, [])
+                # Pad tasks to at least max_workers so each worker gets one (cycle if needed)
+                if len(tasks) < max_workers:
+                    base = tasks or default_task_lists.get(key, ["Monitoring"])
+                    tasks = [base[i % len(base)] for i in range(max_workers)]
+                time_str = str(raw.get("time", default_times[key]))[:5] if raw.get("time") else default_times[key]
+                schedule[key] = {
+                    "time": time_str,
+                    "tasks": tasks[:max_workers],
+                    "workers": workers,
+                }
+            if max_workers >= 1:
+                for key in ("morning_shift", "afternoon_shift", "evening_shift"):
+                    if key not in schedule:
+                        def_tasks = default_task_lists.get(key, ["Monitoring"])
+                        pad_tasks = [def_tasks[i % len(def_tasks)] for i in range(max_workers)] if def_tasks else ["Monitoring"] * max_workers
+                        schedule[key] = {
+                            "time": default_times[key],
+                            "tasks": pad_tasks[:max_workers],
+                            "workers": max_workers,
+                        }
+            if not schedule:
+                return None
+            return schedule
+        except Exception as e:
+            print(f"[LaborOptimizationAgent] LLM schedule build failed: {e}")
+            return None
 
     def _build_recommendations(
         self,
