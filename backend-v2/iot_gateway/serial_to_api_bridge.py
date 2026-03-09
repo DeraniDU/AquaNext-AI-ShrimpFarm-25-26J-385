@@ -24,6 +24,8 @@ except Exception as e:
 print(f"🌐 Data will be forwarded to: {API_URL}")
 print("Waiting for data...\n")
 
+current_reading = {}
+
 while True:
     try:
         if ser.in_waiting > 0:
@@ -33,29 +35,52 @@ while True:
             # Print the raw line we got from Arduino
             print(f"[{time.strftime('%H:%M:%S')}] RAW SERIAL: {line}")
             
-            # We expect the Arduino to send JSON format over serial. 
-            # E.g.: {"device_id": "esp32_01", "temperature": 28.5, "ph": 8.1}
-            try:
-                # Try to parse it as JSON
-                payload = json.loads(line)
-                
-                print("   ➡ Parsed JSON successfully. Sending to API...")
-                
-                # Send to our Flask backend
-                response = requests.post(API_URL, json=payload, timeout=5)
-                
-                if response.status_code == 201:
-                    print("   ✅ Successfully saved to Database!")
-                    print(f"   API Response: {response.json().get('status')}")
-                else:
-                    print(f"   ⚠️ API returned status code: {response.status_code}")
-                    print(f"   Response text: {response.text}")
+            # Because the Arduino is sending plain text lines instead of JSON,
+            # we need to accumulate them until we see a separator.
+            if "Salinity:" in line:
+                try:
+                    current_reading["salinity_ppt"] = float(line.split(":")[1].replace("ppt", "").strip())
+                except ValueError:
+                    pass
+            elif "pH Value:" in line:
+                try:
+                    current_reading["ph"] = float(line.split(":")[1].strip())
+                except ValueError:
+                    pass
+            # Add other known fields here as needed:
+            elif "Temperature:" in line:
+                try:
+                    current_reading["temperature"] = float(line.split(":")[1].replace("C", "").strip())
+                except ValueError:
+                    pass
+            elif "TDS:" in line:
+                try:
+                    current_reading["tds_value"] = float(line.split(":")[1].replace("ppm", "").strip())
+                except ValueError:
+                    pass
                     
-            except json.JSONDecodeError:
-                # The line wasn't JSON. It might be standard Serial.println("Hello World") debug text
-                pass
-            except requests.exceptions.RequestException as e:
-                print(f"   ❌ Network error sending to API: {e}")
+            # When we see the separator line, send the accumulated payload to the API
+            elif "----------------------" in line:
+                if current_reading: # Check if we actually collected any data
+                    current_reading["device_id"] = "arduino_uno_01" # Default ID
+                    
+                    print(f"   ➡ Parsed data successfully. Sending to API: {current_reading}")
+                    
+                    try:
+                        # Send to our Flask backend
+                        response = requests.post(API_URL, json=current_reading, timeout=5)
+                        
+                        if response.status_code == 201:
+                            print("   ✅ Successfully saved to Database!")
+                            print(f"   API Response: {response.json().get('status')}")
+                        else:
+                            print(f"   ⚠️ API returned status code: {response.status_code}")
+                            print(f"   Response text: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"   ❌ Network error sending to API: {e}")
+                        
+                    # Reset the dictionary for the next batch
+                    current_reading = {}
                 
         time.sleep(0.1) # Small delay to prevent maxing out CPU
         
