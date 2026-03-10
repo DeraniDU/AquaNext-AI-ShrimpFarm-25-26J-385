@@ -321,6 +321,33 @@ export type BenchmarkApiResponse = {
 	ponds: number
 }
 
+/** Feeding system (via API gateway): batch from /api/feeding-system/batch */
+export type FeedingSystemBatch = {
+	id: string
+	batchName: string
+	shrimpAge: number
+	plStocked: number
+	pondSize: number
+	pondSizeUnit: string
+	cultivationType: string
+	species: string
+	survivalRate: number
+	feedBrand: string
+	status: string
+	daysPassed?: number
+	currentShrimpAge?: number
+	createdAt?: string
+	feedAmount?: number
+	lastFeedDate?: string | null
+}
+
+/** Feeding system: motor status from /api/feeding-system/motor/status */
+export type FeedingSystemMotorStatus = {
+	state?: string
+	motor_speed?: number
+	batchId?: string | null
+	created_at?: string | null
+}
 
 
 

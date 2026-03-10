@@ -6,6 +6,7 @@ try:
     from langchain_openai import ChatOpenAI  # type: ignore
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
+import random
 from typing import List, Optional
 from models import WaterQualityData, WaterQualityStatus, AlertLevel
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, USE_MONGODB
@@ -18,13 +19,10 @@ class WaterQualityAgent:
         self.agent = None
         self.repository = None
         
-        # Initialize MongoDB repository if enabled
+        # Shrimp-farm-ai-assistant uses only MongoDB for data when USE_MONGODB is true
         if USE_MONGODB:
-            try:
-                from database.repository import DataRepository
-                self.repository = DataRepository()
-            except Exception as e:
-                print(f"Warning: Could not initialize MongoDB repository: {e}")
+            from database.repository import DataRepository
+            self.repository = DataRepository()
 
         if OPENAI_API_KEY:
             self.llm = ChatOpenAI(

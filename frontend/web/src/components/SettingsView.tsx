@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFeedingSystemStatus } from '../lib/useFeedingSystemStatus'
 
 type Props = {
 	ponds: number
@@ -8,6 +9,7 @@ type Props = {
 }
 
 export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshChange }: Props) {
+	const { gatewayOk, feedingSystemOk, loading, error, lastCheckedAt, check } = useFeedingSystemStatus()
 	const [notifications, setNotifications] = useState({
 		alerts: true,
 		feeding: true,
@@ -117,6 +119,42 @@ export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshC
 							<button onClick={() => alert('Export functionality coming soon')}>Export to CSV</button>
 							<button onClick={() => alert('Export functionality coming soon')}>Export to PDF</button>
 							<button onClick={() => alert('Export functionality coming soon')}>Export to JSON</button>
+						</div>
+					</div>
+
+					{/* Backend status: API Gateway & Feeding System */}
+					<div style={{ marginBottom: 32 }}>
+						<h3 style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Backend Status (API Gateway)</h3>
+						<div style={{ padding: 16, backgroundColor: 'rgba(17, 24, 39, 0.05)', borderRadius: 8 }}>
+							<div className="muted" style={{ fontSize: '0.875rem', lineHeight: 1.8 }}>
+								<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+									<span><strong>Gateway:</strong></span>
+									{loading ? (
+										<span>Checking…</span>
+									) : (
+										<span style={{ color: gatewayOk ? 'var(--color-success, #059669)' : 'var(--color-danger, #dc2626)' }}>
+											{gatewayOk ? '✓ Connected' : '✗ Not connected'}
+										</span>
+									)}
+								</div>
+								<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+									<span><strong>Feeding System (via gateway):</strong></span>
+									{loading ? (
+										<span>Checking…</span>
+									) : (
+										<span style={{ color: feedingSystemOk ? 'var(--color-success, #059669)' : 'var(--color-danger, #dc2626)' }}>
+											{feedingSystemOk ? '✓ Connected' : '✗ Not connected'}
+										</span>
+									)}
+								</div>
+								{error && <div style={{ color: 'var(--color-danger, #dc2626)', marginBottom: 8 }}>{error}</div>}
+								{lastCheckedAt && !loading && (
+									<div style={{ marginBottom: 8 }}>Last checked: {new Date(lastCheckedAt).toLocaleString()}</div>
+								)}
+								<button type="button" onClick={check} disabled={loading}>
+									{loading ? 'Checking…' : 'Check connection'}
+								</button>
+							</div>
 						</div>
 					</div>
 

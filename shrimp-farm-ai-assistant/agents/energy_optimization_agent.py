@@ -18,13 +18,10 @@ class EnergyOptimizationAgent:
         self.agent = None
         self.repository = None
         
-        # Initialize MongoDB repository if enabled
+        # Shrimp-farm-ai-assistant uses only MongoDB for data when USE_MONGODB is true
         if USE_MONGODB:
-            try:
-                from database.repository import DataRepository
-                self.repository = DataRepository()
-            except Exception as e:
-                print(f"Warning: Could not initialize MongoDB repository: {e}")
+            from database.repository import DataRepository
+            self.repository = DataRepository()
 
         if OPENAI_API_KEY:
             self.llm = ChatOpenAI(

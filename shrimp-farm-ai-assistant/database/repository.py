@@ -18,28 +18,46 @@ class DataRepository:
     """
     Repository for accessing farm data from MongoDB.
     
-    Provides methods to save and retrieve water quality, feed, energy, and labor data.
-    Falls back gracefully if MongoDB is not configured or unavailable.
+    Shrimp-farm-ai-assistant uses only MongoDB for data. When USE_MONGODB is true,
+    MONGO_URI must be set and the connection must succeed; otherwise the repository raises.
     """
-    
+
     def __init__(self):
-        """Initialize the repository with MongoDB connection."""
+        """Initialize the repository with MongoDB connection.
+
+        In local/dev setups we want the app to keep working even when MongoDB
+        is not configured or unavailable, so this constructor never raises.
+        Instead, it marks the repository as unavailable and callers are
+        expected to fall back to simulated data.
+        """
         self.client = None
         self.db = None
         self.is_available = False
-        
-        if not USE_MONGODB or not MONGO_URI:
+
+        if not USE_MONGODB:
+            # MongoDB disabled via config/env – repository is simply unavailable.
             return
-        
+
+        if not MONGO_URI or not MONGO_URI.strip():
+            # Missing URI: log-style error via print, but do not crash the app.
+            print(
+                "WARNING: MONGO_URI is not set but USE_MONGODB is true. "
+                "MongoDB features will be disabled (using simulated data only)."
+            )
+            return
+
         try:
             self.client = get_mongo_client()
             self.db = get_database(self.client)
-            # Test connection
-            self.client.admin.command('ping')
+            self.client.admin.command("ping")
             self.is_available = True
         except Exception as e:
-            print(f"Warning: Could not connect to MongoDB: {e}")
-            self.is_available = False
+            # Connection failed – log and fall back to simulated data.
+            print(
+                "WARNING: Could not connect to MongoDB. "
+                "MongoDB features will be disabled (using simulated data only). "
+                f"Error: {e}"
+            )
             if self.client:
                 try:
                     self.client.close()
@@ -183,12 +201,12 @@ class DataRepository:
             return []
     
     def save_feed_data(self, data: FeedData) -> bool:
-        """Save feed data to MongoDB."""
+        """Save feed data to MongoDB (feed_readings collection, same as get_feed_data reads)."""
         if not self.is_available:
             return False
         
         try:
-            collection = self.db.feed
+            collection = self.db.feed_readings
             doc = {
                 'pond_id': data.pond_id,
                 'timestamp': data.timestamp,
@@ -704,6 +722,130 @@ class DataRepository:
             
         except Exception as e:
             print(f"Error retrieving historical snapshots: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def get_hourly_snapshots(
+        self,
+        hours: int = 24
+    ) -> List[Dict[str, Any]]:
+        """
+        Get historical snapshots grouped by hour for 24h charting.
+        """
+        if not self.is_available:
+            return []
+        
+        try:
+            from collections import defaultdict
+            
+            def _latest_per_pond(items: List[Any]) -> List[Any]:
+                latest: Dict[int, Any] = {}
+                for item in items:
+                    pond_id = getattr(item, "pond_id", None)
+                    ts = getattr(item, "timestamp", None)
+                    if pond_id is None:
+                        # Sometimes pydantic models need dict access
+                        if hasattr(item, "model_dump"):
+                            try:
+                                pond_id = item.pond_id
+                                ts = item.timestamp
+                            except:
+                                pass
+                    if pond_id is None:
+                        continue
+                        
+                    current = latest.get(int(pond_id))
+                    if current is None:
+                        latest[int(pond_id)] = item
+                        continue
+                    cur_ts = getattr(current, "timestamp", None)
+                    if hasattr(current, "model_dump") and cur_ts is None:
+                        try:
+                            cur_ts = current.timestamp
+                        except:
+                            pass
+                            
+                    if ts is not None and (cur_ts is None or ts > cur_ts):
+                        latest[int(pond_id)] = item
+                return list(latest.values())
+            
+            # Calculate relative offset from max available data instead of utcnow
+            # If the database hasn't been updated in a few days, using utcnow() returns nothing
+            data_limit = 50000
+            
+            water_quality_all = self.get_water_quality_data(limit=data_limit)
+            feed_all = self.get_feed_data(limit=data_limit)
+            energy_all = self.get_energy_data(limit=data_limit)
+            labor_all = self.get_labor_data(limit=data_limit)
+
+            # Find the max timestamp across all collections
+            max_ts = None
+            if water_quality_all:
+                max_ts = max((max_ts, max(x.timestamp for x in water_quality_all))) if max_ts else max(x.timestamp for x in water_quality_all)
+            if feed_all:
+                max_ts = max((max_ts, max(x.timestamp for x in feed_all))) if max_ts else max(x.timestamp for x in feed_all)
+            if energy_all:
+                max_ts = max((max_ts, max(x.timestamp for x in energy_all))) if max_ts else max(x.timestamp for x in energy_all)
+            if labor_all:
+                max_ts = max((max_ts, max(x.timestamp for x in labor_all))) if max_ts else max(x.timestamp for x in labor_all)
+
+            if not max_ts:
+                max_ts = datetime.utcnow()
+            
+            start_time = max_ts - timedelta(hours=hours)
+            
+            # Filter by time manually if the query didn't catch it correctly due to timestamp formats
+            water_quality_filtered = [x for x in water_quality_all if x.timestamp >= start_time]
+            feed_filtered = [x for x in feed_all if x.timestamp >= start_time]
+            energy_filtered = [x for x in energy_all if x.timestamp >= start_time]
+            labor_filtered = [x for x in labor_all if x.timestamp >= start_time]
+            
+            def round_to_hour(dt: datetime) -> datetime:
+                return dt.replace(minute=0, second=0, microsecond=0)
+            
+            grouped = defaultdict(lambda: {
+                "water_quality": [],
+                "feed": [],
+                "energy": [],
+                "labor": []
+            })
+            
+            for wq in water_quality_filtered:
+                if getattr(wq, "pond_id", None) is not None:
+                    grouped[round_to_hour(wq.timestamp)]["water_quality"].append(wq)
+            for f in feed_filtered:
+                if getattr(f, "pond_id", None) is not None:
+                    grouped[round_to_hour(f.timestamp)]["feed"].append(f)
+            for e in energy_filtered:
+                if getattr(e, "pond_id", None) is not None:
+                    grouped[round_to_hour(e.timestamp)]["energy"].append(e)
+            for l in labor_filtered:
+                if getattr(l, "pond_id", None) is not None:
+                    grouped[round_to_hour(l.timestamp)]["labor"].append(l)
+            
+            # Convert to snapshot format
+            snapshots = []
+            for ts, data in grouped.items():
+                if data["water_quality"] or data["feed"] or data["energy"] or data["labor"]:
+                    wq_hour = _latest_per_pond(data["water_quality"])
+                    feed_hour = _latest_per_pond(data["feed"])
+                    energy_hour = _latest_per_pond(data["energy"])
+                    labor_hour = _latest_per_pond(data["labor"])
+                    snapshot = {
+                        "timestamp": ts.isoformat(),
+                        "water_quality": [w.model_dump(mode="json") if hasattr(w, 'model_dump') else dict(w) for w in wq_hour],
+                        "feed": [f.model_dump(mode="json") if hasattr(f, 'model_dump') else dict(f) for f in feed_hour],
+                        "energy": [e.model_dump(mode="json") if hasattr(e, 'model_dump') else dict(e) for e in energy_hour],
+                        "labor": [l.model_dump(mode="json") if hasattr(l, 'model_dump') else dict(l) for l in labor_hour]
+                    }
+                    snapshots.append(snapshot)
+            
+            snapshots.sort(key=lambda x: x.get("timestamp", ""))
+            return snapshots
+            
+        except Exception as e:
+            print(f"Error retrieving hourly snapshots: {e}")
             import traceback
             traceback.print_exc()
             return []

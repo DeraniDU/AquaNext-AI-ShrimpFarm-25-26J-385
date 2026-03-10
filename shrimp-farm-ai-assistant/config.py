@@ -5,12 +5,18 @@ Values can be overridden with environment variables if desired.
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from a local .env file when running locally.
 # This keeps secrets like API keys out of the codebase and allows easy
 # per-machine configuration.
-load_dotenv()
+# Explicitly load .env next to this file so it works regardless of cwd.
+_ENV_PATH = Path(__file__).with_name(".env")
+if _ENV_PATH.exists():
+	load_dotenv(dotenv_path=_ENV_PATH)
+else:
+	load_dotenv()
 
 # OpenAI settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -52,8 +58,13 @@ DECISION_MODEL_CONFIG = {
     "enable_auto_actions": os.getenv("ENABLE_AUTO_ACTIONS", "false").lower() == "true",
 }
 
-# MongoDB configuration
+# MongoDB configuration (Shrimp-farm-ai-assistant uses only MongoDB for data when enabled)
 MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
-USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"  # Enable MongoDB data fetching
+# Default to false if not explicitly enabled to avoid hard failures in local dev.
+USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
+
+# Orchestration: parallel data collection and optional LLM steps
+RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
+PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect
 

@@ -14,14 +14,14 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 from crewai import Crew
-# LangChain has moved OpenAI chat models across packages over time.
-# Try the modern import first, then fall back for older LangChain versions.
+# LangChain: prefer langchain_openai to avoid deprecation warning from langchain_community.
 try:
     from langchain_openai import ChatOpenAI  # type: ignore
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
+    print("Hint: pip install langchain-openai to avoid LangChain deprecation warning.")
     from langchain.chat_models import ChatOpenAI  # type: ignore
 
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, AGENT_CONFIG
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, AGENT_CONFIG, RUN_MANAGER_SYNTHESIS, PARALLEL_DATA_COLLECTION
 from models import ShrimpFarmDashboard, WaterQualityData, FeedData, EnergyData, LaborData
 
 from agents.water_quality_agent import WaterQualityAgent
@@ -114,11 +114,51 @@ class ShrimpFarmOrchestrator:
             logger.error(f"Error in monitoring cycle: {str(e)}")
             raise
     
+    def _collect_feed_for_all(self, water_quality_data: List, repository) -> List:
+        """Sync helper: collect feed data for all ponds (used in thread)."""
+        feed_data = []
+        for i, wq_data in enumerate(water_quality_data):
+            pond_id = i + 1
+            item = self.feed_agent.get_feed_data(pond_id, wq_data)
+            feed_data.append(item)
+            if repository and repository.is_available:
+                try:
+                    repository.save_feed_data(item)
+                except Exception as e:
+                    logger.debug(f"Could not save feed data to DB: {e}")
+        return feed_data
+
+    def _collect_energy_for_all(self, water_quality_data: List, repository) -> List:
+        """Sync helper: collect energy data for all ponds (used in thread)."""
+        energy_data = []
+        for i, wq_data in enumerate(water_quality_data):
+            pond_id = i + 1
+            item = self.energy_agent.get_energy_data(pond_id, wq_data)
+            energy_data.append(item)
+            if repository and repository.is_available:
+                try:
+                    repository.save_energy_data(item)
+                except Exception as e:
+                    logger.debug(f"Could not save energy data to DB: {e}")
+        return energy_data
+
+    def _collect_labor_for_all(self, water_quality_data: List, energy_data: List, repository) -> List:
+        """Sync helper: collect labor data for all ponds (used in thread)."""
+        labor_data = []
+        for i, (wq_data, energy_item) in enumerate(zip(water_quality_data, energy_data)):
+            pond_id = i + 1
+            item = self.labor_agent.get_or_generate_labor_data(pond_id, wq_data, energy_item)
+            labor_data.append(item)
+            if repository and repository.is_available:
+                try:
+                    repository.save_labor_data(item)
+                except Exception as e:
+                    logger.debug(f"Could not save labor data to DB: {e}")
+        return labor_data
+
     async def collect_agent_data(self):
-        """Collect data from all specialized agents"""
+        """Collect data from all specialized agents (parallel when PARALLEL_DATA_COLLECTION=true)."""
         logger.info("Collecting data from all agents...")
-        
-        # Initialize repository for saving data
         repository = None
         try:
             from database.repository import DataRepository
@@ -127,75 +167,68 @@ class ShrimpFarmOrchestrator:
                 logger.info("MongoDB repository available - data will be saved to database")
         except Exception as e:
             logger.debug(f"MongoDB repository not available: {e}")
-        
-        # Water quality monitoring
-        water_quality_data = []
-        for pond_id in range(1, FARM_CONFIG['pond_count'] + 1):
-            wq_data = self.water_quality_agent.get_water_quality_data(pond_id)
-            water_quality_data.append(wq_data)
-            # Save to database if available
-            if repository and repository.is_available:
-                try:
-                    repository.save_water_quality_data(wq_data)
-                except Exception as e:
-                    logger.debug(f"Could not save water quality data to DB: {e}")
-        
-        self.farm_data['water_quality'] = water_quality_data
-        logger.info(f"Collected water quality data for {len(water_quality_data)} ponds")
-        
-        # Feed prediction
-        feed_data = []
-        for i, wq_data in enumerate(water_quality_data):
-            pond_id = i + 1
-            feed_data_item = self.feed_agent.get_feed_data(pond_id, wq_data)
-            feed_data.append(feed_data_item)
-            # Save to database if available
-            if repository and repository.is_available:
-                try:
-                    repository.save_feed_data(feed_data_item)
-                except Exception as e:
-                    logger.debug(f"Could not save feed data to DB: {e}")
-        
-        self.farm_data['feed'] = feed_data
-        logger.info(f"Collected feed data for {len(feed_data)} ponds")
-        
-        # Energy optimization
-        energy_data = []
-        for i, wq_data in enumerate(water_quality_data):
-            pond_id = i + 1
-            energy_data_item = self.energy_agent.get_energy_data(pond_id, wq_data)
-            energy_data.append(energy_data_item)
-            # Save to database if available
-            if repository and repository.is_available:
-                try:
-                    repository.save_energy_data(energy_data_item)
-                except Exception as e:
-                    logger.debug(f"Could not save energy data to DB: {e}")
-        
-        self.farm_data['energy'] = energy_data
-        logger.info(f"Collected energy data for {len(energy_data)} ponds")
-        
-        # Labor: get or generate data, then run AI labor optimization
-        labor_data = []
-        for i, (wq_data, energy_data_item) in enumerate(zip(water_quality_data, energy_data)):
-            pond_id = i + 1
-            labor_data_item = self.labor_agent.get_or_generate_labor_data(
-                pond_id, wq_data, energy_data_item
+
+        pond_ids = list(range(1, FARM_CONFIG['pond_count'] + 1))
+
+        if PARALLEL_DATA_COLLECTION:
+            # Phase 1: water quality for all ponds in parallel
+            water_quality_data = await asyncio.gather(
+                *[asyncio.to_thread(self.water_quality_agent.get_water_quality_data, pid) for pid in pond_ids]
             )
-            labor_data.append(labor_data_item)
-            # Save to database if available
+            water_quality_data = list(water_quality_data)
             if repository and repository.is_available:
-                try:
-                    repository.save_labor_data(labor_data_item)
-                except Exception as e:
-                    logger.debug(f"Could not save labor data to DB: {e}")
-        
+                for wq_data in water_quality_data:
+                    try:
+                        repository.save_water_quality_data(wq_data)
+                    except Exception as e:
+                        logger.debug(f"Could not save water quality data to DB: {e}")
+            self.farm_data['water_quality'] = water_quality_data
+            logger.info(f"Collected water quality data for {len(water_quality_data)} ponds")
+
+            # Phase 2: feed and energy in parallel (each over all ponds)
+            feed_data, energy_data = await asyncio.gather(
+                asyncio.to_thread(self._collect_feed_for_all, water_quality_data, repository),
+                asyncio.to_thread(self._collect_energy_for_all, water_quality_data, repository),
+            )
+            self.farm_data['feed'] = feed_data
+            self.farm_data['energy'] = energy_data
+            logger.info(f"Collected feed data for {len(feed_data)} ponds")
+            logger.info(f"Collected energy data for {len(energy_data)} ponds")
+
+            # Phase 3: labor (needs water_quality + energy)
+            labor_data = await asyncio.to_thread(
+                self._collect_labor_for_all, water_quality_data, energy_data, repository
+            )
+        else:
+            # Sequential fallback
+            water_quality_data = []
+            for pond_id in pond_ids:
+                wq_data = self.water_quality_agent.get_water_quality_data(pond_id)
+                water_quality_data.append(wq_data)
+                if repository and repository.is_available:
+                    try:
+                        repository.save_water_quality_data(wq_data)
+                    except Exception as e:
+                        logger.debug(f"Could not save water quality data to DB: {e}")
+            self.farm_data['water_quality'] = water_quality_data
+            logger.info(f"Collected water quality data for {len(water_quality_data)} ponds")
+
+            feed_data = self._collect_feed_for_all(water_quality_data, repository)
+            energy_data = self._collect_energy_for_all(water_quality_data, repository)
+            self.farm_data['feed'] = feed_data
+            self.farm_data['energy'] = energy_data
+            logger.info(f"Collected feed data for {len(feed_data)} ponds")
+            logger.info(f"Collected energy data for {len(energy_data)} ponds")
+
+            labor_data = self._collect_labor_for_all(water_quality_data, energy_data, repository)
+
         self.farm_data['labor'] = labor_data
         logger.info(f"Collected labor data for {len(labor_data)} ponds")
 
         # Run AI labor optimization (CrewAI agent + rule-based schedule/recommendations)
         try:
-            labor_optimization = self.labor_agent.optimize_all_labor(
+            labor_optimization = await asyncio.to_thread(
+                self.labor_agent.optimize_all_labor,
                 water_quality_data, energy_data, labor_data
             )
             self.farm_data['labor_optimization'] = labor_optimization
@@ -203,43 +236,35 @@ class ShrimpFarmOrchestrator:
         except Exception as e:
             logger.warning(f"Labor optimization failed: {e}")
             self.farm_data['labor_optimization'] = []
-        
-        # Close repository connection
+
         if repository:
             repository.close()
     
     async def generate_insights(self):
-        """Generate insights and recommendations using the manager agent"""
+        """Generate insights and recommendations using the manager agent (optional; off by default)."""
+        if not RUN_MANAGER_SYNTHESIS:
+            logger.debug("Skipping manager synthesis (RUN_MANAGER_SYNTHESIS=false)")
+            return
         logger.info("Generating insights and recommendations...")
-        
-        # Create manager task
         manager_task = self.manager_agent.create_synthesis_task(
             self.farm_data['water_quality'],
             self.farm_data['feed'],
             self.farm_data['energy'],
             self.farm_data['labor']
         )
-        
-        # Create crew with manager agent
         crew = Crew(
             agents=[self.manager_agent.agent],
             tasks=[manager_task],
             verbose=True
         )
-        
-        # Execute the task
         try:
-            result = crew.kickoff()
+            result = await asyncio.to_thread(crew.kickoff)
             logger.info("Manager agent completed analysis")
-            
-            # Process insights (in a real implementation, this would parse the result)
             insights = self._extract_insights_from_result(result)
             logger.info(f"Generated {len(insights)} insights")
-            
         except Exception as e:
             logger.error(f"Error in insight generation: {str(e)}")
-            # Continue with basic insights if manager agent fails
-            insights = self._generate_basic_insights()
+            self._generate_basic_insights()
     
     def _extract_insights_from_result(self, result) -> List[Dict]:
         """Extract insights from manager agent result"""

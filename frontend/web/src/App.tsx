@@ -3,6 +3,7 @@ import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
 import { OptimizationView } from './components/OptimizationView'
+import { LaborOptimizationView } from './components/LaborOptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
 import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
@@ -12,6 +13,7 @@ import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
+import { useHourlyHistoryData } from './lib/useHourlyHistoryData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
@@ -25,6 +27,9 @@ export default function App() {
 	})
 	const { data: historyData, loading: historyLoading, error: historyError, refresh: refreshHistory } = useHistoryData({
 		days: 7
+	})
+	const { data: hourlyHistoryData, loading: hourlyHistoryLoading, error: hourlyHistoryError, refresh: refreshHourlyHistory } = useHourlyHistoryData({
+		hours: 24
 	})
 
 	const pondIds = useMemo(() => {
@@ -41,32 +46,67 @@ export default function App() {
 	const subtitle = data?.dashboard?.timestamp ? `Snapshot: ${formatDateTime(data.dashboard.timestamp)}` : 'API: /api/dashboard'
 
 	const renderView = () => {
+		const historyWithLive = data ? mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data) : (historyData?.items ?? [])
+		// Water quality: embed water-quality-system app (runs on port 5175)
+		if (activeView === 'water-quality') {
+			return (
+				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+					<iframe
+						src="http://localhost:5175"
+						title="Water Quality"
+						style={{ width: '100%', height: '100%', border: 'none' }}
+					/>
+				</div>
+			)
+		}
+		// Feeding: embed feeding-system app (runs on port 5174)
+		if (activeView === 'feeding') {
+			return (
+				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+					<iframe
+						src="http://localhost:5174"
+						title="Feeding System"
+						style={{ width: '100%', height: '100%', border: 'none' }}
+					/>
+				</div>
+			)
+		}
+
 		if (!data) {
 			return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 		}
 
-		const historyWithLive = mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data)
-
-		const viewProps = {
+		const viewProps = data ? {
 			data: data as DashboardApiResponse,
 			history: historyWithLive,
+			hourlyHistory: hourlyHistoryData?.items ?? [],
 			pondFilter: selectedPond === 'all' ? null : selectedPond
-		}
+		} : null
 
 		switch (activeView) {
 			case 'dashboard':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DashboardView {...viewProps} />
 			case 'forecasting':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <ForecastingView {...viewProps} />
-		case 'optimization':
-			return <OptimizationView {...viewProps} ponds={ponds} />
+
+			case 'optimization':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+			return <OptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
+			case 'labor-optimization':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+				return <LaborOptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
 			case 'benchmarking':
-			return <BenchmarkingView ponds={ponds} />
+				return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
-				return <WaterQualityView {...viewProps} />
+				// Rendered via iframe above when water-quality is selected
+				return null
 			case 'feeding':
-				return <FeedingView {...viewProps} />
+				return <FeedingView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
+
 			case 'disease-detection':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DiseaseDetectionView {...viewProps} />
 			case 'settings':
 				return (
@@ -78,6 +118,7 @@ export default function App() {
 					/>
 				)
 			default:
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <DashboardView {...viewProps} />
 		}
 	}
@@ -153,17 +194,18 @@ export default function App() {
 								onClick={() => {
 									void refresh()
 									void refreshHistory()
+									void refreshHourlyHistory()
 								}}
-								disabled={loading || historyLoading}
+								disabled={loading || historyLoading || hourlyHistoryLoading}
 							>
-								{loading || historyLoading ? 'Refreshing…' : 'Refresh'}
+								{loading || historyLoading || hourlyHistoryLoading ? 'Refreshing…' : 'Refresh'}
 							</button>
 						</div>
 					</div>
 				</div>
 
 				<div className="container">
-					{error && (
+					{activeView !== 'feeding' && activeView !== 'water-quality' && error && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -171,13 +213,13 @@ export default function App() {
 									<span className="badge bad">API</span>
 								</div>
 								<div className="muted">
-									{error}. Make sure the backend is running:{' '}
-									<span className="mono">.\\venv\\Scripts\\python.exe -m uvicorn api.server:app --reload --port 8000</span>
+									{error}. For full stack (Dashboard + Feeding) use all 5 terminals from{' '}
+									<span className="mono">FEEDING_TAB_SETUP.md</span> (AI Assistant on 8001, Gateway on 8000).
 								</div>
 							</div>
 						</div>
 					)}
-					{historyError && (
+					{activeView !== 'feeding' && activeView !== 'water-quality' && historyError && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -252,5 +294,3 @@ function mergeHistoryWithLiveSnapshot(history: SavedFarmSnapshot[], data: Dashbo
 
 	return Array.from(byDay.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 }
-
-

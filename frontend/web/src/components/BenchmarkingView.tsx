@@ -103,7 +103,7 @@ export function BenchmarkingView({ ponds = 4 }: Props) {
 						<div className="benchmarkHeaderMeta">
 							<span className="badge good">Scores</span>
 							{lastUpdatedAt && (
-								<span className="muted">Updated {formatDateTime(lastUpdatedAt)}</span>
+								<span className="muted">Updated {formatDateTime(lastUpdatedAt.toISOString())}</span>
 							)}
 							<button onClick={() => void refresh()} disabled={loading}>
 								{loading ? 'Refreshing…' : 'Refresh'}
