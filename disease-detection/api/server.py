@@ -1,4 +1,5 @@
 from typing import Optional
+import logging
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -12,6 +13,10 @@ from agents.behavior_agent import BehaviorAgent
 from services.data_fusion_service import DataFusionService
 from services.risk_scheduler import RiskSchedulerService
 from utils.behavior_store import pond_behavior_store
+
+# Setup logging for error tracking (not exposed publicly)
+logger = logging.getLogger("disease_detection")
+logging.basicConfig(level=logging.INFO)
 
 
 app = FastAPI(title=settings.APP_NAME)
@@ -63,6 +68,10 @@ def health():
 
 @app.post("/predict-risk")
 def predict_risk(inp: RiskInput):
+    """
+    Predict disease risk for a pond based on environmental and behavioral data.
+    Errors are logged internally but generic messages returned to client.
+    """
     try:
         payload = inp.model_dump()
         feature_payload = {k: payload[k] for k in FEATURES}
@@ -85,7 +94,13 @@ def predict_risk(inp: RiskInput):
         return result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log the actual error internally (secure)
+        logger.error(f"Error in predict_risk: {str(e)}", exc_info=True)
+        # Return generic error to client (no sensitive details)
+        raise HTTPException(
+            status_code=500, 
+            detail="Failed to process prediction request. Please try again."
+        )
 
 
 @app.get("/predictions")
@@ -116,6 +131,10 @@ class BehaviorInput(BaseModel):
 
 @app.post("/behavior/live")
 def push_behavior_live(inp: BehaviorInput):
+    """
+    Record shrimp behavior data for a pond.
+    Errors are logged internally but generic messages returned to client.
+    """
     try:
         record = behavior_agent.process_behavior_input(inp.model_dump())
         # store in in-memory buffer for fast access
@@ -124,7 +143,8 @@ def push_behavior_live(inp: BehaviorInput):
         # persist to repository
         try:
             inserted_id = repository.save_behavior_point(record)
-        except Exception:
+        except Exception as db_error:
+            logger.warning(f"Failed to persist behavior to DB: {str(db_error)}")
             inserted_id = None
 
         return {
@@ -135,7 +155,13 @@ def push_behavior_live(inp: BehaviorInput):
             "record_id": inserted_id,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log the actual error internally (secure)
+        logger.error(f"Error in push_behavior_live: {str(e)}", exc_info=True)
+        # Return generic error to client (no sensitive details)
+        raise HTTPException(
+            status_code=500, 
+            detail="Failed to process behavior data. Please try again."
+        )
 
 
 @app.get("/behavior/{pond_id}")
