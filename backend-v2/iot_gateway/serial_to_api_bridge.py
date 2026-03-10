@@ -50,7 +50,9 @@ while True:
             # Add other known fields here as needed:
             elif "Temperature:" in line:
                 try:
-                    current_reading["temperature"] = float(line.split(":")[1].replace("C", "").strip())
+                    # Clean out degrees symbol and 'C' before converting
+                    raw_temp = line.split(":")[1].replace("\u00b0", "").replace("°", "").replace("C", "").strip()
+                    current_reading["temperature"] = float(raw_temp)
                 except ValueError:
                     pass
             elif "TDS:" in line:
