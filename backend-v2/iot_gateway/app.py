@@ -19,10 +19,20 @@ import numpy as np
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "../water_quality_testing/saved_models")
 try:
     rf_model = joblib.load(os.path.join(MODEL_DIR, "rf_regressor.pkl"))
-    scaler = joblib.load(os.path.join(MODEL_DIR, "regression_scaler.pkl"))
+    rf_scaler = joblib.load(os.path.join(MODEL_DIR, "regression_scaler.pkl"))
 except Exception as e:
     rf_model = None
-    scaler = None
+    rf_scaler = None
+
+# Load Time-Series LSTM Model
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    lstm_model = keras.models.load_model(os.path.join(MODEL_DIR, "lstm_model.keras"))
+    lstm_scaler = joblib.load(os.path.join(MODEL_DIR, "lstm_scaler.pkl"))
+except Exception as e:
+    lstm_model = None
+    lstm_scaler = None
 
 # Load environment variables
 load_dotenv()
@@ -35,10 +45,15 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-if rf_model and scaler:
-    logger.info("✅ ML Models loaded successfully")
+if rf_model and rf_scaler:
+    logger.info("✅ ML Regression Models loaded successfully")
 else:
-    logger.warning("⚠️ ML Models could not be loaded")
+    logger.warning("⚠️ ML Regression Models could not be loaded")
+    
+if lstm_model and lstm_scaler:
+    logger.info("✅ ML Time-Series (LSTM) Models loaded successfully")
+else:
+    logger.warning("⚠️ ML Time-Series Models could not be loaded")
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -624,9 +639,9 @@ def receive_sensor_data():
         reading.physics_calculations = report.get("calculations", {})
         
         # Run ML Predictions (RF regressor)
-        if rf_model and scaler:
+        if rf_model and rf_scaler:
             try:
-                features_scaled = scaler.transform(features)
+                features_scaled = rf_scaler.transform(features)
                 predicted_do = rf_model.predict(features_scaled)[0]
                 reading.ml_predictions = {
                     "predicted_do_mg_l": round(float(predicted_do), 3),
@@ -648,6 +663,126 @@ def receive_sensor_data():
                 reading.ml_predictions = {}
             reading.ml_predictions["do_from_temp_current"] = temp_do_pred["current_do_sat_mg_l"]
             reading.ml_predictions["do_from_temp_1h"]      = temp_do_pred["predicted_do_sat_1h"]
+
+        # ─── LSTM TIME-SERIES FORECASTING ───
+        # Try to forecast the next hour's DO using the past 24 hours of data
+        if lstm_model and lstm_scaler and collection is not None:
+            try:
+                # Calculate the timestamp threshold for 24 hours ago
+                from datetime import timedelta
+                time_threshold = datetime.utcnow() - timedelta(hours=24)
+                
+                # Fetch recent docs for this device
+                recent_docs = list(collection.find(
+                    {
+                        "device_id": data.get("device_id"),
+                        "timestamp": {"$gte": time_threshold}
+                    },
+                    {
+                        "timestamp": 1, "temperature": 1, "salinity_ppt": 1, "ph": 1, "do_mg_l": 1,
+                        "alkalinity": 1, "turbidity_ntu": 1, "tan_mg_l": 1, "nh3_mg_l": 1,
+                        "no2_mg_l": 1, "orp_mv": 1
+                    }
+                ).sort("timestamp", 1))
+                
+                if len(recent_docs) > 0:
+                    import pandas as pd
+                    
+                    df_recent = pd.DataFrame(recent_docs)
+                    df_recent.set_index("timestamp", inplace=True)
+                    
+                    # Convert to numeric to avoid object aggregation errors
+                    cols_to_convert = [
+                        "temperature", "salinity_ppt", "ph", "do_mg_l",
+                        "alkalinity", "turbidity_ntu", "tan_mg_l", "nh3_mg_l",
+                        "no2_mg_l", "orp_mv"
+                    ]
+                    for col in cols_to_convert:
+                        if col in df_recent.columns:
+                            df_recent[col] = pd.to_numeric(df_recent[col], errors='coerce')
+                    
+                    # Resample into hourly averages (only on numeric columns)
+                    import numpy as np
+                    df_hourly = df_recent.select_dtypes(include=[np.number]).resample("1h").mean().interpolate(method='linear')
+                    
+                    # Target 24 rows minimum
+                    # Pad missing rows backwards if we have less than 24 hours of history
+                    while len(df_hourly) < 24:
+                        if len(df_hourly) > 0:
+                            df_hourly = pd.concat([df_hourly.iloc[[0]], df_hourly])
+                        elif reading.ml_predictions:
+                            break
+                            
+                    # Get exact tail of 24
+                    df_24h = df_hourly.tail(24).copy()
+                    
+                    # Map exactly to what the LSTM needs
+                    lookback_features = np.zeros((24, 12))
+                    
+                    if len(df_24h) == 24:
+                        for i, (idx, row) in enumerate(df_24h.iterrows()):
+                            import math
+                            # Handle potential NaNs with fallbacks
+                            tmp = row.get("temperature", reading.temperature or 28.0)
+                            if pd.isna(tmp): tmp = reading.temperature or 28.0
+                                
+                            sal = row.get("salinity_ppt", reading.salinity_ppt or 20.0)
+                            if pd.isna(sal): sal = reading.salinity_ppt or 20.0
+                                
+                            ph_val = row.get("ph", reading.ph or 7.8)
+                            if pd.isna(ph_val): ph_val = reading.ph or 7.8
+                                
+                            do = row.get("do_mg_l", reading.do_mg_l or 6.0)
+                            if pd.isna(do): do = reading.do_mg_l or 6.0
+                                
+                            alk = row.get("alkalinity", reading.alkalinity or 120.0)
+                            if pd.isna(alk): alk = reading.alkalinity or 120.0
+                                
+                            turb = row.get("turbidity_ntu", reading.turbidity_ntu or 15.0)
+                            if pd.isna(turb): turb = reading.turbidity_ntu or 15.0
+                                
+                            tan = row.get("tan_mg_l", reading.tan_mg_l or 0.5)
+                            if pd.isna(tan): tan = reading.tan_mg_l or 0.5
+                                
+                            nh3 = row.get("nh3_mg_l", reading.nh3_mg_l or 0.03)
+                            if pd.isna(nh3): nh3 = reading.nh3_mg_l or 0.03
+                                
+                            no2 = row.get("no2_mg_l", reading.no2_mg_l or 0.1)
+                            if pd.isna(no2): no2 = reading.no2_mg_l or 0.1
+                                
+                            orp = row.get("orp_mv", reading.orp_mv or 250.0)
+                            if pd.isna(orp): orp = reading.orp_mv or 250.0
+                            
+                            hour = idx.hour
+                            hour_sin = math.sin((2 * math.pi * hour) / 24.0)
+                            hour_cos = math.cos((2 * math.pi * hour) / 24.0)
+                            
+                            lookback_features[i] = [
+                                tmp, sal, ph_val, do, alk, turb, tan, nh3, no2, orp, hour_sin, hour_cos
+                            ]
+                        
+                        # Scale
+                        scaled_seq = lstm_scaler.transform(lookback_features)
+                        # Reshape to (1, 24, 12)
+                        scaled_seq = scaled_seq.reshape(1, 24, 12)
+                        
+                        # Predict
+                        pred_scaled = lstm_model.predict(scaled_seq, verbose=0).flatten()
+                        
+                        # Inverse transform just the DO column (index 3)
+                        dummy = np.zeros((1, 12))
+                        dummy[0, 3] = pred_scaled[0]
+                        pred_actual = lstm_scaler.inverse_transform(dummy)[0, 3]
+                        
+                        if reading.ml_predictions is None:
+                            reading.ml_predictions = {}
+                        reading.ml_predictions["predicted_next_hour_do_mg_l"] = round(float(pred_actual), 3)
+                        logger.info(f"✅ LSTM Success. Next Hour DO: {round(float(pred_actual), 3)}")
+                    else:
+                        logger.warning(f"⚠️ LSTM Skipped. df_24h length: {len(df_24h)}")
+            
+            except Exception as e:
+                logger.error(f"⚠️ Time-Series LSTM Prediction failed: {e}")
             reading.ml_predictions["temp_1h_forecast_c"]   = temp_do_pred["temp_1h_forecast_c"]
             reading.ml_predictions["temp_do_risk"]         = temp_do_pred["risk_level"]
             reading.ml_predictions["aerator_recommended"]  = temp_do_pred["aerator_recommended"]

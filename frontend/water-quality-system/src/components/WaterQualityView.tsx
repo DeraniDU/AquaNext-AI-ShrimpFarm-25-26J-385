@@ -6,7 +6,7 @@ import { AIPredictionsPanel } from './AIPredictionsPanel'
 import { AutoTriggerPanel } from './AutoTriggerPanel'
 import { useAutoTrigger } from '../lib/useAutoTrigger'
 import { WaterQualitySimulator } from './WaterQualitySimulator'
-import { ExtraIotFields, fmt, Row, alertBorderColor, alertBg } from './IoTLivePanel'
+import { ExtraIotFields, alertBorderColor, alertBg } from './IoTLivePanel'
 
 type Props = {
 	extraIot?: ExtraIotFields
@@ -32,11 +32,18 @@ export function WaterQualityView({ data, history, pondFilter, extraIot }: Props)
 		return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
 	})
 
-	const avgOxygen = water.reduce((sum, w) => sum + w.dissolved_oxygen, 0) / water.length || 0
+	const avgOxygen = extraIot?.ml_predictions?.predicted_do_mg_l ?? (water.reduce((sum, w) => sum + w.dissolved_oxygen, 0) / water.length || 0)
 	
 	const nh3 = extraIot?.nh3_mg_l ?? extraIot?.physics_calculations?.nh3?.nh3_mg_l ?? 0
 	const tan = extraIot?.tan_mg_l ?? 0
 	const turbidity = extraIot?.turbidity_ntu ?? 0
+	const orp = extraIot?.orp_mv ?? 0
+	const alkalinity = extraIot?.alkalinity ?? 0
+	const conductivity = extraIot?.conductivity ?? 0
+	const no3 = extraIot?.no3_mg_l ?? 0
+	const no2 = extraIot?.no2_mg_l ?? 0
+	const secchi = extraIot?.secchi_cm ?? 0
+	const chlorophyll = extraIot?.chlorophyll_a_ug_l ?? 0
 
 	const phHistory = historyFiltered.map((h) => {
 		const phs = h.water_quality.map((w) => w.ph)
@@ -196,6 +203,76 @@ export function WaterQualityView({ data, history, pondFilter, extraIot }: Props)
 							{turbidity <= 30 ? 'Clear' : 'Check'}
 						</div>
 					</div>
+                    <div className="valueCard">
+						<div className="valueTitle">Alkalinity</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(alkalinity, { maximumFractionDigits: 0 })}</span>
+							<span className="valueUnit">mg/L</span>
+						</div>
+						<div className={`valueBadge ${alkalinity >= 100 && alkalinity <= 200 ? 'good' : 'warn'}`}>
+							{alkalinity >= 100 && alkalinity <= 200 ? 'Optimal' : 'Check'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">ORP</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(orp, { maximumFractionDigits: 0 })}</span>
+							<span className="valueUnit">mV</span>
+						</div>
+						<div className={`valueBadge ${orp >= 200 && orp <= 400 ? 'good' : 'warn'}`}>
+							{orp >= 200 && orp <= 400 ? 'Optimal' : 'Check'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">Secchi Depth</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(secchi, { maximumFractionDigits: 1 })}</span>
+							<span className="valueUnit">cm</span>
+						</div>
+						<div className={`valueBadge ${secchi >= 25 && secchi <= 45 ? 'good' : 'warn'}`}>
+							{secchi >= 25 && secchi <= 45 ? 'Optimal' : 'Check'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">Nitrate (NO₃)</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(no3, { maximumFractionDigits: 1 })}</span>
+							<span className="valueUnit">mg/L</span>
+						</div>
+						<div className={`valueBadge ${no3 <= 100 ? 'good' : 'warn'}`}>
+							{no3 <= 100 ? 'Optimal' : 'High'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">Nitrite (NO₂)</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(no2, { maximumFractionDigits: 2 })}</span>
+							<span className="valueUnit">mg/L</span>
+						</div>
+						<div className={`valueBadge ${no2 <= 1.0 ? 'good' : 'warn'}`}>
+							{no2 <= 1.0 ? 'Optimal' : 'High'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">Chlorophyll-a</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(chlorophyll, { maximumFractionDigits: 1 })}</span>
+							<span className="valueUnit">µg/L</span>
+						</div>
+						<div className={`valueBadge ${chlorophyll >= 10 && chlorophyll <= 60 ? 'good' : 'warn'}`}>
+							{chlorophyll >= 10 && chlorophyll <= 60 ? 'Optimal' : 'Check'}
+						</div>
+					</div>
+					<div className="valueCard">
+						<div className="valueTitle">Conductivity</div>
+						<div className="valueMain">
+							<span className="valueNumber mono">{formatNumber(conductivity, { maximumFractionDigits: 0 })}</span>
+							<span className="valueUnit">µS/cm</span>
+						</div>
+						<div className={`valueBadge ${conductivity > 0 ? 'good' : 'warn'}`}>
+							{conductivity > 0 ? 'Normal' : 'Check'}
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -249,37 +326,13 @@ export function WaterQualityView({ data, history, pondFilter, extraIot }: Props)
 			{extraIot && (
 				<div className="panel spanAll">
 					<div className="panelHeader" style={{ borderBottom: '2px solid #e5e7eb', paddingBottom: 16 }}>
-						<div className="panelTitle">Real-Time Detailed Parameters & Alerts</div>
+						<div className="panelTitle">System Alerts History</div>
 					</div>
 					<div style={{ padding: '24px 16px' }}>
-						<div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) minmax(300px, 1fr)', gap: 24 }}>
-							
-							{/* Other Sensors Grid */}
-							<div>
-								<h2 style={{ fontSize: '1.05rem', color: '#374151', marginBottom: 12 }}>
-									Secondary Parameters
-								</h2>
-								<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-									<div className="panel" style={{ padding: '0 12px' }}>
-										<Row label="ORP" value={fmt(extraIot.orp_mv, 0)} unit="mV" badge={extraIot.orp_mv != null ? <span className={(extraIot.orp_mv ?? 0) >= 200 && (extraIot.orp_mv ?? 0) <= 400 ? 'badge good' : 'badge warn'}>{(extraIot.orp_mv ?? 0) >= 200 && (extraIot.orp_mv ?? 0) <= 400 ? 'OK' : 'Check'}</span> : undefined} />
-										<Row label="Alkalinity" value={fmt(extraIot.alkalinity, 0)} unit="mg/L" badge={extraIot.alkalinity != null ? <span className={(extraIot.alkalinity ?? 0) >= 100 && (extraIot.alkalinity ?? 0) <= 200 ? 'badge good' : 'badge warn'}>OK</span> : undefined} />
-										<Row label="Conductivity" value={fmt(extraIot.conductivity, 0)} unit="µS/cm" />
-										<Row label="Nitrate NO₃" value={fmt(extraIot.no3_mg_l, 1)} unit="mg/L" />
-									</div>
-									<div className="panel" style={{ padding: '0 12px' }}>
-										<Row label="TAN" value={fmt(extraIot.tan_mg_l, 3)} unit="mg/L" badge={extraIot.tan_mg_l != null ? <span className={(extraIot.tan_mg_l ?? 0) > 0.5 ? 'badge bad' : 'badge good'}>{(extraIot.tan_mg_l ?? 0) > 0.5 ? 'HIGH' : 'OK'}</span> : undefined} />
-										<Row label="NH₃ (Toxic)" value={fmt(extraIot.nh3_mg_l ?? extraIot.physics_calculations?.nh3?.nh3_mg_l, 4)} unit="mg/L" badge={(extraIot.nh3_mg_l ?? 0) > 0.1 ? <span className="badge bad">ALERT</span> : <span className="badge good">Safe</span>} />
-										<Row label="Turbidity" value={fmt(extraIot.turbidity_ntu, 1)} unit="NTU" />
-										<Row label="Secchi Depth" value={fmt(extraIot.secchi_cm, 1)} unit="cm" />
-									</div>
-								</div>
-							</div>
+						<div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
 
 							{/* Alerts Box */}
 							<div>
-								<h2 style={{ fontSize: '1.05rem', color: '#374151', marginBottom: 12 }}>
-									System Alerts
-								</h2>
 								{(extraIot.alerts_raw ?? []).length > 0 ? (
 									<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 										{(extraIot.alerts_raw ?? []).map((a, i) => (

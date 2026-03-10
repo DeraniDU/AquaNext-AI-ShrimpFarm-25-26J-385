@@ -89,7 +89,7 @@ OPTIMAL_RANGES = {
     },
     "Temperature": {
         "optimal_min": 26.0, "optimal_max": 30.0,
-        "acceptable_min": 24.0, "acceptable_max": 32.0,
+        "acceptable_min": 30.0, "acceptable_max": 32.0,
         "critical_min": 20.0, "critical_max": 35.0,
         "unit": "°C", "name": "Temperature"
     },
