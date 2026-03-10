@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PredictionResponse, BatchPredictionResponse, WaterQualityData, WQIClass, SimpleStatus, TimeToDanger, TrendAnalysis, NightSafety, RecoveryPrediction, SensorHealth, ConfidenceScores } from './types'
 
-const API_BASE = 'http://localhost:5001'
+const API_BASE = ''  // Uses Vite proxy: /api → http://localhost:5001
 
 type PredictionState = {
 	data: PredictionResponse | null

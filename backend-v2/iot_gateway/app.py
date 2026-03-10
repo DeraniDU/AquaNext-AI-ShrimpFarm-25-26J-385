@@ -371,6 +371,66 @@ def generate_alerts(reading):
 
 
 # ═══════════════════════════════════════════════════
+# TEMPERATURE → DO PREDICTION  (Physics: Henry's Law)
+# ═══════════════════════════════════════════════════
+
+def predict_do_from_temperature(temperature_c, salinity_ppt=20.0, hours_ahead=1):
+    """
+    Predict Dissolved Oxygen based on temperature using Henry's Law.
+
+    DO saturation (mg/L) decreases as temperature rises.
+    Formula calibrated for brackish water (salinity 15-25 ppt):
+        DO_sat = 14.62 - 0.3898*T + 0.006969*T² - 0.00005896*T³
+    Then adjusted for salinity (Benson-Krause correction):
+        DO_sal = DO_sat * exp(-salinity * 0.0175)
+
+    For forecasting hours_ahead, we apply a conservative drift:
+        - Temperature is assumed to rise 0.3 °C/h during day (06-18h)
+        - Temperature is assumed to drop 0.1 °C/h at night
+
+    Returns dict with prediction details.
+    """
+    import math
+    T = float(temperature_c)
+    S = float(salinity_ppt) if salinity_ppt is not None else 20.0
+
+    def do_sat(t, s):
+        """DO saturation at temperature t (°C) and salinity s (ppt)."""
+        do_fresh = 14.62 - 0.3898*t + 0.006969*t**2 - 0.00005896*t**3
+        do_salt  = do_fresh * math.exp(-s * 0.0175)
+        return max(0.0, round(do_salt, 3))
+
+    current_sat = do_sat(T, S)
+
+    # Forecast temperature drift
+    hour = datetime.utcnow().hour
+    drift_per_h = 0.3 if 6 <= hour < 18 else -0.1   # °C per hour
+    T_future = T + drift_per_h * hours_ahead
+    future_sat = do_sat(T_future, S)
+
+    # Risk assessment
+    if future_sat < 4.0:
+        risk = "critical"   # relay must be ON
+    elif future_sat < 5.0:
+        risk = "high"       # pre-emptive relay ON
+    elif future_sat < 6.0:
+        risk = "warning"    # alert only
+    else:
+        risk = "safe"
+
+    return {
+        "current_do_sat_mg_l":    current_sat,
+        "predicted_do_sat_1h":    future_sat,
+        "temp_used_c":            round(T, 2),
+        "temp_1h_forecast_c":     round(T_future, 2),
+        "salinity_ppt":           S,
+        "method":                 "Henry's Law (Benson-Krause brackish correction)",
+        "risk_level":             risk,
+        "aerator_recommended":    risk in ("critical", "high"),
+    }
+
+
+# ═══════════════════════════════════════════════════
 # RELAY CONTROL
 # ═══════════════════════════════════════════════════
 
@@ -379,29 +439,68 @@ relay_state = {
     "aerator": "OFF",        # Main aerator relay
     "reason": None,           # Why was it turned on?
     "triggered_at": None,     # Timestamp of last trigger
-    "do_level": None          # DO level that caused the trigger
+    "do_level": None,         # DO level that caused the trigger
+    "trigger_source": None,   # 'measured_do' | 'ml_do' | 'temp_prediction'
 }
 
-DO_CRITICAL_LOW = 4.0   # mg/L — turn aerator ON below this
-DO_SAFE_LEVEL   = 5.5   # mg/L — turn aerator OFF above this (hysteresis)
+DO_CRITICAL_LOW  = 4.0   # mg/L — turn aerator ON below this (measured/ML DO)
+DO_SAFE_LEVEL    = 5.5   # mg/L — turn aerator OFF above this (hysteresis)
+DO_PREEMPT_LOW   = 4.5   # mg/L — turn ON early from temperature prediction
 
-def update_relay_from_do(do_value):
-    """Automatically manage aerator relay based on DO level."""
+def update_relay_from_do(do_value, source="measured_do", temp_c=None, salinity_ppt=20.0):
+    """
+    Manage aerator relay based on:
+      1. Measured / ML-predicted DO directly
+      2. Temperature-based DO forecast (pre-emptive)
+    """
     global relay_state
+
+    # ── 1. Temperature-based pre-emptive trigger ──────────────
+    if temp_c is not None:
+        temp_pred = predict_do_from_temperature(temp_c, salinity_ppt, hours_ahead=1)
+        
+        # Turn ON if temp > 31
+        if temp_c > 31.0 and relay_state["aerator"] != "ON":
+            relay_state["aerator"]       = "ON"
+            relay_state["reason"]        = f"Temperature High: {round(temp_c,1)}°C (> 31°C)"
+            relay_state["triggered_at"]  = datetime.utcnow().isoformat()
+            relay_state["do_level"]      = temp_pred["current_do_sat_mg_l"]
+            relay_state["trigger_source"]= "temp_prediction"
+            logger.warning(f"🌡️ RELAY ON (Temp out of bounds) — {relay_state['reason']}")
+            
+        # Turn OFF if temp <= 28 (and it was the temp that originally triggered it)
+        elif temp_c <= 28.0 and relay_state["aerator"] == "ON" and relay_state.get("trigger_source") == "temp_prediction":
+            relay_state["aerator"]       = "OFF"
+            relay_state["reason"]        = f"Temperature Cooled: {round(temp_c,1)}°C (<= 28°C)"
+            relay_state["triggered_at"]  = datetime.utcnow().isoformat()
+            relay_state["do_level"]      = temp_pred["current_do_sat_mg_l"]
+            relay_state["trigger_source"]= "temp_prediction"
+            logger.info(f"🟢 RELAY OFF — {relay_state['reason']}")
+            
+        # Store latest temp prediction in relay_state regardless
+        relay_state["temp_prediction"] = temp_pred
+
+    # ── 2. Direct DO trigger ──────────────────────────────────
     if do_value is None:
-        return
+        return None
+
     if do_value < DO_CRITICAL_LOW and relay_state["aerator"] != "ON":
-        relay_state["aerator"]     = "ON"
-        relay_state["reason"]      = f"DO critically low: {round(do_value, 2)} mg/L (< {DO_CRITICAL_LOW})"
-        relay_state["triggered_at"] = datetime.utcnow().isoformat()
-        relay_state["do_level"]    = round(do_value, 3)
+        relay_state["aerator"]       = "ON"
+        relay_state["reason"]        = f"DO critically low: {round(do_value, 2)} mg/L (< {DO_CRITICAL_LOW})"
+        relay_state["triggered_at"]  = datetime.utcnow().isoformat()
+        relay_state["do_level"]      = round(do_value, 3)
+        relay_state["trigger_source"]= source
         logger.warning(f"🔴 RELAY ON — Aerator activated! {relay_state['reason']}")
-    elif do_value >= DO_SAFE_LEVEL and relay_state["aerator"] == "ON":
-        relay_state["aerator"]     = "OFF"
-        relay_state["reason"]      = f"DO recovered: {round(do_value, 2)} mg/L (>= {DO_SAFE_LEVEL})"
-        relay_state["triggered_at"] = datetime.utcnow().isoformat()
-        relay_state["do_level"]    = round(do_value, 3)
+
+    elif do_value >= DO_SAFE_LEVEL and relay_state["aerator"] == "ON" and relay_state.get("trigger_source") != "temp_prediction":
+        relay_state["aerator"]       = "OFF"
+        relay_state["reason"]        = f"DO recovered: {round(do_value, 2)} mg/L (>= {DO_SAFE_LEVEL})"
+        relay_state["triggered_at"]  = datetime.utcnow().isoformat()
+        relay_state["do_level"]      = round(do_value, 3)
+        relay_state["trigger_source"]= source
         logger.info(f"🟢 RELAY OFF — Aerator deactivated. {relay_state['reason']}")
+
+    return None
 
 
 @app.route("/health", methods=["GET"])
@@ -524,7 +623,7 @@ def receive_sensor_data():
         report = PhysicsCalculator.calculate_comprehensive_report(physics_input)
         reading.physics_calculations = report.get("calculations", {})
         
-        # Run ML Predictions
+        # Run ML Predictions (RF regressor)
         if rf_model and scaler:
             try:
                 features_scaled = scaler.transform(features)
@@ -537,19 +636,56 @@ def receive_sensor_data():
                 logger.error(f"⚠️ ML Prediction failed: {e}")
                 reading.ml_predictions = {"error": str(e)}
         
+        # Temperature → DO prediction (physics, always runs)
+        temp_do_pred = None
+        if reading.temperature is not None:
+            temp_do_pred = predict_do_from_temperature(
+                reading.temperature,
+                salinity_ppt=reading.salinity_ppt or 20.0,
+                hours_ahead=1
+            )
+            if reading.ml_predictions is None:
+                reading.ml_predictions = {}
+            reading.ml_predictions["do_from_temp_current"] = temp_do_pred["current_do_sat_mg_l"]
+            reading.ml_predictions["do_from_temp_1h"]      = temp_do_pred["predicted_do_sat_1h"]
+            reading.ml_predictions["temp_1h_forecast_c"]   = temp_do_pred["temp_1h_forecast_c"]
+            reading.ml_predictions["temp_do_risk"]         = temp_do_pred["risk_level"]
+            reading.ml_predictions["aerator_recommended"]  = temp_do_pred["aerator_recommended"]
+        
         # Save to MongoDB
         result = collection.insert_one(reading.to_dict())
         
         # Generate threshold alerts AFTER saving base reading
         alerts = generate_alerts(reading)
         
-        # Auto-control aerator relay based on predicted DO
+        # Temp-based compound alert
+        if temp_do_pred and temp_do_pred["risk_level"] in ("critical", "high", "warning"):
+            alerts.append({
+                "parameter": "compound_temp_do_risk",
+                "label": "High Temp → Low DO Risk",
+                "status": "critical_compound" if temp_do_pred["risk_level"] == "critical" else "warning_compound",
+                "trigger": f"Temp={temp_do_pred['temp_used_c']}°C, predicted DO 1h={temp_do_pred['predicted_do_sat_1h']} mg/L",
+                "message": (
+                    f"🌡️ HIGH TEMP ({temp_do_pred['temp_used_c']}°C) → "
+                    f"Predicted DO drops to {temp_do_pred['predicted_do_sat_1h']} mg/L in 1h! "
+                    f"Risk: {temp_do_pred['risk_level'].upper()}. "
+                    f"{'Aerator ON required.' if temp_do_pred['aerator_recommended'] else 'Monitor closely.'}"
+                )
+            })
+        
+        # Auto-control aerator relay (checks both DO and temperature prediction)
         current_do = (
             reading.ml_predictions.get("predicted_do_mg_l")
             if reading.ml_predictions and "predicted_do_mg_l" in reading.ml_predictions
             else reading.do_mg_l
         )
-        update_relay_from_do(current_do)
+        update_relay_from_do(
+            current_do,
+            source="ml_do",
+            temp_c=reading.temperature,
+            salinity_ppt=reading.salinity_ppt or 20.0
+        )
+
         
         if alerts or True:  # Always patch to keep relay_state fresh in DB
             patch = {"alerts": alerts, "relay_state": relay_state}
