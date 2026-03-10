@@ -26,12 +26,15 @@ class Settings(BaseModel):
 
     IF_THRESHOLD: float = float(os.getenv("IF_THRESHOLD", "-0.003891"))
 
-    # MongoDB - Connected to shared water quality database (read-only for environmental data)
-    # URI: MongoDB Atlas cluster for water quality of shrimp ponds
-    # DB: shrimp_farm_iot - contains environment_data collection
+    # MongoDB - Connected to feeding farm database (read-only for feeding data)
+    # URI: MongoDB Atlas cluster for shrimp farm feeding data
+    # DB: shrimpfeeding - contains feeding_data collection
     # NOTE: Credentials must be provided via environment variables - NO DEFAULTS
     MONGODB_URI: str = os.getenv("MONGO_URI", "")
     MONGODB_DB: str = os.getenv("DB_NAME", "")
+    
+    # Default pond ID for systems without explicit pond identification
+    DEFAULT_POND_ID: str = os.getenv("DEFAULT_POND_ID", "1")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

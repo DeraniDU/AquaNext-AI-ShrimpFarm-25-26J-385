@@ -1,0 +1,54 @@
+.health-status-container {
+  margin-bottom: 2rem;
+}
+
+.health-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.health-text {
+  color: #86efac;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.health-refresh-btn {
+  background: none;
+  border: none;
+  color: #86efac;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+  margin-left: 0.5rem;
+}
+
+.health-refresh-btn:hover {
+  transform: rotate(180deg);
+}
+
+.health-refresh-btn:active {
+  transform: rotate(360deg);
+}
+
+.spinner-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

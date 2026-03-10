@@ -12,6 +12,7 @@ from database.repository import Repository, PredictionRepository
 from agents.behavior_agent import BehaviorAgent
 from services.data_fusion_service import DataFusionService
 from services.risk_scheduler import RiskSchedulerService
+from services.feeding_risk_analysis import FeedingAwareRiskAnalysis
 from utils.behavior_store import pond_behavior_store
 
 # Setup logging for error tracking (not exposed publicly)
@@ -39,6 +40,7 @@ behavior_agent = BehaviorAgent()
 # services
 fusion_service = DataFusionService(repository)
 risk_scheduler = RiskSchedulerService(repository, fusion_service, prediction_agent)
+feeding_risk_analysis = FeedingAwareRiskAnalysis(repository, fusion_service, prediction_agent)
 
 
 class RiskInput(BaseModel):
@@ -70,10 +72,15 @@ def health():
 def predict_risk(inp: RiskInput):
     """
     Predict disease risk for a pond based on environmental and behavioral data.
+    Uses default pond_id (1) if not provided.
     Errors are logged internally but generic messages returned to client.
     """
     try:
         payload = inp.model_dump()
+        # Use default pond_id if not provided
+        if not payload.get("pond_id"):
+            payload["pond_id"] = settings.DEFAULT_POND_ID
+        
         feature_payload = {k: payload[k] for k in FEATURES}
 
         result = prediction_agent.run(feature_payload)
@@ -212,3 +219,293 @@ def get_pond_status(pond_id: str):
         "latest_prediction": latest_prediction,
         "recent_behavior_points": recent_behavior,
     }
+
+
+@app.get("/feeding/{pond_id}")
+def get_feeding_data(pond_id: str = None, limit: int = 100):
+    """
+    Retrieve recent feeding data for a pond.
+    
+    Query Parameters:
+    - pond_id: Pond identifier (uses default pond_id=1 if not provided)
+    - limit: Number of recent records to retrieve (default: 100)
+    """
+    if not pond_id:
+        pond_id = settings.DEFAULT_POND_ID
+    
+    try:
+        recent_feeds = repository.get_recent_feeding(pond_id, limit=limit)
+        return {
+            "ok": True,
+            "pond_id": pond_id,
+            "total_records": len(recent_feeds),
+            "feeding_data": recent_feeds,
+        }
+    except Exception as e:
+        logger.error(f"Error retrieving feeding data: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve feeding data. Please try again."
+        )
+
+
+@app.get("/feeding-stats/{pond_id}")
+def get_feeding_statistics(pond_id: str = None, hours: int = 24):
+    """
+    Get feeding statistics for risk analysis.
+    
+    Query Parameters:
+    - pond_id: Pond identifier (uses default pond_id=1 if not provided)
+    - hours: Time window for analysis (default: 24 hours)
+    """
+    if not pond_id:
+        pond_id = settings.DEFAULT_POND_ID
+    
+    try:
+        stats = repository.get_feeding_statistics(pond_id, hours=hours)
+        return {
+            "ok": True,
+            "pond_id": pond_id,
+            **stats,
+        }
+    except Exception as e:
+        logger.error(f"Error calculating feeding statistics: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to calculate feeding statistics. Please try again."
+        )
+
+
+@app.get("/feeding-trend/{pond_id}")
+def get_feeding_trends(pond_id: str = None, hours: int = 24):
+    """
+    Get comprehensive feeding trend analysis for enhanced risk prediction.
+    
+    Includes:
+    - Recent feeding records
+    - Feeding statistics
+    - Trend analysis (consistency, response trend, amount variability)
+    
+    Query Parameters:
+    - pond_id: Pond identifier (uses default pond_id=1 if not provided)
+    - hours: Time window for analysis (default: 24 hours)
+    """
+    if not pond_id:
+        pond_id = settings.DEFAULT_POND_ID
+    
+    try:
+        trend_analysis = fusion_service.get_feeding_trend_analysis(pond_id, hours=hours)
+        return {
+            "ok": True,
+            **trend_analysis,
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing feeding trends: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to analyze feeding trends. Please try again."
+        )
+
+
+# ============================================================================
+# INTEGRATED FEEDING-AWARE RISK PREDICTION ENDPOINTS
+# ============================================================================
+
+@app.get("/predict-risk-with-feeding/{pond_id}")
+def predict_risk_with_feeding_analysis(pond_id: str = None, include_trends: bool = True):
+    """
+    Comprehensive risk prediction with feeding data analysis.
+    
+    Automatically retrieves behavior, feeding, and environment data from MongoDB,
+    analyzes feeding trends, and predicts disease risk incorporating feeding insights.
+    
+    Query Parameters:
+    - pond_id: Pond identifier (uses DEFAULT_POND_ID if not provided)
+    - include_trends: Whether to include feeding trend analysis (default: true)
+    
+    Returns:
+        - Prediction with feeding analysis
+        - Risk factors from feeding patterns
+        - Enhanced recommendations based on feeding
+    """
+    if not pond_id:
+        pond_id = settings.DEFAULT_POND_ID
+    
+    try:
+        result = feeding_risk_analysis.save_prediction_with_feeding(
+            pond_id=pond_id,
+            include_feeding_trends=include_trends
+        )
+        
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Missing required data (behavior/feeding/environment) for pond {pond_id}"
+            )
+        
+        # Enhance recommendation with feeding insights
+        if include_trends and result.get("feeding_data", {}).get("risk_factors"):
+            enhanced_recommendation = feeding_risk_analysis.get_feeding_enhanced_recommendation(
+                result["prediction"],
+                result["feeding_data"]["risk_factors"]
+            )
+            result["prediction"]["recommendation"] = enhanced_recommendation
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in predict_risk_with_feeding_analysis: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to calculate risk prediction with feeding analysis"
+        )
+
+
+@app.post("/recalculate-risk-with-feeding/{pond_id}")
+def recalculate_risk_with_feeding(pond_id: str, include_trends: bool = True):
+    """
+    Recalculate risk for a pond with comprehensive feeding analysis.
+    
+    Automatically retrieves latest data and includes feeding trend analysis
+    in the risk assessment.
+    
+    Query Parameters:
+    - Include_trends: Whether to include feeding trend analysis (default: true)
+    
+    Response includes:
+    - New risk prediction
+    - Feeding analysis
+    - Source data used (behavior, feeding, environment)
+    - Enhanced recommendations
+    """
+    try:
+        result = feeding_risk_analysis.save_prediction_with_feeding(
+            pond_id=pond_id,
+            include_feeding_trends=include_trends
+        )
+        
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Missing data for pond {pond_id}. Ensure behavior, feeding, and environment data are available."
+            )
+        
+        # Enhance with feeding recommendations
+        if include_trends and result.get("feeding_data", {}).get("risk_factors"):
+            enhanced_recommendation = feeding_risk_analysis.get_feeding_enhanced_recommendation(
+                result["prediction"],
+                result["feeding_data"]["risk_factors"]
+            )
+            result["prediction"]["recommendation"] = enhanced_recommendation
+        
+        return {
+            "ok": True,
+            "pond_id": pond_id,
+            "timestamp": result["timestamp"],
+            "saved_to_db": result.get("saved_to_db", False),
+            "record_id": result.get("record_id"),
+            "prediction": result["prediction"],
+            "feeding_analysis": result["feeding_data"],
+            "input_features": result["input_features"],
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in recalculate_risk_with_feeding: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to recalculate risk with feeding analysis"
+        )
+
+
+@app.get("/pond-status-enhanced/{pond_id}")
+def get_pond_status_enhanced(pond_id: str = None, include_feeding_analysis: bool = True):
+    """
+    Get comprehensive pond status with feeding analysis and risk assessment.
+    
+    Combines latest data readings with feeding trends and disease risk prediction.
+    
+    Query Parameters:
+    - pond_id: Pond identifier (uses DEFAULT_POND_ID if not provided)
+    - include_feeding_analysis: Include feeding trend analysis (default: true)
+    
+    Returns:
+        - Latest readings (behavior, feeding, environment)
+        - Feeding analysis and trends
+        - Current disease risk prediction
+        - Enhanced recommendations
+    """
+    if not pond_id:
+        pond_id = settings.DEFAULT_POND_ID
+    
+    try:
+        # Get latest readings
+        latest_behavior = repository.get_latest_behavior(pond_id)
+        latest_feed = repository.get_latest_feed(pond_id)
+        latest_env = repository.get_latest_environment(pond_id)
+        latest_prediction = repository.get_latest_prediction(pond_id)
+        recent_behavior = repository.get_recent_behavior(pond_id, limit=50)
+        
+        # Get feeding analysis if requested
+        feeding_analysis = None
+        if include_feeding_analysis:
+            trend_data = fusion_service.get_feeding_trend_analysis(pond_id, hours=24)
+            feeding_stats = repository.get_feeding_statistics(pond_id, hours=24)
+            feeding_analysis = {
+                "trends": trend_data.get("trend_analysis", {}),
+                "statistics": feeding_stats,
+                "recent_records": trend_data.get("recent_feeds", [])[:10],  # Last 10 records
+            }
+        
+        # Calculate current risk with all integrated data
+        risk_prediction = None
+        feeding_risk_factors = None
+        try:
+            risk_result = feeding_risk_analysis.predict_with_feeding_analysis(
+                pond_id=pond_id,
+                include_feeding_trends=include_feeding_analysis
+            )
+            if risk_result:
+                risk_prediction = risk_result["prediction"]
+                feeding_risk_factors = risk_result["feeding_data"]["risk_factors"]
+                
+                # Enhance recommendation with feeding insights
+                if feeding_risk_factors:
+                    enhanced_rec = feeding_risk_analysis.get_feeding_enhanced_recommendation(
+                        risk_prediction,
+                        feeding_risk_factors
+                    )
+                    risk_prediction["recommendation"] = enhanced_rec
+        except Exception as e:
+            logger.warning(f"Could not calculate risk prediction: {str(e)}")
+        
+        return {
+            "ok": True,
+            "pond_id": pond_id,
+            "timestamp": latest_behavior.get("timestamp") if latest_behavior else None,
+            "latest_readings": {
+                "behavior": latest_behavior,
+                "feeding": latest_feed,
+                "environment": latest_env,
+            },
+            "feeding_analysis": feeding_analysis,
+            "risk_assessment": {
+                "latest_prediction": latest_prediction,
+                "current_prediction": risk_prediction,
+                "feeding_risk_factors": feeding_risk_factors,
+            },
+            "history": {
+                "recent_behavior": recent_behavior,
+                "recent_predictions_count": len(repository.get_predictions_by_pond(pond_id, limit=10)) if hasattr(repository, 'get_predictions_by_pond') else 0,
+            },
+        }
+    
+    except Exception as e:
+        logger.error(f"Error in get_pond_status_enhanced: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate enhanced pond status"
+        )

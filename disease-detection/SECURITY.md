@@ -27,6 +27,7 @@
 ### 🔐 Read-Only Database Access
 
 The disease-detection module connects to `shrimp_farm_iot` database with **read-only access** to:
+
 - `environment_data` collection: Water quality sensor readings
 
 **No write operations** are performed on the shared database.
