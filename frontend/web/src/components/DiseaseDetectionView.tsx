@@ -1,5 +1,6 @@
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatDateTime } from '../lib/format'
+import { DiseaseUploader } from './DiseaseUploader'
 
 type Props = {
 	data: DashboardApiResponse
@@ -96,6 +97,8 @@ export function DiseaseDetectionView({ data, history, pondFilter }: Props) {
 					</div>
 				</div>
 				<div style={{ padding: 16 }}>
+					{/* Image uploader to send suspect images to the prediction API */}
+					<DiseaseUploader />
 					<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12, marginBottom: 20 }}>
 						{diseaseRiskFactors.map((risk) => (
 							<div
