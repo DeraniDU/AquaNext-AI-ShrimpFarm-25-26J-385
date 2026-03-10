@@ -6,6 +6,10 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		proxy: {
+			'/api/sensor': {
+				target: 'http://127.0.0.1:8000',
+				changeOrigin: true
+			},
 			'/api': {
 				// Use IPv4 loopback explicitly to avoid Windows/IPv6 localhost resolution issues.
 				target: 'http://127.0.0.1:8000',

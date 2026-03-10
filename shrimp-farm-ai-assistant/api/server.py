@@ -259,114 +259,124 @@ def get_dashboard(
 			if cached is not None:
 				return JSONResponse(content=cached, headers=_dashboard_headers)
 
-	# Optional deterministic seeding for repeatable simulations.
-	if seed is not None:
-		random.seed(int(seed))
-		np.random.seed(int(seed))
-
-	water_quality_agent, feed_agent, energy_agent, labor_agent, manager_agent = _get_dashboard_agents()
-
-	if PARALLEL_DATA_COLLECTION and ponds >= 1:
-		max_workers = min(8, max(2, ponds * 2))
-		with ThreadPoolExecutor(max_workers=max_workers) as executor:
-			# Phase 1: water quality for all ponds in parallel
-			water_quality_data = list(
-				executor.map(
-					lambda pid: water_quality_agent.get_water_quality_data(pid),
-					range(1, ponds + 1),
-				)
-			)
-			# Phase 2: feed and energy in parallel (each over all ponds)
-			feed_fut = executor.submit(_dashboard_fetch_feed, feed_agent, water_quality_data)
-			energy_fut = executor.submit(_dashboard_fetch_energy, energy_agent, water_quality_data)
-			feed_data = feed_fut.result()
-			energy_data = energy_fut.result()
-			# Phase 3: labor for all ponds in parallel
-			labor_data = list(
-				executor.map(
-					lambda i: labor_agent.get_or_generate_labor_data(
-						i + 1, water_quality_data[i], energy_data[i]
-					),
-					range(ponds),
-				)
-			)
-		labor_optimization = labor_agent.optimize_all_labor(
-			water_quality_data, energy_data, labor_data
-		)
-	else:
-		water_quality_data = []
-		feed_data = []
-		energy_data = []
-		labor_data = []
-		for pond_id in range(1, ponds + 1):
-			wq = water_quality_agent.get_water_quality_data(pond_id)
-			water_quality_data.append(wq)
-			feed_data.append(feed_agent.get_feed_data(pond_id, wq))
-			energy_data.append(energy_agent.get_energy_data(pond_id, wq))
-			labor_data.append(
-				labor_agent.get_or_generate_labor_data(
-					pond_id, wq, energy_data[-1]
-				)
-			)
-		labor_optimization = labor_agent.optimize_all_labor(
-			water_quality_data, energy_data, labor_data
-		)
-
-	dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
-
-	# Include decision-agent outputs (e.g., XGBoost) explicitly for the UI.
-	decision_bundle_dump: Optional[Dict[str, Any]] = None
-	decision_agent_type = getattr(manager_agent, "decision_agent_type", None)
-	decision_recommendations: List[Dict[str, Any]] = []
 	try:
-		if getattr(manager_agent, "decision_agent", None) and getattr(manager_agent.decision_agent, "is_trained", True):
-			decision_bundle = manager_agent.decision_agent.make_multi_pond_decisions(
-				water_quality_data, feed_data, energy_data, labor_data
-			)
-			decision_bundle_dump = decision_bundle.model_dump(mode="json")
+		# Optional deterministic seeding for repeatable simulations.
+		if seed is not None:
+			random.seed(int(seed))
+			np.random.seed(int(seed))
 
-			# Human-friendly recommendations derived from decision outputs.
-			# Prefer LLM-generated action-plan text (falls back only if LLM unavailable).
-			reco_agent = DecisionRecommendationAgent(enable_llm=True)
-			decision_recommendations = [
-				{
-					"pond_id": r.pond_id,
-					"priority_rank": r.priority_rank,
-					"urgency_score": r.urgency_score,
-					"confidence": r.confidence,
-					"primary_action": r.primary_action.value,
-					"text": r.text,
-				}
-				for r in reco_agent.generate(
-					decisions=decision_bundle,
-					water_quality=water_quality_data,
-					feed=feed_data,
-					energy=energy_data,
-					labor=labor_data,
-					max_items=10,
+		water_quality_agent, feed_agent, energy_agent, labor_agent, manager_agent = _get_dashboard_agents()
+
+		if PARALLEL_DATA_COLLECTION and ponds >= 1:
+			max_workers = min(8, max(2, ponds * 2))
+			with ThreadPoolExecutor(max_workers=max_workers) as executor:
+				# Phase 1: water quality for all ponds in parallel
+				water_quality_data = list(
+					executor.map(
+						lambda pid: water_quality_agent.get_water_quality_data(pid),
+						range(1, ponds + 1),
+					)
 				)
-			]
-	except Exception:
-		decision_bundle_dump = None
+				# Phase 2: feed and energy in parallel (each over all ponds)
+				feed_fut = executor.submit(_dashboard_fetch_feed, feed_agent, water_quality_data)
+				energy_fut = executor.submit(_dashboard_fetch_energy, energy_agent, water_quality_data)
+				feed_data = feed_fut.result()
+				energy_data = energy_fut.result()
+				# Phase 3: labor for all ponds in parallel
+				labor_data = list(
+					executor.map(
+						lambda i: labor_agent.get_or_generate_labor_data(
+							i + 1, water_quality_data[i], energy_data[i]
+						),
+						range(ponds),
+					)
+				)
+			labor_optimization = labor_agent.optimize_all_labor(
+				water_quality_data, energy_data, labor_data
+			)
+		else:
+			water_quality_data = []
+			feed_data = []
+			energy_data = []
+			labor_data = []
+			for pond_id in range(1, ponds + 1):
+				wq = water_quality_agent.get_water_quality_data(pond_id)
+				water_quality_data.append(wq)
+				feed_data.append(feed_agent.get_feed_data(pond_id, wq))
+				energy_data.append(energy_agent.get_energy_data(pond_id, wq))
+				labor_data.append(
+					labor_agent.get_or_generate_labor_data(
+						pond_id, wq, energy_data[-1]
+					)
+				)
+			labor_optimization = labor_agent.optimize_all_labor(
+				water_quality_data, energy_data, labor_data
+			)
 
-	# Pydantic v2: use model_dump to serialize
-	payload = {
-		"dashboard": dashboard.model_dump(mode="json"),
-		"water_quality": [w.model_dump(mode="json") for w in water_quality_data],
-		"feed": [f.model_dump(mode="json") for f in feed_data],
-		"energy": [e.model_dump(mode="json") for e in energy_data],
-		"labor": [l.model_dump(mode="json") for l in labor_data],
-		"labor_optimization": labor_optimization,
-		"decision_agent_type": decision_agent_type,
-		"decisions": decision_bundle_dump,
-		"decision_recommendations": decision_recommendations,
-	}
+		dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 
-	if cache_ttl_s > 0:
-		_DASHBOARD_CACHE[cache_key] = payload
-		_DASHBOARD_CACHE_TS[cache_key] = now
+		# Include decision-agent outputs (e.g., XGBoost) explicitly for the UI.
+		decision_bundle_dump: Optional[Dict[str, Any]] = None
+		decision_agent_type = getattr(manager_agent, "decision_agent_type", None)
+		decision_recommendations: List[Dict[str, Any]] = []
+		try:
+			if getattr(manager_agent, "decision_agent", None) and getattr(manager_agent.decision_agent, "is_trained", True):
+				decision_bundle = manager_agent.decision_agent.make_multi_pond_decisions(
+					water_quality_data, feed_data, energy_data, labor_data
+				)
+				decision_bundle_dump = decision_bundle.model_dump(mode="json")
 
-	return JSONResponse(content=payload, headers=_dashboard_headers)
+				# Human-friendly recommendations derived from decision outputs.
+				# Prefer LLM-generated action-plan text (falls back only if LLM unavailable).
+				reco_agent = DecisionRecommendationAgent(enable_llm=True)
+				decision_recommendations = [
+					{
+						"pond_id": r.pond_id,
+						"priority_rank": r.priority_rank,
+						"urgency_score": r.urgency_score,
+						"confidence": r.confidence,
+						"primary_action": r.primary_action.value,
+						"text": r.text,
+					}
+					for r in reco_agent.generate(
+						decisions=decision_bundle,
+						water_quality=water_quality_data,
+						feed=feed_data,
+						energy=energy_data,
+						labor=labor_data,
+						max_items=10,
+					)
+				]
+		except Exception:
+			decision_bundle_dump = None
+
+		# Pydantic v2: use model_dump to serialize
+		payload = {
+			"dashboard": dashboard.model_dump(mode="json"),
+			"water_quality": [w.model_dump(mode="json") for w in water_quality_data],
+			"feed": [f.model_dump(mode="json") for f in feed_data],
+			"energy": [e.model_dump(mode="json") for e in energy_data],
+			"labor": [l.model_dump(mode="json") for l in labor_data],
+			"labor_optimization": labor_optimization,
+			"decision_agent_type": decision_agent_type,
+			"decisions": decision_bundle_dump,
+			"decision_recommendations": decision_recommendations,
+		}
+
+		if cache_ttl_s > 0:
+			_DASHBOARD_CACHE[cache_key] = payload
+			_DASHBOARD_CACHE_TS[cache_key] = now
+
+		return JSONResponse(content=payload, headers=_dashboard_headers)
+	except Exception as e:
+		import traceback
+		err_msg = f"{type(e).__name__}: {e}"
+		traceback.print_exc()
+		return JSONResponse(
+			content={"detail": err_msg},
+			status_code=500,
+			headers=_dashboard_headers,
+		)
 
 
 @app.get("/api/feeding-optimization")

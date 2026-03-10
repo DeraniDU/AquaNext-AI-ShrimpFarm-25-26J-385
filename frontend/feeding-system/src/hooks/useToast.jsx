@@ -37,9 +37,9 @@ export const useToast = () => {
           }}
         >
           <span className="text-2xl">
-            {toast.type === 'success' ? '✅' : 
-             toast.type === 'error' ? '❌' : 
-             toast.type === 'warning' ? '⚠️' : 'ℹ️'}
+            {toast.type === 'success' ? '' : 
+             toast.type === 'error' ? '' : 
+             toast.type === 'warning' ? '' : ''}
           </span>
           <span className="flex-1">{toast.message}</span>
           <button

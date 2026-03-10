@@ -6,6 +6,7 @@ try:
     from langchain_openai import ChatOpenAI  # type: ignore
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
+import random
 from typing import List, Optional
 from models import WaterQualityData, WaterQualityStatus, AlertLevel
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, USE_MONGODB

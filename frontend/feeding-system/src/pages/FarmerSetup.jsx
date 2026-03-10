@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
+import { useTranslation } from "../hooks/useTranslation";
 
 // Move InputField outside component to prevent recreation on every render
-const InputField = ({ label, name, type = "text", placeholder, required = true, helpText, options, value, onChange, onBlur, error }) => (
+const InputField = ({ label, name, type = "text", placeholder, required = true, helpText, options, selectPlaceholder, value, onChange, onBlur, error }) => (
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
@@ -14,11 +15,11 @@ const InputField = ({ label, name, type = "text", placeholder, required = true, 
         value={value || ""}
         onChange={onChange}
         onBlur={onBlur}
-        className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+        className={`w-full border rounded-lg px-4 py-2.5 sm:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-h-[44px] touch-manipulation ${
           error ? "border-red-500 bg-red-50" : "border-gray-300"
         }`}
       >
-        <option value="">Select {label}</option>
+        <option value="">{selectPlaceholder || `Select ${label}`}</option>
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
@@ -32,7 +33,7 @@ const InputField = ({ label, name, type = "text", placeholder, required = true, 
         onBlur={onBlur}
         placeholder={placeholder}
         step={type === "number" ? "any" : undefined}
-        className={`w-full border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+        className={`w-full border rounded-lg px-4 py-2.5 sm:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-h-[44px] touch-manipulation ${
           error ? "border-red-500 bg-red-50" : "border-gray-300"
         }`}
       />
@@ -43,6 +44,7 @@ const InputField = ({ label, name, type = "text", placeholder, required = true, 
 );
 
 export default function FarmerSetup() {
+  const { t } = useTranslation();
   const [batches, setBatches] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [errors, setErrors] = useState({});
@@ -158,7 +160,7 @@ export default function FarmerSetup() {
 
   const handleCreateBatch = async () => {
     if (!validateForm()) {
-      alert("Please fix all errors before submitting");
+      alert(t("farmerSetup.fixErrorsBeforeSubmit"));
       return;
     }
 
@@ -188,7 +190,7 @@ export default function FarmerSetup() {
       setErrors({});
       setShowCreateForm(false);
       fetchBatches();
-      alert("Batch created successfully!");
+      alert(t("farmerSetup.batchCreatedSuccess"));
     } catch (error) {
       console.error("Error creating batch:", error);
       alert(error.response?.data?.message || "Failed to create batch");
@@ -212,40 +214,40 @@ export default function FarmerSetup() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        {/* Header - mobile: stack title and button */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">My Shrimp Batches</h1>
-            <p className="text-gray-600">Manage and monitor your shrimp cultivation batches</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-1 sm:mb-2">{t("farmerSetup.myShrimpBatches")}</h1>
+            <p className="text-sm sm:text-base text-gray-600">{t("farmerSetup.subtitle")}</p>
           </div>
           <button
             onClick={() => { setShowCreateForm(!showCreateForm); if (showCreateForm) setErrors({}); }}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl ${
+            className={`w-full sm:w-auto min-h-[44px] px-6 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl touch-manipulation ${
               showCreateForm 
                 ? "bg-gray-500 hover:bg-gray-600 text-white" 
                 : "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
             }`}
           >
-            {showCreateForm ? "✕ Cancel" : "+ New Batch"}
+            {showCreateForm ? `✕ ${t("farmerSetup.cancelButton")}` : `+ ${t("farmerSetup.newBatch")}`}
           </button>
         </div>
 
-        {/* Create Batch Form */}
+        {/* Create Batch Form - mobile: single column, touch-friendly */}
         {showCreateForm && (
-          <div className="mb-8 p-8 border-2 border-blue-300 rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">+</div>
-              <h2 className="text-2xl font-bold text-gray-800">Create New Batch</h2>
+          <div className="mb-6 sm:mb-8 p-4 sm:p-8 border-2 border-blue-300 rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">+</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{t("farmerSetup.createNewBatch")}</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <InputField 
-                label="Batch Name" 
-                name="batchName" 
-                placeholder="e.g., Pond A - Jan 2024" 
-                helpText="Unique identifier for this batch"
+                label={t("farmerSetup.batchName")}
+                name="batchName"
+                placeholder={t("farmerSetup.batchNamePlaceholder")}
+                helpText={t("farmerSetup.batchNameHelp")}
                 value={form.batchName}
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -253,13 +255,14 @@ export default function FarmerSetup() {
               />
               
               <InputField 
-                label="Species" 
-                name="species" 
+                label={t("farmerSetup.species")}
+                name="species"
+                selectPlaceholder={t("farmerSetup.selectSpecies")}
                 options={[
-                  { value: "Vannamei", label: "Vannamei (White Shrimp)" },
-                  { value: "Monodon", label: "Monodon (Black Tiger)" },
-                  { value: "Indicus", label: "Indicus (Indian White)" },
-                  { value: "Other", label: "Other" }
+                  { value: "Vannamei", label: t("farmerSetup.speciesVannamei") },
+                  { value: "Monodon", label: t("farmerSetup.speciesMonodon") },
+                  { value: "Indicus", label: t("farmerSetup.speciesIndicus") },
+                  { value: "Other", label: t("farmerSetup.speciesOther") }
                 ]}
                 value={form.species}
                 onChange={handleChange}
@@ -268,11 +271,11 @@ export default function FarmerSetup() {
               />
 
               <InputField 
-                label="PL Stocked" 
-                name="plStocked" 
-                type="number" 
-                placeholder="e.g., 100000" 
-                helpText="Number of post-larvae stocked"
+                label={t("farmerSetup.plStocked")}
+                name="plStocked"
+                type="number"
+                placeholder={t("farmerSetup.plStockedPlaceholder")}
+                helpText={t("farmerSetup.plStockedHelp")}
                 value={form.plStocked}
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -280,11 +283,11 @@ export default function FarmerSetup() {
               />
 
               <InputField 
-                label="Initial Shrimp Age (Days)" 
-                name="shrimpAge" 
-                type="number" 
-                placeholder="e.g., 10" 
-                helpText="Age of PL at stocking time"
+                label={t("farmerSetup.shrimpAge")}
+                name="shrimpAge"
+                type="number"
+                placeholder={t("farmerSetup.shrimpAgePlaceholder")}
+                helpText={t("farmerSetup.shrimpAgeHelp")}
                 value={form.shrimpAge}
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -292,7 +295,7 @@ export default function FarmerSetup() {
               />
               
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Pond Size <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">{t("farmerSetup.pondSize")} <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-2 gap-2">
                   <input 
                     type="number" 
@@ -300,28 +303,27 @@ export default function FarmerSetup() {
                     value={form.pondSize} 
                     onChange={handleChange} 
                     onBlur={handleBlur} 
-                    placeholder="e.g., 2.5" 
-                    className={`border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.pondSize ? "border-red-500 bg-red-50" : "border-gray-300"}`} 
+                    placeholder={t("farmerSetup.pondSizePlaceholder")}
+                    className={`border rounded-lg px-4 py-2.5 sm:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[44px] touch-manipulation ${errors.pondSize ? "border-red-500 bg-red-50" : "border-gray-300"}`} 
                   />
                   <select 
                     name="pondSizeUnit" 
                     value={form.pondSizeUnit} 
                     onChange={handleChange} 
-                    className="border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="border border-gray-300 rounded-lg px-4 py-2.5 sm:py-3 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
                   >
-                    <option value="acre">Acre</option>
-                    <option value="hectare">Hectare</option>
-                    <option value="sqm">Square Meters</option>
+                    <option value="acre">{t("farmerSetup.pondSizeUnitAcre")}</option>
+                    <option value="hectare">{t("farmerSetup.pondSizeUnitHectare")}</option>
+                    <option value="sqm">{t("farmerSetup.pondSizeUnitSqm")}</option>
                   </select>
                 </div>
                 {errors.pondSize && <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><span>⚠</span> {errors.pondSize}</p>}
               </div>
 
-              {/* Cultivation Type fixed as Biofloc Tank */}
               <InputField 
-                label="Cultivation Type" 
-                name="cultivationType" 
-                options={[{ value: "Biofloc Tank", label: "Biofloc Tank" }]}
+                label={t("farmerSetup.cultivationType")}
+                name="cultivationType"
+                options={[{ value: "Biofloc Tank", label: t("farmerSetup.bioflocTank") }]}
                 value={form.cultivationType}
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -329,21 +331,21 @@ export default function FarmerSetup() {
               />
 
               <InputField 
-                label="Expected Survival Rate" 
-                name="survivalRate" 
-                type="number" 
-                placeholder="e.g., 0.75" 
-                helpText="Enter value between 0 and 1 (e.g., 0.75 = 75%)"
+                label={t("farmerSetup.survivalRate")}
+                name="survivalRate"
+                type="number"
+                placeholder={t("farmerSetup.survivalRatePlaceholder")}
+                helpText={t("farmerSetup.survivalRateHelp")}
                 value={form.survivalRate}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 error={errors.survivalRate}
               />
 
-              {/* Feed Brand dropdown */}
               <InputField 
-                label="Feed Brand" 
-                name="feedBrand" 
+                label={t("farmerSetup.feedBrand")}
+                name="feedBrand"
+                selectPlaceholder={t("farmerSetup.selectFeedBrand")}
                 options={[
                   { value: "CP", label: "CP Feeds" },
                   { value: "Grobest", label: "Grobest Feeds" },
@@ -360,77 +362,77 @@ export default function FarmerSetup() {
               />
             </div>
 
-            <div className="mt-8 flex gap-4">
-              <button onClick={handleCreateBatch} disabled={isSubmitting} className={`flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${isSubmitting ? "cursor-wait" : ""}`}>
-                {isSubmitting ? "Creating..." : "✓ Create Batch"}
+            <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-3 sm:gap-4">
+              <button onClick={handleCreateBatch} disabled={isSubmitting} className={`w-full sm:flex-1 min-h-[44px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 sm:px-8 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation ${isSubmitting ? "cursor-wait" : ""}`}>
+                {isSubmitting ? t("farmerSetup.creating") : `✓ ${t("farmerSetup.createBatchButton")}`}
               </button>
-              <button onClick={() => { setShowCreateForm(false); setErrors({}); }} className="px-8 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-semibold transition-all">
-                Cancel
+              <button onClick={() => { setShowCreateForm(false); setErrors({}); }} className="w-full sm:w-auto min-h-[44px] px-6 sm:px-8 py-3 border-2 border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-semibold transition-all touch-manipulation">
+                {t("farmerSetup.cancel")}
               </button>
             </div>
           </div>
         )}
 
-        {/* Batch List */}
+        {/* Batch List - mobile: single column, touch-friendly cards */}
         <div className="space-y-4">
           {batches.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">🦐</span>
+            <div className="text-center py-12 sm:py-20 bg-white rounded-2xl shadow-lg px-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl sm:text-4xl">🦐</span>
               </div>
-              <p className="text-xl font-semibold text-gray-700 mb-2">No batches yet</p>
-              <p className="text-gray-500 mb-6">Start by creating your first shrimp batch</p>
-              <button onClick={() => setShowCreateForm(true)} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl">
-                + Create Your First Batch
+              <p className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">{t("farmerSetup.noBatchesYet")}</p>
+              <p className="text-sm sm:text-base text-gray-500 mb-6">{t("farmerSetup.startByCreatingFirst")}</p>
+              <button onClick={() => setShowCreateForm(true)} className="min-h-[44px] w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl touch-manipulation">
+                + {t("farmerSetup.createFirstBatch")}
               </button>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Active Batches ({batches.length})</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{t("farmerSetup.activeBatches")} ({batches.length})</h2>
               </div>
               {batches.map(batch => (
-                <div key={batch.id} onClick={() => handleBatchClick(batch.id)} className="p-6 border-2 border-gray-200 rounded-2xl hover:shadow-2xl hover:border-blue-300 transition-all cursor-pointer bg-white group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{batch.batchName}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(batch.status)}`}>{batch.status}</span>
+                <div key={batch.id} onClick={() => handleBatchClick(batch.id)} className="p-4 sm:p-6 border-2 border-gray-200 rounded-2xl hover:shadow-2xl hover:border-blue-300 transition-all cursor-pointer bg-white group active:bg-blue-50/30 touch-manipulation">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
+                        <h3 className="text-lg sm:text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors break-words">{batch.batchName}</h3>
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-bold uppercase flex-shrink-0 ${getStatusColor(batch.status)}`}>{batch.status}</span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Species</p>
-                          <p className="font-semibold text-gray-800">{batch.species || "N/A"}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 text-sm">
+                        <div className="bg-blue-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.species")}</p>
+                          <p className="font-semibold text-gray-800 truncate">{batch.species || "N/A"}</p>
                         </div>
-                        <div className="bg-green-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Current Age</p>
+                        <div className="bg-green-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.currentAge")}</p>
                           <p className="font-semibold text-gray-800">{batch.currentShrimpAge || batch.shrimpAge} days</p>
                         </div>
-                        <div className="bg-purple-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">PL Stocked</p>
+                        <div className="bg-purple-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.plStocked")}</p>
                           <p className="font-semibold text-gray-800">{batch.plStocked?.toLocaleString()}</p>
                         </div>
-                        <div className="bg-yellow-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Pond Size</p>
+                        <div className="bg-yellow-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.pondSize")}</p>
                           <p className="font-semibold text-gray-800">{batch.pondSize} {batch.pondSizeUnit}</p>
                         </div>
-                        <div className="bg-pink-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Type</p>
-                          <p className="font-semibold text-gray-800">{batch.cultivationType || "N/A"}</p>
+                        <div className="bg-pink-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.type")}</p>
+                          <p className="font-semibold text-gray-800 truncate">{batch.cultivationType || "N/A"}</p>
                         </div>
-                        <div className="bg-orange-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Feed Brand</p>
-                          <p className="font-semibold text-gray-800">{batch.feedBrand || "N/A"}</p>
+                        <div className="bg-orange-50 p-2 sm:p-3 rounded-lg">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.feedBrand")}</p>
+                          <p className="font-semibold text-gray-800 truncate">{batch.feedBrand || "N/A"}</p>
                         </div>
-                        <div className="bg-teal-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-600 mb-1">Survival Rate</p>
+                        <div className="bg-teal-50 p-2 sm:p-3 rounded-lg col-span-2 sm:col-span-1">
+                          <p className="text-xs text-gray-600 mb-0.5 sm:mb-1">{t("farmerSetup.survivalRate")}</p>
                           <p className="font-semibold text-gray-800">{batch.survivalRate ? `${(batch.survivalRate * 100).toFixed(0)}%` : "N/A"}</p>
                         </div>
                       </div>
                     </div>
-                    <div className="ml-6 text-right">
-                      <div className="bg-blue-600 group-hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                        View Details →
+                    <div className="sm:ml-6 sm:text-right flex-shrink-0">
+                      <div className="min-h-[44px] flex items-center justify-center sm:justify-end bg-blue-600 group-hover:bg-blue-700 text-white px-4 py-3 sm:py-2 rounded-lg font-semibold transition-colors">
+                        {t("farmerSetup.viewDetails")} →
                       </div>
                     </div>
                   </div>

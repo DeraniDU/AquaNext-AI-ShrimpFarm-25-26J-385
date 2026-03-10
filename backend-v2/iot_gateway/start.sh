@@ -1,4 +1,4 @@
-#!/bin/bash
+j#!/bin/bash
 # ─── AquaNext IoT Gateway Startup Script ───
 # Run this from the iot_gateway directory: bash start.sh
 

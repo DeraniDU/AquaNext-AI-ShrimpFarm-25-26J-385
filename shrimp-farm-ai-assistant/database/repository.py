@@ -23,24 +23,41 @@ class DataRepository:
     """
 
     def __init__(self):
-        """Initialize the repository with MongoDB connection. Requires MongoDB when USE_MONGODB is true."""
+        """Initialize the repository with MongoDB connection.
+
+        In local/dev setups we want the app to keep working even when MongoDB
+        is not configured or unavailable, so this constructor never raises.
+        Instead, it marks the repository as unavailable and callers are
+        expected to fall back to simulated data.
+        """
         self.client = None
         self.db = None
         self.is_available = False
 
         if not USE_MONGODB:
+            # MongoDB disabled via config/env – repository is simply unavailable.
             return
+
         if not MONGO_URI or not MONGO_URI.strip():
-            raise ValueError(
-                "MONGO_URI must be set when USE_MONGODB is true. "
-                "Shrimp-farm-ai-assistant uses only MongoDB for data. Set MONGO_URI in .env"
+            # Missing URI: log-style error via print, but do not crash the app.
+            print(
+                "WARNING: MONGO_URI is not set but USE_MONGODB is true. "
+                "MongoDB features will be disabled (using simulated data only)."
             )
+            return
+
         try:
             self.client = get_mongo_client()
             self.db = get_database(self.client)
-            self.client.admin.command('ping')
+            self.client.admin.command("ping")
             self.is_available = True
         except Exception as e:
+            # Connection failed – log and fall back to simulated data.
+            print(
+                "WARNING: Could not connect to MongoDB. "
+                "MongoDB features will be disabled (using simulated data only). "
+                f"Error: {e}"
+            )
             if self.client:
                 try:
                     self.client.close()
@@ -48,9 +65,6 @@ class DataRepository:
                     pass
             self.client = None
             self.db = None
-            raise RuntimeError(
-                f"Could not connect to MongoDB (USE_MONGODB is true). Shrimp-farm-ai-assistant uses only MongoDB. Error: {e}"
-            ) from e
     
     def __enter__(self):
         """Context manager entry."""

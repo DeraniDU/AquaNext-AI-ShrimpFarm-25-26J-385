@@ -2,17 +2,23 @@
 import axios from "axios";
 
 // Simple API URL detection - no ngrok complexity!
-// If accessing from phone via IP (e.g., 192.168.1.3:5173), use same IP for backend
-// If accessing from localhost, use localhost for backend
+// Use VITE_API_BASE_URL if set (e.g. when using api-gateway: http://127.0.0.1:8000/api/feeding-system)
+// When running on port 5174 (feeding-system dev server), default to gateway path so /batch goes via gateway → 8002
+// Otherwise: if accessing from phone via IP use same IP:8000; from localhost use 127.0.0.1:8000
 const getApiUrl = () => {
+  const base = import.meta.env.VITE_API_BASE_URL;
+  if (base && typeof base === "string" && base.trim()) {
+    return base.trim().replace(/\/$/, ""); // no trailing slash
+  }
+  const port = window.location.port;
   const hostname = window.location.hostname;
   const protocol = window.location.protocol; // 'http:' or 'https:'
-  
+
   // If accessing via IP address (mobile/network), use same IP for backend
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     return `${protocol}//${hostname}:8000/api/feeding-system`;
   }
-  
+
   // Default to localhost for development
   return "http://127.0.0.1:8000/api/feeding-system";
 };
@@ -20,7 +26,7 @@ const getApiUrl = () => {
 // Create axios instance
 const API = axios.create({
   baseURL: getApiUrl(), // Auto-detects correct backend URL
-  timeout: 10000, // 10 seconds timeout
+  timeout: 20000, // 20 seconds (gateway + backend can be slow)
   headers: {
     "Content-Type": "application/json",
   },

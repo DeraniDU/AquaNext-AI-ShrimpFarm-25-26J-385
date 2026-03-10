@@ -15,19 +15,22 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastFeedingTimes, setLastFeedingTimes] = useState({});
+  const [fetchInProgress, setFetchInProgress] = useState(false);
 
   useEffect(() => {
     fetchAllData();
-    // Auto-refresh every 5 seconds to catch motor status changes quickly
-    const interval = setInterval(fetchAllData, 5000);
+    // Auto-refresh every 30s (less load on gateway/backend; 5s was causing timeouts)
+    const interval = setInterval(() => fetchAllData(false), 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchAllData = async (showNotification = false) => {
+    if (fetchInProgress) return;
+    setFetchInProgress(true);
     try {
       setIsRefreshing(true);
       const timestamp = new Date().getTime();
-      const batchesRes = await API.get(`/batch?t=${timestamp}`);
+      const batchesRes = await API.get(`/batch?t=${timestamp}`, { timeout: 20000 });
       
       // Handle response - API returns array directly
       let allTanks = [];
@@ -38,52 +41,38 @@ export default function Dashboard() {
       } else if (batchesRes.data && Array.isArray(batchesRes.data.batches)) {
         allTanks = batchesRes.data.batches;
       } else {
-        console.error("❌ API response is not an array:", batchesRes.data);
+        console.error(" API response is not an array:", batchesRes.data);
         console.error("Response type:", typeof batchesRes.data);
         console.error("Full response:", batchesRes);
-        // If API call failed, set empty array to prevent filter errors
         allTanks = [];
       }
       
-      // Ensure tanks is always an array
       if (!Array.isArray(allTanks)) {
-        console.error("⚠️ Tanks is not an array, setting to empty array");
+        console.error(" Tanks is not an array, setting to empty array");
         allTanks = [];
       }
       
       setTanks(allTanks);
-      
+      setIsLoading(false); // Show tank list immediately; motor/feeding load in background
+
       const activeTanksList = Array.isArray(allTanks) ? allTanks.filter(t => t.status === "active") : [];
+
+      // Fetch motor status in parallel (don't block UI)
       const motorStatusMap = {};
-      
-      for (const tank of activeTanksList) {
-        try {
-          // Ensure batchId is passed as string for consistent matching
-          const motorRes = await API.get(`/motor/status?batchId=${String(tank.id)}`);
-          const motorData = motorRes.data?.data || null;
-          motorStatusMap[tank.id] = motorData;
-          
-          // Debug logging
-          if (motorData) {
-            console.log(`✅ Motor status for ${tank.batchName}:`, {
-              state: motorData.state,
-              speed: motorData.motor_speed,
-              batchId: motorData.batchId,
-              updated_at: motorData.updated_at
-            });
-          } else {
-            console.log(`⚠️ No motor status found for ${tank.batchName} (batchId: ${tank.id})`);
+      await Promise.allSettled(
+        activeTanksList.map(async (tank) => {
+          try {
+            const motorRes = await API.get(`/motor/status?batchId=${String(tank.id)}`, { timeout: 20000 });
+            const motorData = motorRes.data?.data || null;
+            motorStatusMap[tank.id] = motorData;
+          } catch (error) {
+            motorStatusMap[tank.id] = null;
           }
-        } catch (error) {
-          console.error(`Error fetching motor status for ${tank.batchName}:`, error);
-          motorStatusMap[tank.id] = null;
-        }
-      }
-      
+        })
+      );
       setMotorStatus(motorStatusMap);
 
       const feedingTimes = {};
-      
       for (const tank of activeTanksList) {
         if (tank.lastFeedDate) {
           try {
@@ -96,9 +85,8 @@ export default function Dashboard() {
             // Invalid date, fall through to fallback
           }
         }
-        
         try {
-          const feedRes = await API.get(`/feeding/batch/${tank.id}`);
+          const feedRes = await API.get(`/feeding/batch/${tank.id}`, { timeout: 15000 });
           const feedings = feedRes.data?.feedings || [];
           if (feedings.length > 0) {
             const lastFeeding = feedings[0];
@@ -121,6 +109,7 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+      setFetchInProgress(false);
     }
   };
 
@@ -166,15 +155,15 @@ export default function Dashboard() {
       ? motorStatus[tank.id] 
       : (typeof motorStatus === 'object' && motorStatus?.state ? motorStatus : null);
     
-    if (!tankMotorStatus) return { text: "Unknown", icon: "❓", color: "text-gray-500" };
+    if (!tankMotorStatus) return { text: "Unknown", icon: "", color: "text-gray-500" };
     
     const state = tankMotorStatus.state || "";
     if (state === "feeding_fast" || state === "high") {
-      return { text: t("dashboard.feedingNow"), icon: "🟢", color: "text-green-600" };
+      return { text: t("dashboard.feedingNow"), icon: "", color: "text-green-600" };
     } else if (state === "feeding_slow" || state === "low") {
-      return { text: t("dashboard.feedingSlow"), icon: "🟡", color: "text-yellow-600" };
+      return { text: t("dashboard.feedingSlow"), icon: "", color: "text-yellow-600" };
     } else {
-      return { text: t("dashboard.notFeeding"), icon: "⏸", color: "text-red-500" };
+      return { text: t("dashboard.notFeeding"), icon: "", color: "text-red-500" };
     }
   };
 
@@ -209,7 +198,7 @@ export default function Dashboard() {
                 disabled={isRefreshing}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-3 rounded-xl font-semibold disabled:opacity-50 text-base min-h-[48px] touch-manipulation shadow-sm"
               >
-                {isRefreshing ? t("dashboard.refreshing") : `🔄 ${t("dashboard.refresh")}`}
+                {isRefreshing ? t("dashboard.refreshing") : ` ${t("dashboard.refresh")}`}
               </button>
               <button
                 onClick={() => navigate("/farmer-setup")}

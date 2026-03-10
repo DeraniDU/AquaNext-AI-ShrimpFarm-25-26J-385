@@ -31,9 +31,12 @@ export function useDashboardData(params: { ponds: number; autoRefreshMs: number 
 					// Prevent browser cache so Refresh always gets latest KPIs from server
 					...(fresh ? { cache: 'no-store' as RequestCache } : {}),
 				})
-				if (!res.ok) throw new Error(`API ${res.status}`)
-				const json = (await res.json()) as DashboardApiResponse
-				setState({ data: json, loading: false, error: null, lastUpdatedAt: new Date().toISOString() })
+				const json = await res.json().catch(() => null)
+				if (!res.ok) {
+					const detail = json?.detail ?? (typeof json === 'string' ? json : null)
+					throw new Error(detail ? `API ${res.status}: ${detail}` : `API ${res.status}`)
+				}
+				setState({ data: json as DashboardApiResponse, loading: false, error: null, lastUpdatedAt: new Date().toISOString() })
 			} catch (e) {
 				if (controller.signal.aborted) return
 				const message = e instanceof Error ? e.message : 'Failed to load'

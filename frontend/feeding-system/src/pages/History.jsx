@@ -116,7 +116,7 @@ export default function History() {
             onClick={fetchHistory}
             className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
           >
-            🔄 {t("history.refresh")}
+             {t("history.refresh")}
           </button>
         </div>
 
@@ -125,7 +125,7 @@ export default function History() {
           {events.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">📊</span>
+                <span className="text-3xl"></span>
               </div>
               <p className="text-xl font-semibold text-gray-700 mb-2">{t("history.noRecords")}</p>
               <p className="text-gray-500">{t("history.eventsWillAppear")}</p>
@@ -140,7 +140,7 @@ export default function History() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">⚙️</span>
+                        <span className="text-2xl"></span>
                         <div>
                           <p className="font-bold text-lg">
                             {getMotorStatusLabel(event.state || event.to_state || "unknown")}
