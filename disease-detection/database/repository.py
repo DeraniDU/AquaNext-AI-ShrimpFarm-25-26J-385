@@ -3,13 +3,19 @@ from database.mongodb import MongoDB
 
 
 class Repository:
+    """
+    Repository for accessing IoT sensor data from shrimp farm.
+    
+    Connected to: shrimp_farm_iot database (water quality monitoring)
+    READ-ONLY ACCESS: Only reads environmental data, no modifications allowed
+    """
     def __init__(self):
         self.db = MongoDB.get_db()
 
         # expected collections
         self.behavior_collection = self.db["behavior_live"]
         self.feed_collection = self.db["feeding_data"]
-        self.env_collection = self.db["environment_data"]
+        self.env_collection = self.db["environment_data"]  # READ-ONLY: water quality data
         self.prediction_collection = self.db["risk_predictions"]
 
     # ---------- behavior ----------
@@ -38,8 +44,14 @@ class Repository:
             sort=[("timestamp", -1)]
         )
 
-    # ---------- environment ----------
+    # ---------- environment (READ-ONLY) ----------
+    # Environmental data sourced from water quality monitoring system
+    # These operations only read data, no modifications are made
     def get_latest_environment(self, pond_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve latest environmental data for a pond.
+        READ-ONLY: Only reads from environment_data collection
+        """
         return self.env_collection.find_one(
             {"pond_id": pond_id},
             sort=[("timestamp", -1)]

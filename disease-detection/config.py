@@ -26,13 +26,15 @@ class Settings(BaseModel):
 
     IF_THRESHOLD: float = float(os.getenv("IF_THRESHOLD", "-0.003891"))
 
-    # MongoDB
-    # The connection string can be overridden using the MONGODB_URI environment variable.
-    # Example for Atlas (replace <password> with your actual password):
-    #   export MONGODB_URI="mongodb+srv://piyumalipalihawadana_db_user:palihe1234@cluster0.ni5ykui.mongodb.net/?appName=Cluster0"
-    # If you prefer to hardcode a default for development you can change the fallback below.
-    MONGODB_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-    MONGODB_DB: str = os.getenv("MONGODB_DB", "Shrimp_desease")
+    # MongoDB - Connected to shared water quality database (read-only for environmental data)
+    # URI: MongoDB Atlas cluster for water quality of shrimp ponds
+    # DB: shrimp_farm_iot - contains environment_data collection
+    # NOTE: Read-only access - no modifications to database
+    MONGODB_URI: str = os.getenv(
+        "MONGO_URI",
+        "mongodb+srv://shrimp_admin:admin123@waterqualityofshrimppon.0xlqath.mongodb.net/?appName=WaterQualityOfShrimpPonds"
+    )
+    MONGODB_DB: str = os.getenv("DB_NAME", "shrimp_farm_iot")
 
 
 settings = Settings()
