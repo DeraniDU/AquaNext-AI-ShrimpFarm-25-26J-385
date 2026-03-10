@@ -10,11 +10,11 @@ const getApiUrl = () => {
   
   // If accessing via IP address (mobile/network), use same IP for backend
   if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-    return `${protocol}//${hostname}:8000`;
+    return `${protocol}//${hostname}:8000/api/feeding-system`;
   }
   
   // Default to localhost for development
-  return "http://127.0.0.1:8000";
+  return "http://127.0.0.1:8000/api/feeding-system";
 };
 
 // Create axios instance

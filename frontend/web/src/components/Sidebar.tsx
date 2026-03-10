@@ -14,6 +14,7 @@ type Props = {
 const navItems: NavItem[] = [
 	{ id: 'dashboard', label: 'Dashboard', icon: '📊' },
 	{ id: 'optimization', label: 'Optimization', icon: '⚡' },
+	{ id: 'labor-optimization', label: 'Labor Optimization', icon: '👨‍🌾' },
 	{ id: 'benchmarking', label: 'Benchmarking', icon: '📈' },
 	{ id: 'water-quality', label: 'Water Quality', icon: '💧' },
 	{ id: 'feeding', label: 'Feeding', icon: '🍽️' },

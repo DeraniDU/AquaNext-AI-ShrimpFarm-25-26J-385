@@ -139,6 +139,29 @@ def get_history(limit: int = 7, days: Optional[int] = None) -> Dict[str, Any]:
 	return {"count": len(items), "items": items}
 
 
+@app.get("/api/history/hourly")
+def get_hourly_history(hours: int = 24) -> Dict[str, Any]:
+	"""
+	Return historical hourly snapshots from MongoDB for 24h dashboard charting.
+	"""
+	try:
+		from database.repository import DataRepository
+		from config import USE_MONGODB
+		
+		if not USE_MONGODB:
+			return {"count": 0, "items": []}
+			
+		repo = DataRepository()
+		if not repo.is_available:
+			return {"count": 0, "items": []}
+			
+		items = repo.get_hourly_snapshots(hours=hours)
+		return {"count": len(items), "items": items}
+	except Exception as e:
+		print(f"[ERROR] Could not load hourly history: {e}")
+		return {"count": 0, "items": []}
+
+
 @app.get("/api/forecasts")
 def get_forecasts(
 	ponds: int = FARM_CONFIG.get("pond_count", 4),

@@ -9,7 +9,7 @@ from app.utils.batch_utils import update_batch_daily
 router = APIRouter(prefix="/batch", tags=["Batch"])
 
 # ==================== CREATE BATCH ====================
-@router.post("/", response_model=BatchResponse)
+@router.post("", response_model=BatchResponse)
 async def create_batch(batch: BatchCreate):
     """Create a new batch in draft status"""
     batch_dict = batch.dict()
@@ -31,7 +31,7 @@ async def create_batch(batch: BatchCreate):
     return batch_dict
 
 # ==================== GET ALL BATCHES ====================
-@router.get("/", response_model=list[BatchResponse])
+@router.get("", response_model=list[BatchResponse])
 async def get_all_batches(status: str = None):
     """Get all batches, optionally filtered by status"""
     query = {"status": status} if status else {}

@@ -3,6 +3,7 @@ import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
 import { OptimizationView } from './components/OptimizationView'
+import { LaborOptimizationView } from './components/LaborOptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
 import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
@@ -12,6 +13,7 @@ import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
+import { useHourlyHistoryData } from './lib/useHourlyHistoryData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
@@ -25,6 +27,9 @@ export default function App() {
 	})
 	const { data: historyData, loading: historyLoading, error: historyError, refresh: refreshHistory } = useHistoryData({
 		days: 7
+	})
+	const { data: hourlyHistoryData, loading: hourlyHistoryLoading, error: hourlyHistoryError, refresh: refreshHourlyHistory } = useHourlyHistoryData({
+		hours: 24
 	})
 
 	const pondIds = useMemo(() => {
@@ -42,7 +47,19 @@ export default function App() {
 
 	const renderView = () => {
 		const historyWithLive = data ? mergeHistoryWithLiveSnapshot(historyData?.items ?? [], data) : (historyData?.items ?? [])
-		// Always show feeding app when Feeding is selected (no dependency on dashboard data)
+		// Water quality: embed water-quality-system app (runs on port 5175)
+		if (activeView === 'water-quality') {
+			return (
+				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
+					<iframe
+						src="http://localhost:5175"
+						title="Water Quality"
+						style={{ width: '100%', height: '100%', border: 'none' }}
+					/>
+				</div>
+			)
+		}
+		// Feeding: embed feeding-system app (runs on port 5174)
 		if (activeView === 'feeding') {
 			return (
 				<div style={{ width: '100%', height: '100vh', border: 'none' }}>
@@ -62,6 +79,7 @@ export default function App() {
 		const viewProps = data ? {
 			data: data as DashboardApiResponse,
 			history: historyWithLive,
+			hourlyHistory: hourlyHistoryData?.items ?? [],
 			pondFilter: selectedPond === 'all' ? null : selectedPond
 		} : null
 
@@ -76,10 +94,14 @@ export default function App() {
 			case 'optimization':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 			return <OptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
+			case 'labor-optimization':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+				return <LaborOptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
 			case 'benchmarking':
 				return <BenchmarkingView ponds={ponds} />
 			case 'water-quality':
-				return <WaterQualityView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
+				// Rendered via iframe above when water-quality is selected
+				return null
 			case 'feeding':
 				return <FeedingView ponds={ponds} pondFilter={selectedPond === 'all' ? null : selectedPond} history={historyData?.items ?? []} />
 
@@ -172,17 +194,18 @@ export default function App() {
 								onClick={() => {
 									void refresh()
 									void refreshHistory()
+									void refreshHourlyHistory()
 								}}
-								disabled={loading || historyLoading}
+								disabled={loading || historyLoading || hourlyHistoryLoading}
 							>
-								{loading || historyLoading ? 'Refreshing…' : 'Refresh'}
+								{loading || historyLoading || hourlyHistoryLoading ? 'Refreshing…' : 'Refresh'}
 							</button>
 						</div>
 					</div>
 				</div>
 
 				<div className="container">
-					{activeView !== 'feeding' && error && (
+					{activeView !== 'feeding' && activeView !== 'water-quality' && error && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">
@@ -196,7 +219,7 @@ export default function App() {
 							</div>
 						</div>
 					)}
-					{activeView !== 'feeding' && historyError && (
+					{activeView !== 'feeding' && activeView !== 'water-quality' && historyError && (
 						<div className="card">
 							<div className="cardInner">
 								<div className="cardHeader">

@@ -26,10 +26,11 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
+	hourlyHistory?: SavedFarmSnapshot[]
 	pondFilter: number | null
 }
 
-export function DashboardView({ data, history, pondFilter }: Props) {
+export function DashboardView({ data, history, hourlyHistory = [], pondFilter }: Props) {
 	const { dashboard } = data
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
@@ -216,15 +217,38 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		(topReco ? ('text' in topReco ? topReco.text : (topReco as DecisionOutput).reasoning) : null) ??
 		`Pond ${aiRecoPond} shows declining dissolved oxygen levels and elevated ammonia. Historical data indicates immediate water exchange will improve conditions within 8 hours. Temperature also trending above optimal range.`
 
-	// Generate 24h trend data for charts (simulated from current values, deterministic)
-	const hours24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
+	// Generate 24h trend data for charts (use real data if available)
+	// We want exactly 24 data points, so we pad with simulated data if needed
+	const hasHourlyData = hourlyHistory && hourlyHistory.length > 0
+	
+	const hours24 = hasHourlyData && hourlyHistory.length >= 24
+		? hourlyHistory.slice(-24).map(h => {
+			const d = new Date(h.timestamp)
+			return `${String(d.getHours()).padStart(2, '0')}:00`
+		})
+		: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
+
 	const doTrendData = pondIds.map((pid, idx) => {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.dissolved_oxygen ?? 5.5
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		
+		let data: number[]
+		if (hasHourlyData) {
+			data = hourlyHistory.slice(-24).map(h => h.water_quality.find(x => x.pond_id === pid)?.dissolved_oxygen ?? base)
+			// Pad if less than 24
+			if (data.length < 24) {
+				const padLength = 24 - data.length
+				const padData = Array.from({ length: padLength }, (_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16)
+				data = [...padData, ...data]
+			}
+		} else {
+			data = hours24.map((_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16)
+		}
+
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16),
+			data,
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}20`,
 			fill: true,
@@ -235,9 +259,23 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.ammonia ?? 0.1
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		
+		let data: number[]
+		if (hasHourlyData) {
+			data = hourlyHistory.slice(-24).map(h => h.water_quality.find(x => x.pond_id === pid)?.ammonia ?? base)
+			// Pad if less than 24
+			if (data.length < 24) {
+				const padLength = 24 - data.length
+				const padData = Array.from({ length: padLength }, (_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08))
+				data = [...padData, ...data]
+			}
+		} else {
+			data = hours24.map((_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08))
+		}
+
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08)),
+			data,
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}15`,
 			fill: true,
@@ -245,13 +283,35 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		}
 	})
 	const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-	const feedUsage7Days = historyTotalFeedKg.length >= 7 ? historyTotalFeedKg.slice(-7) : Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
-	const feedLabels7 = historyLabels.length >= 7 ? historyLabels.slice(-7) : dayNames
-	const energy24hData = hours24.map((_, i) => {
-		const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
-		return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
-	})
-
+	const feedUsage7Days = historyTotalFeedKg.length > 0 
+		? (historyTotalFeedKg.length >= 7 ? historyTotalFeedKg.slice(-7) : [...Array.from({ length: 7 - historyTotalFeedKg.length }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02)), ...historyTotalFeedKg])
+		: Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
+	const feedLabels7 = historyLabels.length > 0 
+		? (historyLabels.length >= 7 ? historyLabels.slice(-7) : [...dayNames.slice(0, 7 - historyLabels.length), ...historyLabels])
+		: dayNames
+		
+	let energy24hData: number[]
+	if (hasHourlyData) {
+		energy24hData = hourlyHistory.slice(-24).map(h => {
+			const pondIdsToSum = pondFilter ? [pondFilter] : pondIds
+			return sum(h.energy.filter(e => pondIdsToSum.includes(e.pond_id)).map(e => e.total_energy))
+		})
+		// Pad if less than 24
+		if (energy24hData.length < 24) {
+			const padLength = 24 - energy24hData.length
+			const padData = Array.from({ length: padLength }, (_, i) => {
+				const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
+				return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
+			})
+			energy24hData = [...padData, ...energy24hData]
+		}
+	} else {
+		energy24hData = hours24.map((_, i) => {
+			const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
+			return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
+		})
+	}
+		
 	return (
 		<div className="dashOverview">
 			{/* Top Row: Health Score, Alerts, AI Recommendation */}
