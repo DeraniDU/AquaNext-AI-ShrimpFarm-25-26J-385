@@ -55,6 +55,7 @@ export default function App() {
 						data={data as DashboardApiResponse}
 						history={historyData?.items ?? []}
 						pondFilter={null}
+						extraIot={extraIot}
 					/>
 				</ErrorBoundary>
 			) : (

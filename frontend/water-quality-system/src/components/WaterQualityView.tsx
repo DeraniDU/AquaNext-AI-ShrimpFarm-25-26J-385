@@ -6,14 +6,16 @@ import { AIPredictionsPanel } from './AIPredictionsPanel'
 import { AutoTriggerPanel } from './AutoTriggerPanel'
 import { useAutoTrigger } from '../lib/useAutoTrigger'
 import { WaterQualitySimulator } from './WaterQualitySimulator'
+import { ExtraIotFields, fmt, Row, alertBorderColor, alertBg } from './IoTLivePanel'
 
 type Props = {
+	extraIot?: ExtraIotFields
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
 }
 
-export function WaterQualityView({ data, history, pondFilter }: Props) {
+export function WaterQualityView({ data, history, pondFilter, extraIot }: Props) {
 	const { dashboard } = data
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 
@@ -30,10 +32,11 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 		return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
 	})
 
-	const avgPh = water.reduce((sum, w) => sum + w.ph, 0) / water.length || 0
-	const avgSalinity = water.reduce((sum, w) => sum + w.salinity, 0) / water.length || 0
 	const avgOxygen = water.reduce((sum, w) => sum + w.dissolved_oxygen, 0) / water.length || 0
-	const avgTemp = water.reduce((sum, w) => sum + w.temperature, 0) / water.length || 0
+	
+	const nh3 = extraIot?.nh3_mg_l ?? extraIot?.physics_calculations?.nh3?.nh3_mg_l ?? 0
+	const tan = extraIot?.tan_mg_l ?? 0
+	const turbidity = extraIot?.turbidity_ntu ?? 0
 
 	const phHistory = historyFiltered.map((h) => {
 		const phs = h.water_quality.map((w) => w.ph)
@@ -154,22 +157,23 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 				</div>
 				<div className="waterCards" style={{ marginBottom: 20 }}>
 					<div className="valueCard">
-						<div className="valueTitle">pH</div>
+						<div className="valueTitle">TAN</div>
 						<div className="valueMain">
-							<span className="valueNumber mono">{formatNumber(avgPh, { maximumFractionDigits: 1 })}</span>
+							<span className="valueNumber mono">{formatNumber(tan, { maximumFractionDigits: 2 })}</span>
+							<span className="valueUnit">mg/L</span>
 						</div>
-						<div className={`valueBadge ${avgPh >= 7.5 && avgPh <= 8.5 ? 'good' : 'warn'}`}>
-							{avgPh >= 7.5 && avgPh <= 8.5 ? 'Optimal' : 'Check'}
+						<div className={`valueBadge ${tan <= 0.5 ? 'good' : 'bad'}`}>
+							{tan <= 0.5 ? 'Optimal' : 'High'}
 						</div>
 					</div>
 					<div className="valueCard">
-						<div className="valueTitle">Salinity</div>
+						<div className="valueTitle">NH₃ (Toxic Ammonia)</div>
 						<div className="valueMain">
-							<span className="valueNumber mono">{formatNumber(avgSalinity, { maximumFractionDigits: 0 })}</span>
-							<span className="valueUnit">ppt</span>
+							<span className="valueNumber mono">{formatNumber(nh3, { maximumFractionDigits: 3 })}</span>
+							<span className="valueUnit">mg/L</span>
 						</div>
-						<div className={`valueBadge ${avgSalinity >= 15 && avgSalinity <= 25 ? 'good' : 'warn'}`}>
-							{avgSalinity >= 15 && avgSalinity <= 25 ? 'Normal' : 'Caution'}
+						<div className={`valueBadge ${nh3 <= 0.1 ? 'good' : 'bad'}`}>
+							{nh3 <= 0.1 ? 'Safe' : 'Alert'}
 						</div>
 					</div>
 					<div className="valueCard">
@@ -183,13 +187,13 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 						</div>
 					</div>
 					<div className="valueCard">
-						<div className="valueTitle">Temperature</div>
+						<div className="valueTitle">Turbidity</div>
 						<div className="valueMain">
-							<span className="valueNumber mono">{formatNumber(avgTemp, { maximumFractionDigits: 1 })}</span>
-							<span className="valueUnit">°C</span>
+							<span className="valueNumber mono">{formatNumber(turbidity, { maximumFractionDigits: 1 })}</span>
+							<span className="valueUnit">NTU</span>
 						</div>
-						<div className={`valueBadge ${avgTemp >= 26 && avgTemp <= 30 ? 'good' : 'warn'}`}>
-							{avgTemp >= 26 && avgTemp <= 30 ? 'Optimal' : 'Check'}
+						<div className={`valueBadge ${turbidity <= 30 ? 'good' : 'warn'}`}>
+							{turbidity <= 30 ? 'Clear' : 'Check'}
 						</div>
 					</div>
 				</div>
@@ -241,6 +245,67 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 				</div>
 			</div>
 
+			{/* Secondary Parameters and System Alerts (Real-Time IoT) */}
+			{extraIot && (
+				<div className="panel spanAll">
+					<div className="panelHeader" style={{ borderBottom: '2px solid #e5e7eb', paddingBottom: 16 }}>
+						<div className="panelTitle">Real-Time Detailed Parameters & Alerts</div>
+					</div>
+					<div style={{ padding: '24px 16px' }}>
+						<div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) minmax(300px, 1fr)', gap: 24 }}>
+							
+							{/* Other Sensors Grid */}
+							<div>
+								<h2 style={{ fontSize: '1.05rem', color: '#374151', marginBottom: 12 }}>
+									Secondary Parameters
+								</h2>
+								<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+									<div className="panel" style={{ padding: '0 12px' }}>
+										<Row label="ORP" value={fmt(extraIot.orp_mv, 0)} unit="mV" badge={extraIot.orp_mv != null ? <span className={(extraIot.orp_mv ?? 0) >= 200 && (extraIot.orp_mv ?? 0) <= 400 ? 'badge good' : 'badge warn'}>{(extraIot.orp_mv ?? 0) >= 200 && (extraIot.orp_mv ?? 0) <= 400 ? 'OK' : 'Check'}</span> : undefined} />
+										<Row label="Alkalinity" value={fmt(extraIot.alkalinity, 0)} unit="mg/L" badge={extraIot.alkalinity != null ? <span className={(extraIot.alkalinity ?? 0) >= 100 && (extraIot.alkalinity ?? 0) <= 200 ? 'badge good' : 'badge warn'}>OK</span> : undefined} />
+										<Row label="Conductivity" value={fmt(extraIot.conductivity, 0)} unit="µS/cm" />
+										<Row label="Nitrate NO₃" value={fmt(extraIot.no3_mg_l, 1)} unit="mg/L" />
+									</div>
+									<div className="panel" style={{ padding: '0 12px' }}>
+										<Row label="TAN" value={fmt(extraIot.tan_mg_l, 3)} unit="mg/L" badge={extraIot.tan_mg_l != null ? <span className={(extraIot.tan_mg_l ?? 0) > 0.5 ? 'badge bad' : 'badge good'}>{(extraIot.tan_mg_l ?? 0) > 0.5 ? 'HIGH' : 'OK'}</span> : undefined} />
+										<Row label="NH₃ (Toxic)" value={fmt(extraIot.nh3_mg_l ?? extraIot.physics_calculations?.nh3?.nh3_mg_l, 4)} unit="mg/L" badge={(extraIot.nh3_mg_l ?? 0) > 0.1 ? <span className="badge bad">ALERT</span> : <span className="badge good">Safe</span>} />
+										<Row label="Turbidity" value={fmt(extraIot.turbidity_ntu, 1)} unit="NTU" />
+										<Row label="Secchi Depth" value={fmt(extraIot.secchi_cm, 1)} unit="cm" />
+									</div>
+								</div>
+							</div>
+
+							{/* Alerts Box */}
+							<div>
+								<h2 style={{ fontSize: '1.05rem', color: '#374151', marginBottom: 12 }}>
+									System Alerts
+								</h2>
+								{(extraIot.alerts_raw ?? []).length > 0 ? (
+									<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+										{(extraIot.alerts_raw ?? []).map((a, i) => (
+											<div key={i} style={{
+												padding: '10px 14px', borderRadius: 8,
+												background: alertBg(a.status),
+												borderLeft: `4px solid ${alertBorderColor(a.status)}`,
+												fontSize: '0.85rem',
+											}}>
+												<strong style={{ color: alertBorderColor(a.status), display: 'block', marginBottom: 2 }}>{a.label}</strong>
+												<span style={{ color: '#4b5563' }}>{a.value != null ? `(${a.value} ${a.unit ?? ''}) ` : ''}{a.message}</span>
+											</div>
+										))}
+									</div>
+								) : (
+									<div style={{ background: '#f0fdf4', color: '#15803d', padding: '16px', borderRadius: 8, textAlign: 'center', border: '1px solid #bbf7d0' }}>
+										✅ All parameters within optimal tracking range.<br/>No active warnings.
+									</div>
+								)}
+							</div>
+
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* AI Predictions Panel */}
 			<div className="panel spanAll">
 				<AIPredictionsPanel waterQuality={water} pondFilter={pondFilter} />
@@ -248,10 +313,10 @@ export function WaterQualityView({ data, history, pondFilter }: Props) {
 
 			{/* What-if simulation panel driven by ML backend */}
 			<WaterQualitySimulator
-				defaultPh={avgPh}
-				defaultTemperature={avgTemp}
+				defaultPh={extraIot?.ph ?? 7.5}
+				defaultTemperature={extraIot?.temperature ?? 28}
 				defaultDo={avgOxygen}
-				defaultSalinity={avgSalinity}
+				defaultSalinity={extraIot?.salinity_ppt ?? 15}
 			/>
 
 			{/* Automatic Trigger System Panel */}

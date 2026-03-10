@@ -78,11 +78,11 @@ export interface ExtraIotFields {
 interface HistoryPoint { time: string; temp: number | null; doActual: number | null; doFromTemp: number | null; doPredicted: number | null }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmt(v: number | null | undefined, decimals = 1): string {
+export function fmt(v: number | null | undefined, decimals = 1): string {
   return v == null ? '—' : v.toFixed(decimals)
 }
 
-function Row({ label, value, unit = '', badge }: { label: string; value: string; unit?: string; badge?: ReactNode }) {
+export function Row({ label, value, unit = '', badge }: { label: string; value: string; unit?: string; badge?: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
       <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>{label}</span>
@@ -94,8 +94,8 @@ function Row({ label, value, unit = '', badge }: { label: string; value: string;
   )
 }
 
-function alertBorderColor(s: string) { return s.includes('critical') ? '#ef4444' : s.includes('warning') ? '#f59e0b' : '#3b82f6' }
-function alertBg(s: string) { return s.includes('critical') ? 'rgba(239,68,68,0.07)' : s.includes('warning') ? 'rgba(245,158,11,0.07)' : 'rgba(59,130,246,0.07)' }
+export function alertBorderColor(s: string) { return s.includes('critical') ? '#ef4444' : s.includes('warning') ? '#f59e0b' : '#3b82f6' }
+export function alertBg(s: string) { return s.includes('critical') ? 'rgba(239,68,68,0.07)' : s.includes('warning') ? 'rgba(245,158,11,0.07)' : 'rgba(59,130,246,0.07)' }
 
 // ─── Main Sensor Cards ─────────────────────────────────────────────────────────
 
@@ -222,8 +222,6 @@ const MAX_HISTORY = 50
 export function IoTLivePanel({ extraIot, error }: { extraIot: ExtraIotFields; error: string | null }) {
   const relay = extraIot.relay_state
   const ml = extraIot.ml_predictions
-  const physics = extraIot.physics_calculations
-  const alerts = extraIot.alerts_raw ?? []
   const aeratorOn = relay?.aerator === 'ON'
 
   // Build rolling history for the chart
@@ -254,7 +252,7 @@ export function IoTLivePanel({ extraIot, error }: { extraIot: ExtraIotFields; er
 
   // Status calculations for main cards
   const phStatus = extraIot.ph == null ? 'good' : (extraIot.ph < 7.0 || extraIot.ph > 9.0) ? 'bad' : (extraIot.ph < 7.5 || extraIot.ph > 8.5) ? 'warn' : 'good'
-  const tempStatus = extraIot.temperature == null ? 'good' : (extraIot.temperature < 28 || extraIot.temperature > 31) ? 'bad' : 'good'
+  const tempStatus = extraIot.temperature == null ? 'good' : (extraIot.temperature < 29 || extraIot.temperature > 32) ? 'bad' : 'good'
   const salStatus = extraIot.salinity_ppt == null ? 'good' : (extraIot.salinity_ppt < 10 || extraIot.salinity_ppt > 25) ? 'warn' : 'good'
   const tdsStatus = extraIot.tds_value == null ? 'good' : (extraIot.tds_value > 35000) ? 'warn' : 'good'
 
@@ -269,46 +267,44 @@ export function IoTLivePanel({ extraIot, error }: { extraIot: ExtraIotFields; er
       )}
 
       {/* Prominent Aerator Relay Banner */}
-      {relay && (
-        <div style={{
-          borderRadius: 12,
-          border: `2px solid ${aeratorOn ? '#ef4444' : '#22c55e'}`,
-          background: aeratorOn ? '#fef2f2' : '#f0fdf4',
-          marginBottom: 24, padding: '16px 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{
-              width: 16, height: 16, borderRadius: '50%',
-              background: aeratorOn ? '#ef4444' : '#22c55e',
-              boxShadow: `0 0 12px ${aeratorOn ? '#ef4444' : '#22c55e'}`
-            }} />
-            <span style={{ fontWeight: 800, fontSize: '1.2rem', color: aeratorOn ? '#b91c1c' : '#166534', letterSpacing: '0.05em' }}>
-              AERATOR MOTOR: {aeratorOn ? 'ON (RUNNING)' : 'OFF (STANDBY)'}
+      <div style={{
+        borderRadius: 12,
+        border: `2px solid ${aeratorOn ? '#ef4444' : '#22c55e'}`,
+        background: aeratorOn ? '#fef2f2' : '#f0fdf4',
+        marginBottom: 24, padding: '16px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 16, height: 16, borderRadius: '50%',
+            background: aeratorOn ? '#ef4444' : '#22c55e',
+            boxShadow: `0 0 12px ${aeratorOn ? '#ef4444' : '#22c55e'}`
+          }} />
+          <span style={{ fontWeight: 800, fontSize: '1.2rem', color: aeratorOn ? '#b91c1c' : '#166534', letterSpacing: '0.05em' }}>
+            AERATOR MOTOR: {aeratorOn ? 'ON (RUNNING)' : 'OFF (STANDBY)'}
+          </span>
+          {relay?.trigger_source && (
+            <span style={{ background: '#1e40af', color: 'white', padding: '4px 10px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+              {relay.trigger_source.replace('_', ' ')}
             </span>
-            {relay.trigger_source && (
-              <span style={{ background: '#1e40af', color: 'white', padding: '4px 10px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
-                {relay.trigger_source.replace('_', ' ')}
-              </span>
-            )}
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            {relay.reason && <div style={{ fontWeight: 600, color: aeratorOn ? '#991b1b' : '#166534' }}>{relay.reason}</div>}
-            <div className="muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
-              {relay.do_level != null ? `DO Level at Trigger: ${relay.do_level} mg/L` : ''}
-              {extraIot.device_id ? ` | Sensor Node: ${extraIot.device_id.toUpperCase()}` : ''}
-            </div>
+          )}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          {relay?.reason ? <div style={{ fontWeight: 600, color: aeratorOn ? '#991b1b' : '#166534' }}>{relay.reason}</div> : <div style={{ fontWeight: 600, color: '#166534' }}>System OK</div>}
+          <div className="muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
+            {relay?.do_level != null ? `DO Level at Trigger: ${relay.do_level} mg/L` : ''}
+            {extraIot.device_id ? ` | Sensor Node: ${extraIot.device_id.toUpperCase()}` : ''}
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── 4 Main Real-Time Parameters ── */}
       <h2 style={{ fontSize: '1.2rem', color: '#1f2937', marginBottom: 16, borderBottom: '2px solid #e5e7eb', paddingBottom: 8 }}>
         Real-Time Core Parameters
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 32 }}>
-        <SensorCard title="Temperature" value={fmt(extraIot.temperature, 1)} unit="°C" status={tempStatus} min={28} max={31} />
+        <SensorCard title="Temperature" value={fmt(extraIot.temperature, 1)} unit="°C" status={tempStatus} min={29} max={32} />
         <SensorCard title="pH Level" value={fmt(extraIot.ph, 2)} unit="" status={phStatus} min={7.5} max={8.5} />
         <SensorCard title="Salinity" value={fmt(extraIot.salinity_ppt, 1)} unit="ppt" status={salStatus} min={10} max={25} />
         <SensorCard title="TDS" value={fmt(extraIot.tds_value, 0)} unit="ppm" status={tdsStatus} max={35000} />
@@ -351,58 +347,6 @@ export function IoTLivePanel({ extraIot, error }: { extraIot: ExtraIotFields; er
         <div style={{ height: 320, position: 'relative' }}>
           <DoTempChart history={chartHistory} />
         </div>
-      </div>
-
-      {/* ── Secondary Parameters & Alerts ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) minmax(300px, 1fr)', gap: 24 }}>
-        
-        {/* Other Sensors Grid */}
-        <div>
-          <h2 style={{ fontSize: '1.1rem', color: '#374151', marginBottom: 12, borderBottom: '2px solid #e5e7eb', paddingBottom: 8 }}>
-            Secondary Parameters
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="panel" style={{ padding: '0 12px' }}>
-              <Row label="ORP" value={fmt(extraIot.orp_mv, 0)} unit="mV" badge={extraIot.orp_mv != null ? <span className={extraIot.orp_mv >= 200 && extraIot.orp_mv <= 400 ? 'badge good' : 'badge warn'}>{extraIot.orp_mv >= 200 && extraIot.orp_mv <= 400 ? 'OK' : 'Check'}</span> : undefined} />
-              <Row label="Alkalinity" value={fmt(extraIot.alkalinity, 0)} unit="mg/L" badge={extraIot.alkalinity != null ? <span className={extraIot.alkalinity >= 100 && extraIot.alkalinity <= 200 ? 'badge good' : 'badge warn'}>OK</span> : undefined} />
-              <Row label="Conductivity" value={fmt(extraIot.conductivity, 0)} unit="µS/cm" />
-              <Row label="Nitrate NO₃" value={fmt(extraIot.no3_mg_l, 1)} unit="mg/L" />
-            </div>
-            <div className="panel" style={{ padding: '0 12px' }}>
-              <Row label="TAN" value={fmt(extraIot.tan_mg_l, 3)} unit="mg/L" badge={extraIot.tan_mg_l != null ? <span className={extraIot.tan_mg_l > 0.5 ? 'badge bad' : 'badge good'}>{extraIot.tan_mg_l > 0.5 ? 'HIGH' : 'OK'}</span> : undefined} />
-              <Row label="NH₃ (Toxic)" value={fmt(extraIot.nh3_mg_l ?? physics?.nh3?.nh3_mg_l, 4)} unit="mg/L" badge={(extraIot.nh3_mg_l ?? 0) > 0.1 ? <span className="badge bad">ALERT</span> : <span className="badge good">Safe</span>} />
-              <Row label="Turbidity" value={fmt(extraIot.turbidity_ntu, 1)} unit="NTU" />
-              <Row label="Secchi Depth" value={fmt(extraIot.secchi_cm, 1)} unit="cm" />
-            </div>
-          </div>
-        </div>
-
-        {/* Alerts Box */}
-        <div>
-          <h2 style={{ fontSize: '1.1rem', color: '#374151', marginBottom: 12, borderBottom: '2px solid #e5e7eb', paddingBottom: 8 }}>
-            System Alerts
-          </h2>
-          {alerts.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {alerts.map((a, i) => (
-                <div key={i} style={{
-                  padding: '10px 14px', borderRadius: 8,
-                  background: alertBg(a.status),
-                  borderLeft: `4px solid ${alertBorderColor(a.status)}`,
-                  fontSize: '0.85rem',
-                }}>
-                  <strong style={{ color: alertBorderColor(a.status), display: 'block', marginBottom: 2 }}>{a.label}</strong>
-                  <span style={{ color: '#4b5563' }}>{a.value != null ? `(${a.value} ${a.unit ?? ''}) ` : ''}{a.message}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ background: '#f0fdf4', color: '#15803d', padding: '16px', borderRadius: 8, textAlign: 'center', border: '1px solid #bbf7d0' }}>
-              ✅ All parameters within optimal tracking range.<br/>No active warnings.
-            </div>
-          )}
-        </div>
-
       </div>
     </div>
   )

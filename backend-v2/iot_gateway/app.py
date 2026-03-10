@@ -459,19 +459,19 @@ def update_relay_from_do(do_value, source="measured_do", temp_c=None, salinity_p
     if temp_c is not None:
         temp_pred = predict_do_from_temperature(temp_c, salinity_ppt, hours_ahead=1)
         
-        # Turn ON if temp > 31
-        if temp_c > 31.0 and relay_state["aerator"] != "ON":
+        # Turn ON if temp > 32
+        if temp_c > 32.0 and relay_state["aerator"] != "ON":
             relay_state["aerator"]       = "ON"
-            relay_state["reason"]        = f"Temperature High: {round(temp_c,1)}°C (> 31°C)"
+            relay_state["reason"]        = f"Temperature High: {round(temp_c,1)}°C (> 32°C)"
             relay_state["triggered_at"]  = datetime.utcnow().isoformat()
             relay_state["do_level"]      = temp_pred["current_do_sat_mg_l"]
             relay_state["trigger_source"]= "temp_prediction"
             logger.warning(f"🌡️ RELAY ON (Temp out of bounds) — {relay_state['reason']}")
             
-        # Turn OFF if temp <= 28 (and it was the temp that originally triggered it)
-        elif temp_c <= 28.0 and relay_state["aerator"] == "ON" and relay_state.get("trigger_source") == "temp_prediction":
+        # Turn OFF if temp <= 29 (and it was the temp that originally triggered it)
+        elif temp_c <= 29.0 and relay_state["aerator"] == "ON" and relay_state.get("trigger_source") == "temp_prediction":
             relay_state["aerator"]       = "OFF"
-            relay_state["reason"]        = f"Temperature Cooled: {round(temp_c,1)}°C (<= 28°C)"
+            relay_state["reason"]        = f"Temperature Cooled: {round(temp_c,1)}°C (<= 29°C)"
             relay_state["triggered_at"]  = datetime.utcnow().isoformat()
             relay_state["do_level"]      = temp_pred["current_do_sat_mg_l"]
             relay_state["trigger_source"]= "temp_prediction"
