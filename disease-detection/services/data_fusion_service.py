@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from database.repository import Repository
+from utils.dummy_data import get_dummy_feeding
 
 
 class DataFusionService:
@@ -11,8 +12,13 @@ class DataFusionService:
         feed = self.repository.get_latest_feed(pond_id)
         env = self.repository.get_latest_environment(pond_id)
 
-        if not behavior or not feed or not env:
+        # Live camera behavior is required; feeding/environment can be dummy when DB missing.
+        if not behavior:
             return None
+
+        if not feed:
+            feed = get_dummy_feeding(pond_id)
+        # repository already returns dummy env when DB unavailable
 
         fused = {
             "pond_id": pond_id,

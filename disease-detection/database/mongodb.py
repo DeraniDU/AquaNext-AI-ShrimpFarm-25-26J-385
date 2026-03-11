@@ -1,4 +1,9 @@
+import os
+
+import certifi
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
+
 from config import settings
 
 
@@ -19,9 +24,22 @@ class MongoDB:
         Establish connection to MongoDB Atlas.
         Uses MONGO_URI and DB_NAME environment variables or defaults.
         """
+        if os.getenv("DISABLE_MONGO", "").strip().lower() in {"1", "true", "yes"}:
+            raise ConnectionError("MongoDB disabled via DISABLE_MONGO")
+
         if cls._client is None:
-            cls._client = MongoClient(settings.MONGODB_URI)
-            cls._db = cls._client[settings.MONGODB_DB]
+            try:
+                cls._client = MongoClient(
+                    settings.MONGODB_URI,
+                    tlsCAFile=certifi.where(),
+                    serverSelectionTimeoutMS=10_000,
+                    connectTimeoutMS=10_000,
+                    socketTimeoutMS=20_000,
+                )
+                cls._client.admin.command("ping")
+                cls._db = cls._client[settings.MONGODB_DB]
+            except PyMongoError as e:
+                raise ConnectionError(f"Failed to connect to MongoDB (IoT DB): {e}") from e
         return cls._db
 
     @classmethod

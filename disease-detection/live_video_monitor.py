@@ -3,26 +3,43 @@ import numpy as np
 import requests
 import os
 import argparse
+import logging
 from collections import deque
 from datetime import datetime
+import json
 
-# -----------------------------
-# CONFIG
-# -----------------------------
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("VideoMonitor")
+
+# =============================
+# CONFIGURATION
+# =============================
 # Default video source. Can be overridden with CLI `--source` or env var `VIDEO_SOURCE`.
-VIDEO_SOURCE = "http://192.168.8.128:8080/video"
-# 0 = laptop webcam
-# "rtsp://..." = IP camera
-# "pond.mp4" = video file for testing
+# Examples:
+#   - 0 = laptop webcam
+#   - "http://192.168.x.x:8080/video" = IP camera from phone (Android IP Camera)
+#   - "http://192.168.x.x:8080/video_feed.mjpg" = Alternative IP camera format
+#   - "rtsp://..." = RTSP IP camera
+#   - "pond.mp4" = video file for testing
 
-POND_ID = "pond-01"
-API_URL = "http://127.0.0.1:8001/behavior/live"
+VIDEO_SOURCE = os.getenv("VIDEO_SOURCE", "http://192.168.8.128:8080/video")
+POND_ID = os.getenv("POND_ID", "pond-01")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8001")
+BEHAVIOR_API_URL = f"{API_BASE_URL}/behavior/live"
+RISK_API_URL = f"{API_BASE_URL}/predict-risk"
 
-ROI_FRAC = 0.6
-WINDOW_FRAMES = 20
-BASELINE_WINDOW = 30
-DROP_THRESHOLD = 0.6
-SPIKE_THRESHOLD = 1.6
+# Video processing parameters
+ROI_FRAC = 0.6  # Fraction of frame to analyze
+WINDOW_FRAMES = 20  # Frames to average for metrics
+BASELINE_WINDOW = 30  # Historical window for baseline
+DROP_THRESHOLD = 0.6  # Activity drop threshold
+SPIKE_THRESHOLD = 1.6  # Activity spike threshold
+SEND_INTERVAL = 5  # Send data every N processed frames
+FPS = 15  # Target FPS for video
 
 # -----------------------------
 # HELPERS

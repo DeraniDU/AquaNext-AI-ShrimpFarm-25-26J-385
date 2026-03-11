@@ -1,5 +1,6 @@
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatDateTime } from '../lib/format'
+import { useDiseaseRisk } from '../lib/useDiseaseRisk'
 
 type Props = {
 	data: DashboardApiResponse
@@ -12,33 +13,52 @@ export function DiseaseDetectionView({ data, history, pondFilter }: Props) {
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 
-	// Simulate disease detection based on water quality and feed data
+	const pondIds = water.map((w) => w.pond_id)
+	const { data: riskData, loading: riskLoading, error: riskError } = useDiseaseRisk(pondIds)
+
 	const diseaseRiskFactors = water.map((w) => {
-		let riskScore = 0
+		const backend = riskData?.find((r) => r.pond_id === w.pond_id)
+
+		let riskLevel: string = 'unknown'
+		let riskScore = backend?.combined_score != null ? Math.round(backend.combined_score * 100) : 0
 		const factors: string[] = []
 
-		if (w.dissolved_oxygen < 5) {
-			riskScore += 30
-			factors.push('Low dissolved oxygen')
+		if (backend?.supervised_risk) {
+			factors.push(`Model (supervised): ${backend.supervised_risk}`)
 		}
-		if (w.temperature < 26 || w.temperature > 30) {
-			riskScore += 20
-			factors.push('Suboptimal temperature')
-		}
-		if (w.ph < 7.5 || w.ph > 8.5) {
-			riskScore += 15
-			factors.push('pH out of range')
-		}
-		if (w.ammonia > 0.2) {
-			riskScore += 25
-			factors.push('High ammonia levels')
-		}
-		if (w.nitrite > 0.1) {
-			riskScore += 20
-			factors.push('Elevated nitrite')
+		if (backend?.unsupervised_risk) {
+			factors.push(`Anomaly model: ${backend.unsupervised_risk}`)
 		}
 
-		const riskLevel = riskScore < 30 ? 'low' : riskScore < 60 ? 'medium' : 'high'
+		if (backend?.risk_level === 'LOW') riskLevel = 'low'
+		else if (backend?.risk_level === 'MEDIUM') riskLevel = 'medium'
+		else if (backend?.risk_level === 'HIGH') riskLevel = 'high'
+
+		// Fall back to rule-based estimate from water quality if backend data missing
+		if (!backend) {
+			if (w.dissolved_oxygen < 5) {
+				riskScore += 30
+				factors.push('Low dissolved oxygen')
+			}
+			if (w.temperature < 26 || w.temperature > 30) {
+				riskScore += 20
+				factors.push('Suboptimal temperature')
+			}
+			if (w.ph < 7.5 || w.ph > 8.5) {
+				riskScore += 15
+				factors.push('pH out of range')
+			}
+			if (w.ammonia > 0.2) {
+				riskScore += 25
+				factors.push('High ammonia levels')
+			}
+			if (w.nitrite > 0.1) {
+				riskScore += 20
+				factors.push('Elevated nitrite')
+			}
+
+			riskLevel = riskScore < 30 ? 'low' : riskScore < 60 ? 'medium' : 'high'
+		}
 
 		return {
 			pondId: w.pond_id,
@@ -92,7 +112,11 @@ export function DiseaseDetectionView({ data, history, pondFilter }: Props) {
 				<div className="panelHeader">
 					<div className="panelTitle">Disease Detection & Risk Assessment</div>
 					<div className="panelRight">
-						<span className="muted">Updated {formatDateTime(dashboard.timestamp)}</span>
+						<span className="muted">
+							Updated {formatDateTime(dashboard.timestamp)}
+							{riskLoading && ' · Loading risk…'}
+							{riskError && ` · Risk error: ${riskError}`}
+						</span>
 					</div>
 				</div>
 				<div style={{ padding: 16 }}>
