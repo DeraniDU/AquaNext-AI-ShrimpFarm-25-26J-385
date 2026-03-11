@@ -44,9 +44,10 @@ async def update_batch_daily(batch: Dict) -> Dict:
     # Update current shrimp age
     batch["currentShrimpAge"] = batch.get("shrimpAge", 0) + batch["daysPassed"]
 
-    # Calculate daily feed
+    # Calculate daily feed and feeding frequency (times per day)
     feed_info = calculate_daily_feed(batch)
     batch["feedAmount"] = feed_info["dailyFeedKg"]
+    batch["feedTimesPerDay"] = feed_info["feedTimesPerDay"]
 
     # Update in MongoDB
     await db.farmerinputs.update_one(
@@ -54,7 +55,8 @@ async def update_batch_daily(batch: Dict) -> Dict:
         {"$set": {
             "daysPassed": batch["daysPassed"],
             "currentShrimpAge": batch["currentShrimpAge"],
-            "feedAmount": batch["feedAmount"]
+            "feedAmount": batch["feedAmount"],
+            "feedTimesPerDay": batch["feedTimesPerDay"]
         }}
     )
 

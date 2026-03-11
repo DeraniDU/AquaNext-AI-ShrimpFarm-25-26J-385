@@ -9,7 +9,7 @@ try:
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
 from models import LaborData, WaterQualityData, EnergyData
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, USE_READINGS_ONLY
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 
@@ -271,7 +271,7 @@ class LaborOptimizationAgent:
         water_quality_data: WaterQualityData,
         energy_data: EnergyData,
     ) -> LaborData:
-        """Get labor data from MongoDB, or generate simulated data when DB is unavailable."""
+        """Get labor data from MongoDB (labor_readings), or simulated when allowed."""
         if self.repository and self.repository.is_available:
             try:
                 data = self.repository.get_latest_labor_data(pond_id)
@@ -280,6 +280,11 @@ class LaborOptimizationAgent:
                     return data
             except Exception as e:
                 print(f"Error: Could not fetch labor data from MongoDB: {e}")
+        if USE_READINGS_ONLY:
+            raise ValueError(
+                f"USE_READINGS_ONLY=true: no labor_readings row for pond {pond_id}. "
+                "Populate MongoDB or set USE_READINGS_ONLY=false."
+            )
         return self.generate_labor_data(pond_id, water_quality_data, energy_data)
 
     def _build_schedule(

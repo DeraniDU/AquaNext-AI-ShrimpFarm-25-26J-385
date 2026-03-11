@@ -60,3 +60,6 @@ MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
 USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"  # Enable MongoDB data fetching
 
+# Dashboard/agents use only *_readings collections—no simulation if missing rows.
+USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
+

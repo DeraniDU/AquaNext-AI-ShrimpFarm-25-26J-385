@@ -640,13 +640,15 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 				</div>
 			</div>
 
-			{activeTab === 'feeding' && (
+			{/* Keep feed + labor mounted but hidden so AI Action Plan / feed optimization state
+			    is not lost when switching tabs (avoids slow re-fetch and blank UI). */}
+			<div style={{ display: activeTab === 'feeding' ? 'block' : 'none' }} aria-hidden={activeTab !== 'feeding'}>
 				<FeedOptimizationView data={data} history={history} pondFilter={pondFilter} ponds={ponds} />
-			)}
+			</div>
 
-			{activeTab === 'labor' && (
+			<div style={{ display: activeTab === 'labor' ? 'block' : 'none' }} aria-hidden={activeTab !== 'labor'}>
 				<LaborOptimizationView data={data} history={history} pondFilter={pondFilter} ponds={ponds} embedded />
-			)}
+			</div>
 
 			{activeTab === 'benchmarking' && (
 				<>

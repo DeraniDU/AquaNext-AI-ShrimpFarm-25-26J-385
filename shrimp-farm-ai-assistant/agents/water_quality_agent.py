@@ -9,7 +9,7 @@ except Exception:  # pragma: no cover
 import random
 from typing import List, Optional
 from models import WaterQualityData, WaterQualityStatus, AlertLevel
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, USE_MONGODB
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, USE_MONGODB, USE_READINGS_ONLY
 from datetime import datetime, timedelta
 
 # Base values for simulation when MongoDB is not available (dashboard works without DB).
@@ -78,7 +78,7 @@ class WaterQualityAgent:
         )
     
     def get_water_quality_data(self, pond_id: int) -> WaterQualityData:
-        """Get water quality data from MongoDB, or simulated data when DB is unavailable."""
+        """Get water quality data from MongoDB (water_quality_readings), or simulated when allowed."""
         if self.repository and self.repository.is_available:
             try:
                 data = self.repository.get_latest_water_quality(pond_id)
@@ -87,6 +87,11 @@ class WaterQualityAgent:
                     return data
             except Exception as e:
                 print(f"Error: Could not fetch from MongoDB: {e}")
+        if USE_READINGS_ONLY:
+            raise ValueError(
+                f"USE_READINGS_ONLY=true: no water_quality_readings row for pond {pond_id}. "
+                "Populate MongoDB or set USE_READINGS_ONLY=false."
+            )
         return self._generate_simulated_water_quality(pond_id)
 
     def _generate_simulated_water_quality(self, pond_id: int) -> WaterQualityData:

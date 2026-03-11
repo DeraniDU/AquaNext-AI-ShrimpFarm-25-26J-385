@@ -7,7 +7,7 @@ try:
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
 from models import EnergyData, WaterQualityData
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, ENERGY_COST_PER_KWH_LKR
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, USE_READINGS_ONLY, ENERGY_COST_PER_KWH_LKR
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
@@ -76,7 +76,7 @@ class EnergyOptimizationAgent:
         )
     
     def get_energy_data(self, pond_id: int, water_quality_data: Optional[WaterQualityData] = None) -> EnergyData:
-        """Get energy data from MongoDB, or simulated from water quality when DB is unavailable."""
+        """Get energy data from MongoDB (energy_readings), or simulated when allowed."""
         if self.repository and self.repository.is_available:
             try:
                 data = self.repository.get_latest_energy_data(pond_id)
@@ -85,6 +85,11 @@ class EnergyOptimizationAgent:
                     return data
             except Exception as e:
                 print(f"Error: Could not fetch from MongoDB: {e}")
+        if USE_READINGS_ONLY:
+            raise ValueError(
+                f"USE_READINGS_ONLY=true: no energy_readings row for pond {pond_id}. "
+                "Populate MongoDB or set USE_READINGS_ONLY=false."
+            )
         if water_quality_data is None:
             raise ValueError(
                 f"MongoDB repository not available and no water_quality_data provided. "

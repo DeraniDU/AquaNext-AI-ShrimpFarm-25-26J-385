@@ -68,6 +68,11 @@ MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
 # Default to false if not explicitly enabled to avoid hard failures in local dev.
 USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
 
+# When true, dashboard/agents use only MongoDB *_readings collections—no simulated
+# water/feed/energy/labor data if a pond has no row. Requires USE_MONGODB=true and
+# populated water_quality_readings, feed_readings, energy_readings, labor_readings.
+USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
+
 # Orchestration: parallel data collection and optional LLM steps
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
 PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect

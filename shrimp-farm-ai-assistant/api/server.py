@@ -45,6 +45,13 @@ def _get_dashboard_agents():
 			LaborOptimizationAgent(),
 			ManagerAgent(),
 		)
+	else:
+		# After code reload, cached tuple can hold old ManagerAgent instances whose
+		# class predates new methods (e.g. _generate_alerts) → AttributeError on dashboard.
+		_mgr = _dashboard_agents[-1]
+		if not hasattr(_mgr, "_generate_alerts"):
+			_dashboard_agents = None
+			return _get_dashboard_agents()
 	return _dashboard_agents
 
 
@@ -247,6 +254,9 @@ def get_dashboard(
 	- fresh: if true, bypass cache and generate a new snapshot
 	- seed: optional RNG seed for reproducible simulation (affects cache key)
 	- cache_ttl_s: snapshot TTL in seconds (0 disables caching)
+
+	When USE_READINGS_ONLY=true (config/env), water/feed/energy/labor for each pond
+	must exist in MongoDB *_readings collections or the request fails with 500 detail.
 	"""
 	# Prevent browser from caching so Refresh always gets latest KPIs
 	_dashboard_headers = {"Cache-Control": "no-store"}
@@ -382,6 +392,23 @@ def get_dashboard(
 			_DASHBOARD_CACHE_TS[cache_key] = now
 
 		return JSONResponse(content=payload, headers=_dashboard_headers)
+	except AttributeError as e:
+		# Stale cached agents after ManagerAgent API change — drop cache and retry once.
+		global _dashboard_agents
+		if "_generate_alerts" in str(e) and _dashboard_agents is not None:
+			_dashboard_agents = None
+			try:
+				return get_dashboard(ponds=ponds, fresh=fresh, seed=seed, cache_ttl_s=cache_ttl_s)
+			except Exception:
+				pass
+		import traceback
+		err_msg = f"{type(e).__name__}: {e}"
+		traceback.print_exc()
+		return JSONResponse(
+			content={"detail": err_msg},
+			status_code=500,
+			headers=_dashboard_headers,
+		)
 	except Exception as e:
 		import traceback
 		err_msg = f"{type(e).__name__}: {e}"
