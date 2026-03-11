@@ -16,6 +16,9 @@ import {
 import type { DashboardApiResponse, SavedFarmSnapshot, FeedingPlan } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
 import { useFeedingOptimization } from '../lib/useFeedingOptimization'
+import { AiFeedingActionPlan } from './AiFeedingActionPlan'
+import { useFeedingSystemAnalytics } from '../lib/useFeedingSystemAnalytics'
+import { useFeedingSystemBatches } from '../lib/useFeedingSystemBatches'
 
 ChartJS.register(
 	CategoryScale,
@@ -39,7 +42,10 @@ type Props = {
 }
 
 export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: Props) {
-	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } = useFeedingOptimization(ponds)
+	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } =
+		useFeedingOptimization(ponds, data)
+	const { data: feedingSystemAnalytics, loading: systemAnalyticsLoading } = useFeedingSystemAnalytics()
+	const { data: feedingSystemBatches, loading: batchesLoading } = useFeedingSystemBatches()
 
 	const dashboard = data.dashboard
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
@@ -60,39 +66,70 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 			),
 		[feed]
 	)
-	const avgShrimpWeight =
-		feed.length > 0 ? feed.reduce((s, f) => s + f.average_weight, 0) / feed.length : 0
 	const totalBiomassKg = feed.reduce(
 		(sum, f) => sum + (f.shrimp_count * f.average_weight) / 1000,
 		0
 	)
 	const fcr =
 		totalDailyFeedKg > 0 && totalBiomassKg > 0 ? totalDailyFeedKg / totalBiomassKg : 1.42
-	const fcrTarget = 1.35
-	const avgFeedingFreq =
-		feed.length > 0
-			? feed.reduce((s, f) => s + (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 4), 0) / feed.length
-			: 4
 
-	// Feed consumption trend from history (last 7–8 days)
+	// Average daily feed from feeding system (total dispensed / number of days)
+	const numDays = Math.max(1, feedingSystemAnalytics?.cycleFeedData?.length ?? 1)
+	const averageDailyFeedFromSystem =
+		(feedingSystemAnalytics?.feedSummary?.totalDispensed ?? 0) / numDays
+
+	// Daily feed amount from feeding system batches (sum of current daily feed per batch)
+	const dailyFeedAmountFromBatches = useMemo(
+		() =>
+			(feedingSystemBatches?.batches ?? []).reduce(
+				(sum, b) => sum + (b.feedAmount ?? 0),
+				0
+			),
+		[feedingSystemBatches?.batches]
+	)
+
+	// Feeding frequency from feeding system batches (average times per day across batches)
+	const feedingFrequencyFromBatches = useMemo(() => {
+		const batches = feedingSystemBatches?.batches ?? []
+		const withFreq = batches.filter((b) => b.feedTimesPerDay != null && b.feedTimesPerDay > 0)
+		if (withFreq.length === 0) return null
+		const sum = withFreq.reduce((s, b) => s + (b.feedTimesPerDay ?? 0), 0)
+		return Math.round((sum / withFreq.length) * 10) / 10
+	}, [feedingSystemBatches?.batches])
+
+	// Feed consumption trend: from history (last 7–8 days) or feeding system cycle data when history is empty
 	const feedConsumptionTrend = useMemo(() => {
 		const sorted = [...(history || [])].sort(
 			(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
 		).slice(-8)
-		return {
-			labels: sorted.map((s) => {
-				const d = new Date(s.timestamp)
-				return `${d.getMonth() + 1}/${d.getDate()}`
-			}),
-			values: sorted.map((s) => {
-				const total = (s.feed || []).reduce(
-					(sum, f) => sum + (f.feed_amount * (f.feeding_frequency ?? 1)) / 1000,
-					0
-				)
-				return Math.round(total * 10) / 10
-			})
+		if (sorted.length > 0) {
+			return {
+				labels: sorted.map((s) => {
+					const d = new Date(s.timestamp)
+					return `${d.getMonth() + 1}/${d.getDate()}`
+				}),
+				values: sorted.map((s) => {
+					const total = (s.feed || []).reduce(
+						(sum, f) => sum + (f.feed_amount * (f.feeding_frequency ?? 1)) / 1000,
+						0
+					)
+					return Math.round(total * 10) / 10
+				})
+			}
 		}
-	}, [history])
+		// Fallback: use feeding system analytics (dispensed per day)
+		const cycleData = feedingSystemAnalytics?.cycleFeedData ?? []
+		if (cycleData.length > 0) {
+			return {
+				labels: cycleData.map((c) => {
+					const d = new Date(c.date)
+					return `${d.getMonth() + 1}/${d.getDate()}`
+				}),
+				values: cycleData.map((c) => Math.round((c.dispensed ?? 0) * 10) / 10)
+			}
+		}
+		return { labels: [], values: [] }
+	}, [history, feedingSystemAnalytics?.cycleFeedData])
 
 	// Feed type distribution from current feed
 	const feedTypeDistribution = useMemo(() => {
@@ -115,14 +152,26 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 		}
 	}, [feed])
 
-	// Per-pond recommended feed (from optimization API or current daily)
+	// Per-pond recommended feed from DB/API: optimizer plan > plan current > dashboard daily > biomass-based
 	const pondFeedData = useMemo(() => {
+		const BASE_FEED_RATE = 0.04 // 4% of biomass per day (industry range 3–5%)
 		return (pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed)
 			.map((f) => {
 				const plan = feedingPlans.find((p) => p.pond_id === f.pond_id)
-				const dailyKg =
+				const dashboardDailyKg =
 					(f.feed_amount * (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 1)) / 1000
-				const recommendedKg = plan ? plan.daily_feed_kg : dailyKg
+				const biomassKg = (Number(f.shrimp_count) * Number(f.average_weight)) / 1_000_000
+				const biomassBasedKg = biomassKg >= 0.001 ? biomassKg * BASE_FEED_RATE : 0
+				let recommendedKg =
+					plan && plan.daily_feed_kg > 0
+						? plan.daily_feed_kg
+						: plan && plan.current_daily_feed_kg > 0
+							? plan.current_daily_feed_kg
+							: dashboardDailyKg > 0
+								? dashboardDailyKg
+								: biomassBasedKg
+				// Ensure we never show 0 when we have real biomass (DB data)
+				if (recommendedKg <= 0 && biomassBasedKg > 0) recommendedKg = biomassBasedKg
 				const wq = water.find((w) => w.pond_id === f.pond_id)
 				const status = wq?.status === 'poor' || wq?.status === 'critical' ? 'warning' : 'optimal'
 				return {
@@ -153,11 +202,20 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 							: plan.adjustment_reason
 				})
 			} else if (plan.adjustment_factor > 1.05) {
+				const wq = water.find((w) => w.pond_id === plan.pond_id)
+				const baseDesc =
+					plan.adjustment_reason ||
+					(wq
+						? `Temp ${formatNumber(wq.temperature, { maximumFractionDigits: 1 })}°C, DO ${formatNumber(wq.dissolved_oxygen, { maximumFractionDigits: 1 })} mg/L — conditions support higher feeding.`
+						: 'Water quality and biomass support increasing feeding frequency.')
+				const desc =
+					wq && baseDesc.includes('optimal range')
+						? `Pond ${plan.pond_id}: ${baseDesc} (Temp ${formatNumber(wq.temperature, { maximumFractionDigits: 1 })}°C, DO ${formatNumber(wq.dissolved_oxygen, { maximumFractionDigits: 1 })} mg/L)`
+						: baseDesc
 				list.push({
 					type: 'success',
 					title: `Increase feed frequency in Pond ${plan.pond_id}`,
-					description:
-						'Shrimp are in rapid growth stage with excellent water conditions. Increase feeding frequency to maximize growth potential.'
+					description: desc
 				})
 			}
 		})
@@ -181,9 +239,6 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 	}, [fcr])
 
 	const dailyGrowthRate = 0.85
-	const weeklyFeedCost = totalDailyFeedKg * 7 * 13 // approximate $/kg
-	const savedWithAI = feedingOpt?.potential_savings_pct
-		? (weeklyFeedCost * Math.max(0, feedingOpt.potential_savings_pct / 100)) : 0
 
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -238,43 +293,83 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 				</div>
 				<div className="panel" style={{ padding: 16 }}>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-						<span style={{ fontSize: 20 }}>⚖️</span>
-						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Average Shrimp Weight</span>
+						<span style={{ fontSize: 20 }}>📊</span>
+						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Average Daily Feed</span>
 					</div>
 					<div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>
-						{formatNumber(avgShrimpWeight, { maximumFractionDigits: 1 })} g
+						{systemAnalyticsLoading
+							? '…'
+							: feedingSystemAnalytics
+								? `${formatNumber(averageDailyFeedFromSystem, { maximumFractionDigits: 1 })} kg`
+								: '— kg'}
 					</div>
-					<div style={{ fontSize: 12, color: 'var(--muted)' }}>Biomass: {formatNumber(totalBiomassKg, { maximumFractionDigits: 0 })} kg</div>
-					<div style={{ fontSize: 12, color: '#16a34a', marginTop: 4 }}>↑ 5.2% vs last week</div>
+					<div style={{ fontSize: 12, color: 'var(--muted)' }}>
+						From feeding system ({numDays} day{numDays !== 1 ? 's' : ''})
+					</div>
 				</div>
 				<div className="panel" style={{ padding: 16 }}>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-						<span style={{ fontSize: 20 }}>📈</span>
-						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Feed Conversion Ratio</span>
+						<span style={{ fontSize: 20 }}>📋</span>
+						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Daily Feed Amount</span>
 					</div>
 					<div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>
-						{formatNumber(fcr, { maximumFractionDigits: 2 })}
+						{batchesLoading
+							? '…'
+							: feedingSystemBatches?.batches?.length
+								? `${formatNumber(dailyFeedAmountFromBatches, { maximumFractionDigits: 1 })} kg`
+								: '— kg'}
 					</div>
-					<div style={{ fontSize: 12, color: 'var(--muted)' }}>Target: {fcrTarget}</div>
-					<div
-						style={{
-							fontSize: 12,
-							marginTop: 4,
-							color: fcr > fcrTarget ? '#dc2626' : '#16a34a'
-						}}
-					>
-						{fcr > fcrTarget ? '↑' : '↓'} {formatNumber(Math.abs(((fcr - fcrTarget) / fcrTarget) * 100), { maximumFractionDigits: 1 })}% vs target
+					<div style={{ fontSize: 12, color: 'var(--muted)' }}>
+						Sum of all batches (feeding system)
 					</div>
 				</div>
 				<div className="panel" style={{ padding: 16 }}>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
 						<span style={{ fontSize: 20 }}>🕐</span>
-						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Feeding Frequency</span>
+						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Feeding Frequency (System)</span>
 					</div>
 					<div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>
-						{formatNumber(avgFeedingFreq, { maximumFractionDigits: 1 })}x
+						{batchesLoading
+							? '…'
+							: feedingFrequencyFromBatches != null
+								? `${formatNumber(feedingFrequencyFromBatches, { maximumFractionDigits: 1 })}x/day`
+								: '—'}
 					</div>
-					<div style={{ fontSize: 12, color: 'var(--muted)' }}>Average per pond</div>
+					<div style={{ fontSize: 12, color: 'var(--muted)' }}>
+						From feeding system (avg per batch)
+					</div>
+				</div>
+				<div className="panel" style={{ padding: 16 }}>
+					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+						<span style={{ fontSize: 20 }}>⚖️</span>
+						<span style={{ fontSize: 14, color: 'var(--muted)' }}>Avg Shrimp Weight (System)</span>
+					</div>
+					<div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>
+						{systemAnalyticsLoading
+							? '…'
+							: feedingSystemAnalytics?.summary?.averageABW != null
+								? `${formatNumber(feedingSystemAnalytics.summary.averageABW, { maximumFractionDigits: 1 })} g`
+								: '—'}
+					</div>
+					<div style={{ fontSize: 12, color: 'var(--muted)' }}>
+						From feeding system analytics
+					</div>
+				</div>
+				<div className="panel" style={{ padding: 16 }}>
+					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+						<span style={{ fontSize: 20 }}>📈</span>
+						<span style={{ fontSize: 14, color: 'var(--muted)' }}>FCR (System)</span>
+					</div>
+					<div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>
+						{systemAnalyticsLoading
+							? '…'
+							: feedingSystemAnalytics?.summary?.averageFCR != null
+								? formatNumber(feedingSystemAnalytics.summary.averageFCR, { maximumFractionDigits: 2 })
+								: '—'}
+					</div>
+					<div style={{ fontSize: 12, color: 'var(--muted)' }}>
+						Feed / biomass (feeding system)
+					</div>
 				</div>
 			</div>
 
@@ -325,6 +420,21 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 				</div>
 			</div>
 
+			{/* AI Action Plan — below recommendations; LLM + DB via POST /api/feeding-optimization */}
+			<AiFeedingActionPlan
+				feedingOpt={feedingOpt}
+				water={water}
+				loading={feedingLoading}
+				error={feedingError}
+				onRefresh={refreshFeeding}
+				usesLiveData={
+					Array.isArray(data.water_quality) &&
+					data.water_quality.length > 0 &&
+					Array.isArray(data.feed) &&
+					data.feed.length > 0
+				}
+			/>
+
 			{/* Feed Management Overview — per-pond cards */}
 			<div>
 				<h3 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 12px 0', color: 'var(--text)' }}>
@@ -360,7 +470,7 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 								Avg weight: {formatNumber(p.average_weight, { maximumFractionDigits: 1 })}g
 							</div>
 							<div style={{ fontSize: 15, fontWeight: 700, color: '#16a34a', marginBottom: 4 }}>
-								Recommended feed: {formatNumber(p.recommended_feed_kg, { maximumFractionDigits: 0 })} kg
+								Recommended feed: {formatNumber(p.recommended_feed_kg, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg
 							</div>
 							<div style={{ fontSize: 13, color: 'var(--muted)' }}>
 								Feeding frequency: {p.feeding_frequency}x daily
@@ -471,8 +581,8 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 				</div>
 			</div>
 
-			{/* Feed Performance Metrics — 3 cards */}
-			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+			{/* Feed Performance Metrics — 2 cards */}
+			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
 				<div className="panel" style={{ padding: 16 }}>
 					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
 						<span style={{ fontSize: 22 }}>📊</span>
@@ -503,21 +613,6 @@ export function FeedOptimizationView({ data, history, pondFilter, ponds = 4 }: P
 					</div>
 					<div style={{ fontSize: 13, color: 'var(--muted)' }}>Per shrimp average</div>
 					<div style={{ fontSize: 12, color: '#16a34a', marginTop: 4 }}>↑ 12.5% vs last period</div>
-				</div>
-				<div className="panel" style={{ padding: 16 }}>
-					<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-						<span style={{ fontSize: 22 }}>💰</span>
-						<span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Weekly Feed Cost</span>
-					</div>
-					<div style={{ fontSize: 32, fontWeight: 700, color: '#3b82f6', marginBottom: 4 }}>
-						${formatNumber(weeklyFeedCost, { maximumFractionDigits: 0 })}
-					</div>
-					<div style={{ fontSize: 13, color: 'var(--muted)' }}>Optimized spending</div>
-					{savedWithAI > 0 && (
-						<div style={{ fontSize: 13, color: '#3b82f6', marginTop: 4 }}>
-							Saved ${formatNumber(savedWithAI, { maximumFractionDigits: 0 })} with AI optimization
-						</div>
-					)}
 				</div>
 			</div>
 		</div>

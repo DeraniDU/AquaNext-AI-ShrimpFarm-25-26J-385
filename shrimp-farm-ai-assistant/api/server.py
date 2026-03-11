@@ -1,9 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from pydantic import BaseModel
+from datetime import datetime, timedelta
+from collections import defaultdict
 import time
 import random
 
@@ -313,6 +315,18 @@ def get_dashboard(
 				water_quality_data, energy_data, labor_data
 			)
 
+		# Persist only energy readings to MongoDB (includes cost). Do not save feed/water/labor here.
+		try:
+			from config import USE_MONGODB
+			if USE_MONGODB:
+				from database.repository import DataRepository
+				_repo = DataRepository()
+				if _repo.is_available:
+					for _e in energy_data:
+						_repo.save_energy_data(_e)
+		except Exception as _save_ex:
+			print(f"[WARN] Could not save energy data to DB: {_save_ex}")
+
 		dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 
 		# Include decision-agent outputs (e.g., XGBoost) explicitly for the UI.
@@ -379,6 +393,99 @@ def get_dashboard(
 		)
 
 
+class FeedingOptimizationRequest(BaseModel):
+	"""Request body: use real dashboard data for recommendations."""
+	water_quality: List[Dict[str, Any]] = []
+	feed: List[Dict[str, Any]] = []
+
+
+def _parse_dashboard_data_for_optimization(
+	water_quality: List[Dict[str, Any]],
+	feed: List[Dict[str, Any]],
+) -> Tuple[List[Any], List[Any]]:
+	"""Parse dashboard JSON into WaterQualityData and FeedData for the optimizer."""
+	from models import WaterQualityData, FeedData
+	from models import WaterQualityStatus
+
+	wq_list = []
+	for w in water_quality:
+		try:
+			# Normalize status to enum (frontend sends lowercase e.g. "good")
+			status = w.get("status", "good")
+			if isinstance(status, str):
+				try:
+					status = WaterQualityStatus(status)
+				except ValueError:
+					status = WaterQualityStatus.GOOD
+			wq_list.append(WaterQualityData(
+				timestamp=datetime.fromisoformat(w["timestamp"].replace("Z", "+00:00")) if isinstance(w.get("timestamp"), str) else w.get("timestamp", datetime.utcnow()),
+				pond_id=int(w["pond_id"]),
+				ph=float(w["ph"]),
+				temperature=float(w["temperature"]),
+				dissolved_oxygen=float(w["dissolved_oxygen"]),
+				salinity=float(w.get("salinity", 0)),
+				ammonia=float(w["ammonia"]),
+				nitrite=float(w.get("nitrite", 0)),
+				nitrate=float(w.get("nitrate", 0)),
+				turbidity=float(w.get("turbidity", 0)),
+				status=status,
+				alerts=list(w.get("alerts", [])),
+			))
+		except (KeyError, TypeError, ValueError):
+			continue
+
+	feed_list = []
+	for f in feed:
+		try:
+			ts = f.get("timestamp")
+			if isinstance(ts, str):
+				ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+			next_ts = f.get("predicted_next_feeding")
+			if isinstance(next_ts, str):
+				next_ts = datetime.fromisoformat(next_ts.replace("Z", "+00:00"))
+			feed_list.append(FeedData(
+				timestamp=ts or datetime.utcnow(),
+				pond_id=int(f["pond_id"]),
+				shrimp_count=int(f["shrimp_count"]),
+				average_weight=float(f["average_weight"]),
+				feed_amount=float(f["feed_amount"]),
+				feed_type=str(f.get("feed_type", "Standard Feed")),
+				feeding_frequency=int(f.get("feeding_frequency", 3)),
+				predicted_next_feeding=next_ts or datetime.utcnow(),
+			))
+		except (KeyError, TypeError, ValueError):
+			continue
+
+	return wq_list, feed_list
+
+
+@app.post("/api/feeding-optimization")
+def post_feeding_optimization(body: FeedingOptimizationRequest = Body(...)) -> Dict[str, Any]:
+	"""
+	Return an optimized per-pond feeding plan using real dashboard data.
+
+	Send water_quality and feed arrays (same shape as /api/dashboard) to get
+	recommendations based on your current DB/live data instead of simulated data.
+	"""
+	water_quality_data, feed_data = _parse_dashboard_data_for_optimization(
+		body.water_quality, body.feed
+	)
+	if not water_quality_data or not feed_data:
+		# Not enough valid data: return empty result so frontend can fall back to GET
+		return {
+			"plans": [],
+			"overall_fcr": 1.2,
+			"potential_savings_pct": 0.0,
+			"top_recommendation": "Provide water quality and feed data for recommendations.",
+			"timestamp": datetime.utcnow().isoformat() + "Z",
+		}
+
+	from agents.feeding_optimizer import FeedingOptimizerAgent
+	optimizer = FeedingOptimizerAgent()
+	result = optimizer.optimize_all(feed_data, water_quality_data)
+	return result.model_dump(mode="json")
+
+
 @app.get("/api/feeding-optimization")
 def get_feeding_optimization(
 	ponds: int = FARM_CONFIG.get("pond_count", 4),
@@ -389,6 +496,7 @@ def get_feeding_optimization(
 
 	Calculates recommended daily feed amounts, feeding windows, and feed
 	types based on current biomass estimates and live water quality data.
+	When possible, use POST with water_quality and feed from your dashboard for real data.
 
 	Query params:
 	- ponds: Number of ponds to optimize for
@@ -399,7 +507,7 @@ def get_feeding_optimization(
 		np.random.seed(int(seed))
 
 	water_quality_agent = WaterQualityAgent()
-	feed_agent = FeedPredictionAgent()
+	feed_agent = FeedPredictionAgent()	
 
 	water_quality_data = []
 	feed_data = []
@@ -416,6 +524,64 @@ def get_feeding_optimization(
 	result = optimizer.optimize_all(feed_data, water_quality_data)
 
 	return result.model_dump(mode="json")
+
+
+# Default chart hours for feeding activity (7 AM–6 PM)
+_FEEDING_ACTIVITY_HOURS = [7, 9, 11, 13, 15, 17, 18]
+_FEEDING_ACTIVITY_LABELS = ["7 AM", "9 AM", "11 AM", "1 PM", "3 PM", "5 PM", "6 PM"]
+
+
+@app.get("/api/feeding-activity")
+def get_feeding_activity(
+	pond_id: Optional[int] = None,
+	hours: int = 24,
+) -> Dict[str, Any]:
+	"""
+	Return feeding activity by hour from MongoDB (feed_readings) for the Shrimp Feeding Behavior chart.
+	Buckets feed events by hour (7 AM–6 PM). When MongoDB is disabled or has no data, returns zeros
+	so the frontend can use a fallback.
+	"""
+	try:
+		from config import USE_MONGODB
+		if not USE_MONGODB:
+			return {
+				"labels": _FEEDING_ACTIVITY_LABELS,
+				"data": [0] * len(_FEEDING_ACTIVITY_LABELS),
+				"source": "none",
+			}
+		from database.repository import DataRepository
+		repo = DataRepository()
+		if not repo.is_available:
+			return {
+				"labels": _FEEDING_ACTIVITY_LABELS,
+				"data": [0] * len(_FEEDING_ACTIVITY_LABELS),
+				"source": "none",
+			}
+		end_time = datetime.utcnow()
+		start_time = end_time - timedelta(hours=hours)
+		feed_list = repo.get_feed_data(
+			pond_id=pond_id,
+			start_time=start_time,
+			end_time=end_time,
+			limit=500,
+		)
+		by_hour: Dict[int, int] = defaultdict(int)
+		for f in feed_list:
+			h = f.timestamp.hour
+			by_hour[h] += 1
+		data = [by_hour[h] for h in _FEEDING_ACTIVITY_HOURS]
+		return {
+			"labels": _FEEDING_ACTIVITY_LABELS,
+			"data": data,
+			"source": "mongodb",
+		}
+	except Exception as e:
+		return {
+			"labels": _FEEDING_ACTIVITY_LABELS,
+			"data": [0] * len(_FEEDING_ACTIVITY_LABELS),
+			"source": "error",
+			"error": str(e),
+		}
 
 
 @app.get("/api/labor-optimization")

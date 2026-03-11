@@ -162,6 +162,8 @@ export type SavedWaterQuality = {
 	temperature: number
 	dissolved_oxygen: number
 	salinity: number
+	/** Optional: live API has it; snapshots may omit—DashboardView uses ?? base when missing. */
+	ammonia?: number
 	status: WaterQualityStatus
 	alerts: string[]
 }
@@ -338,6 +340,7 @@ export type FeedingSystemBatch = {
 	currentShrimpAge?: number
 	createdAt?: string
 	feedAmount?: number
+	feedTimesPerDay?: number
 	lastFeedDate?: string | null
 }
 

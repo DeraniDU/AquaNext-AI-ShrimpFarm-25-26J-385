@@ -148,7 +148,7 @@ class LaborOptimizationAgent:
             "ai_plan": None,
             "schedule": schedule,
             "recommendations": self._build_recommendations(
-                labor_data, water_quality_data, energy_data
+                pond_id, labor_data, water_quality_data, energy_data
             ),
             "metrics": self._build_metrics(labor_data),
         }
@@ -271,21 +271,16 @@ class LaborOptimizationAgent:
         water_quality_data: WaterQualityData,
         energy_data: EnergyData,
     ) -> LaborData:
-        """Get labor data from MongoDB only (no simulated fallback)."""
-        if not self.repository or not self.repository.is_available:
-            raise ValueError(
-                f"MongoDB repository not available. Cannot fetch labor data for pond {pond_id}. "
-                "Shrimp-farm-ai-assistant uses only MongoDB for data."
-            )
-        try:
-            data = self.repository.get_latest_labor_data(pond_id)
-            if data:
-                print(f"[DB] Fetched labor data for pond {pond_id} from MongoDB")
-                return data
-            raise ValueError(f"No labor data found in database for pond {pond_id}")
-        except Exception as e:
-            print(f"Error: Could not fetch labor data from MongoDB: {e}")
-            raise
+        """Get labor data from MongoDB, or generate simulated data when DB is unavailable."""
+        if self.repository and self.repository.is_available:
+            try:
+                data = self.repository.get_latest_labor_data(pond_id)
+                if data:
+                    print(f"[DB] Fetched labor data for pond {pond_id} from MongoDB")
+                    return data
+            except Exception as e:
+                print(f"Error: Could not fetch labor data from MongoDB: {e}")
+        return self.generate_labor_data(pond_id, water_quality_data, energy_data)
 
     def _build_schedule(
         self,
@@ -462,44 +457,110 @@ Example format (use workers: {display_workers} and {display_workers} tasks per s
             print(f"[LaborOptimizationAgent] LLM schedule build failed: {e}")
             return None
 
-    def _build_recommendations(
+    def _build_llm_recommendations(
         self,
+        pond_id: int,
         labor_data: LaborData,
         water_quality_data: WaterQualityData,
         energy_data: EnergyData,
     ) -> List[Dict[str, Any]]:
-        """Build rule-based recommendations for API compatibility."""
+        """Generate 2–4 short AI recommendations from current/DB labor and pond data. Returns [] if LLM unavailable or fails."""
+        if self.llm is None:
+            return []
+        tasks_done = ", ".join(labor_data.tasks_completed[:8]) if labor_data.tasks_completed else "None"
+        next_t = ", ".join(labor_data.next_tasks[:6]) if labor_data.next_tasks else "None"
+        prompt = f"""You are a labor optimization expert for a shrimp farm. Based on the following data for Pond {pond_id}, give exactly 2 to 4 short, actionable recommendations (one sentence each). Use the exact labor and pond data provided; do not repeat the same generic line for every pond.
+
+Pond {pond_id} – Labor (from farm/DB when available):
+- Tasks completed: {tasks_done}
+- Next tasks: {next_t}
+- Workers: {labor_data.worker_count}, Time spent: {labor_data.time_spent}h, Efficiency score: {labor_data.efficiency_score:.2f}
+
+Water quality: pH={water_quality_data.ph:.2f}, temp={water_quality_data.temperature:.1f}C, DO={water_quality_data.dissolved_oxygen:.2f}, status={water_quality_data.status.value}. Alerts: {len(water_quality_data.alerts)}.
+
+Energy: efficiency={energy_data.efficiency_score:.2f}, cost={energy_data.cost:.1f}.
+
+Output only a JSON array of 2–4 objects, each with "recommendation" (string) and "priority" ("high" or "medium" or "low"). No other text.
+Example: [{{"recommendation": "Add aeration check to morning shift given current DO.", "priority": "high"}}]
+"""
+        try:
+            try:
+                from langchain_core.messages import HumanMessage
+                resp = self.llm.invoke([HumanMessage(content=prompt)])
+            except Exception:
+                try:
+                    from langchain.schema import HumanMessage
+                    resp = self.llm.invoke([HumanMessage(content=prompt)])
+                except Exception:
+                    resp = self.llm.invoke(prompt)
+            text = str(resp.content).strip() if hasattr(resp, "content") else str(resp).strip()
+            json_match = re.search(r"\[[\s\S]*\]", text)
+            if not json_match:
+                return []
+            arr = json.loads(json_match.group())
+            if not isinstance(arr, list):
+                return []
+            recs: List[Dict[str, Any]] = []
+            for i, item in enumerate(arr[:4]):
+                if not isinstance(item, dict):
+                    continue
+                rec = str(item.get("recommendation") or "").strip()
+                if not rec:
+                    continue
+                recs.append({
+                    "category": "AI recommendation",
+                    "priority": (str(item.get("priority") or "medium").lower())[:10],
+                    "recommendation": rec,
+                })
+            return recs
+        except Exception as e:
+            print(f"[LaborOptimizationAgent] LLM recommendations failed: {e}")
+            return []
+
+    def _build_recommendations(
+        self,
+        pond_id: int,
+        labor_data: LaborData,
+        water_quality_data: WaterQualityData,
+        energy_data: EnergyData,
+    ) -> List[Dict[str, Any]]:
+        """Build recommendations from DB/current data: LLM when available, else rule-based (pond-specific)."""
         recs: List[Dict[str, Any]] = []
+        # Prefer LLM recommendations based on actual labor and pond data
+        llm_recs = self._build_llm_recommendations(pond_id, labor_data, water_quality_data, energy_data)
+        if llm_recs:
+            return llm_recs
+        # Rule-based fallback (data-driven, pond-specific where possible)
         if labor_data.efficiency_score < 0.7:
             recs.append({
                 "category": "Labor efficiency",
                 "priority": "high",
-                "recommendation": "Improve task batching and reduce idle time to raise efficiency score.",
+                "recommendation": f"Pond {pond_id}: Improve task batching and reduce idle time to raise efficiency score.",
                 "expected_improvement": "10–15% efficiency gain",
             })
         if labor_data.worker_count >= 2 and len(labor_data.tasks_completed) < 3:
             recs.append({
                 "category": "Workforce allocation",
                 "priority": "medium",
-                "recommendation": "Consider reallocating workers or adding higher-priority tasks.",
+                "recommendation": f"Pond {pond_id}: Consider reallocating workers or adding higher-priority tasks.",
             })
         if water_quality_data.status.value in ["poor", "critical"]:
             recs.append({
                 "category": "Labor priority",
                 "priority": "high",
-                "recommendation": "Prioritize water quality and aeration tasks in the next shifts.",
+                "recommendation": f"Pond {pond_id}: Prioritize water quality and aeration tasks in the next shifts.",
             })
         if energy_data.efficiency_score < 0.7:
             recs.append({
                 "category": "Energy",
                 "priority": "medium",
-                "recommendation": "Schedule equipment inspection and energy audit in afternoon shift.",
+                "recommendation": f"Pond {pond_id}: Schedule equipment inspection and energy audit in afternoon shift.",
             })
         if not recs:
             recs.append({
                 "category": "Maintenance",
                 "priority": "low",
-                "recommendation": "Keep current schedule; ensure safety equipment check is done daily.",
+                "recommendation": f"Pond {pond_id}: Keep current schedule; ensure safety equipment check is done daily.",
             })
         return recs
 

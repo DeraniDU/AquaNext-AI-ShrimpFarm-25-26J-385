@@ -12,6 +12,17 @@ from models import WaterQualityData, WaterQualityStatus, AlertLevel
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, USE_MONGODB
 from datetime import datetime, timedelta
 
+# Base values for simulation when MongoDB is not available (dashboard works without DB).
+_WQ_SIM_PH = (7.6, 8.2)
+_WQ_SIM_TEMP = (26.5, 29.0)
+_WQ_SIM_DO = (4.5, 6.5)
+_WQ_SIM_SALINITY = (17.0, 22.0)
+_WQ_SIM_AMMONIA = (0.05, 0.15)
+_WQ_SIM_NITRITE = (0.02, 0.08)
+_WQ_SIM_NITRATE = (1.0, 3.0)
+_WQ_SIM_TURBIDITY = (1.0, 3.0)
+
+
 class WaterQualityAgent:
     def __init__(self):
         # LLM is optional; simulation mode and downstream dashboards should work without an OpenAI key.
@@ -67,21 +78,46 @@ class WaterQualityAgent:
         )
     
     def get_water_quality_data(self, pond_id: int) -> WaterQualityData:
-        """Get water quality data from MongoDB"""
-        if not self.repository or not self.repository.is_available:
-            raise ValueError(f"MongoDB repository not available. Cannot fetch water quality data for pond {pond_id}")
-        
-        try:
-            data = self.repository.get_latest_water_quality(pond_id)
-            if data:
-                print(f"[DB] Fetched water quality data for pond {pond_id} from MongoDB")
-                return data
-            else:
-                raise ValueError(f"No water quality data found in database for pond {pond_id}")
-        except Exception as e:
-            print(f"Error: Could not fetch from MongoDB: {e}")
-            raise
-    
+        """Get water quality data from MongoDB, or simulated data when DB is unavailable."""
+        if self.repository and self.repository.is_available:
+            try:
+                data = self.repository.get_latest_water_quality(pond_id)
+                if data:
+                    print(f"[DB] Fetched water quality data for pond {pond_id} from MongoDB")
+                    return data
+            except Exception as e:
+                print(f"Error: Could not fetch from MongoDB: {e}")
+        return self._generate_simulated_water_quality(pond_id)
+
+    def _generate_simulated_water_quality(self, pond_id: int) -> WaterQualityData:
+        """Generate simulated water quality for dashboard when MongoDB is not available."""
+        # Deterministic per-pond variation so dashboard is stable
+        r = random.Random(pond_id)
+        ph = round(r.uniform(*_WQ_SIM_PH), 2)
+        temp = round(r.uniform(*_WQ_SIM_TEMP), 1)
+        do = round(r.uniform(*_WQ_SIM_DO), 1)
+        salinity = round(r.uniform(*_WQ_SIM_SALINITY), 1)
+        ammonia = round(r.uniform(*_WQ_SIM_AMMONIA), 2)
+        nitrite = round(r.uniform(*_WQ_SIM_NITRITE), 2)
+        nitrate = round(r.uniform(*_WQ_SIM_NITRATE), 1)
+        turbidity = round(r.uniform(*_WQ_SIM_TURBIDITY), 1)
+        status = self._determine_water_quality_status(ph, temp, do, salinity, ammonia)
+        alerts = self._generate_alerts(ph, temp, do, salinity, ammonia)
+        return WaterQualityData(
+            timestamp=datetime.now(),
+            pond_id=pond_id,
+            ph=ph,
+            temperature=temp,
+            dissolved_oxygen=do,
+            salinity=salinity,
+            ammonia=ammonia,
+            nitrite=nitrite,
+            nitrate=nitrate,
+            turbidity=turbidity,
+            status=status,
+            alerts=alerts,
+        )
+
     def _determine_water_quality_status(self, ph: float, temp: float, do: float, salinity: float, ammonia: float) -> WaterQualityStatus:
         """Determine overall water quality status based on parameters"""
         issues = 0

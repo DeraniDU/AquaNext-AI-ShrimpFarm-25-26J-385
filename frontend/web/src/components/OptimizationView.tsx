@@ -162,8 +162,9 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 		  )
 		: Array(workerNames.length).fill('-')
 
-	// Feeding optimization data from backend
-	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } = useFeedingOptimization(ponds)
+	// Feeding optimization from backend — pass dashboard so POST uses water_quality + feed (LLM + DB)
+	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } =
+		useFeedingOptimization(ponds, data)
 	// Filter to selected pond if a pond filter is active
 	const feedingPlans: FeedingPlan[] = feedingOpt
 		? pondFilter

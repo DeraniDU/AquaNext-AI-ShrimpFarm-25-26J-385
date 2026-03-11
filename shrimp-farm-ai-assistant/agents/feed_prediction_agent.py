@@ -70,21 +70,43 @@ class FeedPredictionAgent:
         )
     
     def get_feed_data(self, pond_id: int, water_quality_data: Optional[WaterQualityData] = None) -> FeedData:
-        """Get feed data from MongoDB"""
-        if not self.repository or not self.repository.is_available:
-            raise ValueError(f"MongoDB repository not available. Cannot fetch feed data for pond {pond_id}")
-        
-        try:
-            data = self.repository.get_latest_feed_data(pond_id)
-            if data:
-                print(f"[DB] Fetched feed data for pond {pond_id} from MongoDB")
-                return data
-            else:
-                raise ValueError(f"No feed data found in database for pond {pond_id}")
-        except Exception as e:
-            print(f"Error: Could not fetch from MongoDB: {e}")
-            raise
-    
+        """Get feed data from MongoDB, or simulated from water quality when DB is unavailable."""
+        if self.repository and self.repository.is_available:
+            try:
+                data = self.repository.get_latest_feed_data(pond_id)
+                if data:
+                    print(f"[DB] Fetched feed data for pond {pond_id} from MongoDB")
+                    return data
+            except Exception as e:
+                print(f"Error: Could not fetch from MongoDB: {e}")
+        if water_quality_data is None:
+            raise ValueError(
+                f"MongoDB repository not available and no water_quality_data provided. "
+                f"Cannot fetch or simulate feed data for pond {pond_id}."
+            )
+        return self._generate_simulated_feed(pond_id, water_quality_data)
+
+    def _generate_simulated_feed(self, pond_id: int, water_quality_data: WaterQualityData) -> FeedData:
+        """Generate simulated feed data from water quality when MongoDB is not available."""
+        adjustment = self._calculate_feed_adjustment(water_quality_data)
+        base_feed_amount = 5.0
+        feed_amount = round(base_feed_amount * adjustment, 2)
+        average_weight = 8.0 + (pond_id % 5)  # 8–12 g per pond
+        feed_type = self._select_feed_type(average_weight)
+        shrimp_count = 4000 + pond_id * 500
+        feeding_frequency = 3 if water_quality_data.temperature >= 28 else 4
+        predicted_next_feeding = datetime.now() + timedelta(hours=6)
+        return FeedData(
+            timestamp=datetime.now(),
+            pond_id=pond_id,
+            shrimp_count=shrimp_count,
+            average_weight=average_weight,
+            feed_amount=feed_amount,
+            feed_type=feed_type,
+            feeding_frequency=feeding_frequency,
+            predicted_next_feeding=predicted_next_feeding,
+        )
+
     def _calculate_feed_adjustment(self, water_quality_data: WaterQualityData) -> float:
         """Calculate feed adjustment factor based on water quality"""
         adjustment = 1.0

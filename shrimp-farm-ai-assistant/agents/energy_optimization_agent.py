@@ -7,7 +7,7 @@ try:
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
 from models import EnergyData, WaterQualityData
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, ENERGY_COST_PER_KWH_LKR
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
@@ -52,7 +52,7 @@ class EnergyOptimizationAgent:
             - Pump: {current_energy_data.pump_usage:.2f} kWh  
             - Heater: {current_energy_data.heater_usage:.2f} kWh
             - Total: {current_energy_data.total_energy:.2f} kWh
-            - Cost: ${current_energy_data.cost:.2f}
+            - Cost: Rs. {current_energy_data.cost:,.2f} (LKR)
             - Efficiency Score: {current_energy_data.efficiency_score:.2f}
             
             Water Quality Context:
@@ -76,21 +76,53 @@ class EnergyOptimizationAgent:
         )
     
     def get_energy_data(self, pond_id: int, water_quality_data: Optional[WaterQualityData] = None) -> EnergyData:
-        """Get energy data from MongoDB"""
-        if not self.repository or not self.repository.is_available:
-            raise ValueError(f"MongoDB repository not available. Cannot fetch energy data for pond {pond_id}")
-        
-        try:
-            data = self.repository.get_latest_energy_data(pond_id)
-            if data:
-                print(f"[DB] Fetched energy data for pond {pond_id} from MongoDB")
-                return data
-            else:
-                raise ValueError(f"No energy data found in database for pond {pond_id}")
-        except Exception as e:
-            print(f"Error: Could not fetch from MongoDB: {e}")
-            raise
-    
+        """Get energy data from MongoDB, or simulated from water quality when DB is unavailable."""
+        if self.repository and self.repository.is_available:
+            try:
+                data = self.repository.get_latest_energy_data(pond_id)
+                if data:
+                    print(f"[DB] Fetched energy data for pond {pond_id} from MongoDB")
+                    return data
+            except Exception as e:
+                print(f"Error: Could not fetch from MongoDB: {e}")
+        if water_quality_data is None:
+            raise ValueError(
+                f"MongoDB repository not available and no water_quality_data provided. "
+                f"Cannot fetch or simulate energy data for pond {pond_id}."
+            )
+        return self._generate_simulated_energy(pond_id, water_quality_data)
+
+    def _generate_simulated_energy(self, pond_id: int, water_quality_data: WaterQualityData) -> EnergyData:
+        """Generate simulated energy data from water quality when MongoDB is not available."""
+        base_aerator_kwh = 15.0
+        base_pump_kwh = 10.0
+        base_heater_kwh = 8.0
+        aerator_mult = self._calculate_aerator_usage(water_quality_data)
+        pump_mult = self._calculate_pump_usage(water_quality_data)
+        heater_mult = self._calculate_heater_usage(water_quality_data)
+        aerator_usage = round(base_aerator_kwh * aerator_mult, 2)
+        pump_usage = round(base_pump_kwh * pump_mult, 2)
+        heater_usage = round(base_heater_kwh * heater_mult, 2)
+        total_energy = round(aerator_usage + pump_usage + heater_usage, 2)
+        # Cost in Sri Lankan Rupees (LKR) for DB + dashboard operational cost
+        cost = round(total_energy * ENERGY_COST_PER_KWH_LKR, 2)
+        efficiency_score = round(
+            self._calculate_efficiency_score(
+                water_quality_data, aerator_usage, pump_usage, heater_usage
+            ),
+            2,
+        )
+        return EnergyData(
+            timestamp=datetime.now(),
+            pond_id=pond_id,
+            aerator_usage=aerator_usage,
+            pump_usage=pump_usage,
+            heater_usage=heater_usage,
+            total_energy=total_energy,
+            cost=cost,
+            efficiency_score=efficiency_score,
+        )
+
     def _calculate_aerator_usage(self, water_quality_data: WaterQualityData) -> float:
         """Calculate aerator usage adjustment based on dissolved oxygen"""
         if water_quality_data.dissolved_oxygen < 4:
@@ -160,7 +192,7 @@ class EnergyOptimizationAgent:
                 "category": "Aerator Optimization",
                 "priority": "High",
                 "recommendation": "Consider variable speed aerators or scheduling optimization",
-                "potential_savings": f"${(energy_data.aerator_usage - 15) * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {(energy_data.aerator_usage - 15) * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "Medium"
             })
         
@@ -170,7 +202,7 @@ class EnergyOptimizationAgent:
                 "category": "Pump Optimization", 
                 "priority": "Medium",
                 "recommendation": "Implement smart pumping schedules based on water quality",
-                "potential_savings": f"${(energy_data.pump_usage - 10) * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {(energy_data.pump_usage - 10) * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "Low"
             })
         
@@ -180,7 +212,7 @@ class EnergyOptimizationAgent:
                 "category": "Heating Optimization",
                 "priority": "High", 
                 "recommendation": "Consider solar heating or improved insulation",
-                "potential_savings": f"${energy_data.heater_usage * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {energy_data.heater_usage * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "High"
             })
         
@@ -190,7 +222,7 @@ class EnergyOptimizationAgent:
                 "category": "Renewable Energy",
                 "priority": "Medium",
                 "recommendation": "Consider solar panel installation for aerators",
-                "potential_savings": f"${energy_data.total_energy * 0.12 * 30 * 0.6:.2f}/month",
+                "potential_savings": f"Rs. {energy_data.total_energy * ENERGY_COST_PER_KWH_LKR * 30 * 0.6:,.2f}/month",
                 "implementation": "High"
             })
         
@@ -199,16 +231,22 @@ class EnergyOptimizationAgent:
             "category": "Smart Scheduling",
             "priority": "Low",
             "recommendation": "Implement IoT-based equipment scheduling",
-            "potential_savings": f"${energy_data.total_energy * 0.12 * 30 * 0.15:.2f}/month",
+            "potential_savings": f"Rs. {energy_data.total_energy * ENERGY_COST_PER_KWH_LKR * 30 * 0.15:,.2f}/month",
             "implementation": "Medium"
         })
         
         return recommendations
     
     def calculate_roi(self, recommendations: List[Dict], current_monthly_cost: float) -> Dict:
-        """Calculate ROI for optimization recommendations"""
-        total_monthly_savings = sum(float(rec["potential_savings"].replace("$", "").replace("/month", "")) 
-                                 for rec in recommendations)
+        """Calculate ROI for optimization recommendations (savings strings in Rs./month)."""
+        def _parse_monthly_savings(s: str) -> float:
+            t = s.replace("Rs.", "").replace("Rs", "").replace("/month", "").replace(",", "").strip()
+            try:
+                return float(t)
+            except ValueError:
+                return 0.0
+
+        total_monthly_savings = sum(_parse_monthly_savings(rec["potential_savings"]) for rec in recommendations)
         
         # Estimate implementation costs (simplified)
         implementation_costs = {

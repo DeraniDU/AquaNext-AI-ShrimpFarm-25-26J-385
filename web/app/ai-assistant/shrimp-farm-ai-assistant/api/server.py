@@ -135,6 +135,7 @@ def _generate_fallback_dashboard_data(ponds: int, seed: Optional[int] = None) ->
 			predicted_next_feeding=now + timedelta(hours=6),
 		))
 		kwh = round(15 + np.random.uniform(0, 10), 1)
+		from config import ENERGY_COST_PER_KWH_LKR
 		energy_data.append(EnergyData(
 			timestamp=now,
 			pond_id=pond_id,
@@ -142,7 +143,7 @@ def _generate_fallback_dashboard_data(ponds: int, seed: Optional[int] = None) ->
 			pump_usage=kwh * 0.3,
 			heater_usage=kwh * 0.2,
 			total_energy=kwh,
-			cost=round(kwh * 2.5, 2),
+			cost=round(kwh * ENERGY_COST_PER_KWH_LKR, 2),
 			efficiency_score=round(0.75 + np.random.uniform(0, 0.2), 2),
 		))
 		labor_data.append(LaborData(
@@ -324,6 +325,18 @@ def get_dashboard(
 	labor_optimization = labor_agent.optimize_all_labor(
 		water_quality_data, energy_data, labor_data
 	)
+
+	# Persist only energy readings to MongoDB (includes cost). Do not save feed/water/labor here.
+	try:
+		from config import USE_MONGODB
+		if USE_MONGODB:
+			from database.repository import DataRepository
+			_repo = DataRepository()
+			if _repo.is_available:
+				for _e in energy_data:
+					_repo.save_energy_data(_e)
+	except Exception as _save_ex:
+		print(f"[WARN] Could not save energy data to DB: {_save_ex}")
 
 	dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 

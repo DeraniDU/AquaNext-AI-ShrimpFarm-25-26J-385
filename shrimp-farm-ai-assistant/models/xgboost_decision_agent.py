@@ -77,7 +77,7 @@ class XGBoostDecisionAgent:
         self.urgency_model: Optional["xgb.XGBRegressor"] = None
         self._enc_to_orig: Optional[Dict[int, int]] = None
 
-        # OpenAI LLM for enhanced explanations (optional)
+        # OpenAI LLM for enhanced explanations 
         self.llm: Optional[ChatOpenAI] = None
         self.enable_llm_explanations = enable_llm_explanations and OPENAI_AVAILABLE
         if self.enable_llm_explanations and OPENAI_API_KEY:

@@ -28,6 +28,9 @@ FARM_CONFIG = {
     "optimal_salinity_range": (15, 25),  # ppt
 }
 
+# Energy cost in Sri Lankan Rupees per kWh (EnergyData.cost + DB). Override via ENERGY_COST_PER_KWH_LKR.
+ENERGY_COST_PER_KWH_LKR = float(os.getenv("ENERGY_COST_PER_KWH_LKR", "65"))
+
 # Agent scheduling configuration (minutes)
 AGENT_CONFIG = {
     "water_quality_check_interval": int(os.getenv("WATER_QUALITY_CHECK_INTERVAL_MIN", "30")),

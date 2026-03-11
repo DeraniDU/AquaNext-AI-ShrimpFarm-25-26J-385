@@ -36,7 +36,7 @@ This is a **multi-agent AI system** for intelligent shrimp farm management. The 
                         │
                         ▼
               ┌─────────────────┐
-              │  Labor Agent    │
+              │  Labor Agent    │  (outputs shift schedule: LLM or rule-based)
               └────────┬────────┘
                        │
                        ▼
@@ -115,28 +115,49 @@ python run_dashboard.py
 
 **Endpoints**:
 - `GET /api/health` - Health check
-- `GET /api/dashboard?ponds=4` - Generate dashboard data
-- `GET /api/history?limit=30` - Load historical snapshots
+- `GET /api/dashboard?ponds=4&fresh=&seed=&cache_ttl_s=` - Generate dashboard data (water quality, feed, energy, labor, labor optimization with schedule, dashboard summary, optional decisions)
+- `GET /api/history?limit=7&days=` - Load historical snapshots from MongoDB
+- `GET /api/history/hourly?hours=24` - Load hourly snapshots from MongoDB
+- `GET /api/forecasts?ponds=&forecast_days=90&fresh=&seed=` - AI-powered forecasts (ForecastingAgent)
+- `GET /api/feeding-optimization` - Feeding optimization recommendations (FeedingOptimizer agent)
+- `GET /api/labor-optimization?ponds=` - Labor optimization and schedule per pond
+- `GET /api/benchmark?ponds=` - Benchmarking metrics (BenchmarkingAgent)
+- `GET /api/water-quality?ponds=` - Water quality data only
+- `GET /api/feeding-data?ponds=` - Feed data only
 
 **Workflow**:
 1. Receives HTTP request
-2. Generates fresh data (or returns cached snapshot)
-3. Includes decision agent outputs if enabled
-4. Returns JSON response
+2. Uses shared agents (lazy-initialized); when `PARALLEL_DATA_COLLECTION` is true, collects water quality then feed/energy in parallel, then labor in parallel via `ThreadPoolExecutor`
+3. Labor optimization builds a **schedule** (morning/afternoon/evening shifts with tasks and workers)—optionally via LLM (`_build_schedule_with_llm`) with fallback to rule-based `_build_schedule`
+4. Generates fresh data or returns cached snapshot (caching disabled by default via `cache_ttl_s=0`)
+5. Includes decision agent outputs if enabled; historical data loaded from MongoDB when `USE_MONGODB` is true
+6. Returns JSON response
 
 **Usage**:
 ```bash
 uvicorn api.server:app --reload --port 8000
+# Or on a specific port, e.g. 8001 when behind an API gateway:
+uvicorn api.server:app --reload --port 8001
 ```
 
 ### 4. **React Web Dashboard** (`web/`)
-**Purpose**: Modern React-based frontend
+**Purpose**: Modern React-based frontend (Vite + React + TypeScript)
+
+**Views** (selected via sidebar):
+- **Dashboard** – Overall health, efficiency metrics, alerts, insights, recommendations, decision recommendations
+- **Forecasting** – AI-powered forecasts (uses `/api/forecasts`)
+- **Optimization** – Labor optimization and schedule (morning/afternoon/evening shifts, tasks, workers)
+- **Benchmarking** – Benchmark metrics (uses `/api/benchmark`)
+- **Water Quality** – Per-pond water parameters and status
+- **Feeding** – Feed data and schedule
+- **Disease Detection** – Disease-related insights
+- **Settings** – Pond count, auto-refresh
 
 **Workflow**:
-1. React app fetches data from FastAPI (`/api/dashboard`)
-2. Displays interactive charts and tables
-3. Shows decision recommendations
-4. Can load historical data from `/api/history`
+1. App fetches dashboard data from FastAPI (`/api/dashboard`) and optional history from `/api/history` (e.g. 7 days)
+2. User can set pond count and enable auto-refresh (e.g. every 15s)
+3. Displays interactive charts and tables; shows labor schedule and decision recommendations
+4. Each view consumes dashboard payload or dedicated endpoints (forecasts, benchmark)
 
 **Usage**:
 ```bash
@@ -269,6 +290,12 @@ For each pond:
 
 7. **Return**: `LaborData` object
 
+8. **Labor schedule** (in API/orchestrator: `optimize_all_labor` / `optimize_labor`):
+   - Build a **shift schedule** (morning / afternoon / evening) with `time`, `tasks` (list of strings), and `workers` (int) per shift.
+   - **LLM path** (optional): `_build_schedule_with_llm(labor_data, water_quality_data, energy_data)` — if `OPENAI_API_KEY` is set and the LLM returns valid JSON, use it; otherwise fall back to rule-based.
+   - **Rule-based path**: `_build_schedule(...)` assigns tasks to shifts by keywords (e.g. feeding/morning, maintenance/afternoon, recording/evening) and fills `morning_shift` / `afternoon_shift` / `evening_shift` with default times `06:00`, `12:00`, `18:00`.
+   - Schedule is included in the labor optimization result and in the dashboard payload for the React Optimization view.
+
 ### Phase 2: Decision Making (Optional)
 
 **Agent**: Decision Agent (XGBoost/AutoGluon/Simple/Tiny)
@@ -344,12 +371,17 @@ If enabled in config:
 
 ### Phase 5: Data Persistence
 
-1. **Save to JSON file**:
+1. **Save to JSON file** (main orchestrator):
    - Filename: `farm_data_YYYYMMDD_HHMMSS.json`
    - Contains all water quality, feed, energy, labor data
    - Includes dashboard summary
 
-2. **Log operations**:
+2. **MongoDB** (when `USE_MONGODB` is true):
+   - Historical snapshots are saved via `DataRepository` for `/api/history` and `/api/history/hourly`
+   - Enables the React dashboard to show history charts and trend data
+   - No JSON file fallback for history in the API—history endpoints return data from MongoDB only
+
+3. **Log operations**:
    - Write to `farm_operations.log`
    - Log cycle completion, errors, agent activities
 
@@ -394,6 +426,31 @@ The system includes an optional ML-based decision-making component:
 
 ---
 
+## Additional API Agents
+
+These agents are used by the FastAPI server for dedicated endpoints and React views:
+
+### Forecasting Agent (`ForecastingAgent`)
+
+- **Endpoint**: `GET /api/forecasts` (query: `ponds`, `forecast_days`, `fresh`, `seed`)
+- **Role**: Generates AI-powered forecasts for water quality, feed, energy, and labor over a configurable horizon (e.g. 90 days)
+- **Inputs**: Current agent data for all ponds plus historical snapshots (from MongoDB or in-memory)
+- **React**: Forecasting view displays forecast charts and trends
+
+### Benchmarking Agent (`BenchmarkingAgent`)
+
+- **Endpoint**: `GET /api/benchmark` (query: `ponds`)
+- **Role**: Produces benchmarking metrics comparing current performance to targets or baselines
+- **React**: Benchmarking view displays benchmark results
+
+### Feeding Optimizer (`FeedingOptimizer`)
+
+- **Endpoint**: `GET /api/feeding-optimization`
+- **Role**: Provides feeding optimization recommendations (e.g. LLM-generated or rule-based)
+- Used by the Feeding view and dashboard payload where applicable
+
+---
+
 ## Data Flow Architecture
 
 ### Data Dependencies
@@ -424,6 +481,7 @@ WaterQualityData (independent)
 - **FeedData**: Shrimp count, weight, feed amount, feed type, feeding frequency, next feeding time
 - **EnergyData**: Aerator/pump/heater usage, total energy, cost, efficiency score
 - **LaborData**: Tasks completed, time spent, worker count, efficiency score, next tasks
+- **Labor schedule** (per pond): Optional `morning_shift` / `afternoon_shift` / `evening_shift`, each with `time` (e.g. `"06:00"`), `tasks` (list of strings), `workers` (int)
 - **ShrimpFarmDashboard**: Health score, efficiency metrics, insights, alerts, recommendations
 - **MultiPondDecision**: Recommended actions per pond with priority/urgency/confidence
 
@@ -507,10 +565,10 @@ WaterQualityData (independent)
 
 ### 3. React Web Dashboard
 
-- Fetches data from FastAPI
-- Interactive charts using Plotly
-- Real-time updates
-- Historical data visualization
+- Fetches data from FastAPI (`/api/dashboard`, `/api/history`, and view-specific endpoints like `/api/forecasts`, `/api/benchmark`)
+- Views: Dashboard, Forecasting, Optimization (labor schedule), Benchmarking, Water Quality, Feeding, Disease Detection, Settings
+- Interactive charts; optional auto-refresh; pond filter and history (e.g. 7 days from MongoDB)
+- Labor schedule displayed in Optimization view (morning/afternoon/evening shifts)
 - Decision recommendations display
 
 ---
@@ -521,12 +579,14 @@ WaterQualityData (independent)
 
 - **OpenAI Settings**: API key, model name, temperature
 - **Farm Config**: Number of ponds, optimal parameter ranges
-- **Agent Config**: Monitoring intervals
+- **Agent Config**: Monitoring intervals (water quality, feed, energy, labor)
 - **Decision Model Config**:
   - `use_decision_model`: Enable/disable decision agent
   - `agent_type`: "xgboost", "autogluon", "simple", "tiny", "none"
   - `confidence_threshold`: Minimum confidence for actions
   - `enable_auto_actions`: Auto-execute actions (future feature)
+- **MongoDB**: `USE_MONGODB` (default false), `MONGO_URI`, `MONGO_DB_NAME` — when true, history and optional labor data use MongoDB
+- **Orchestration**: `PARALLEL_DATA_COLLECTION` (default true) — use parallel phases in API dashboard generation; `RUN_MANAGER_SYNTHESIS` (default false) — run heavy Manager Agent LLM synthesis
 
 ---
 
@@ -534,13 +594,14 @@ WaterQualityData (independent)
 
 The application workflow follows this pattern:
 
-1. **Initialization**: All agents are created and configured
-2. **Data Collection**: Specialized agents generate domain-specific data for each pond
-3. **Decision Making** (optional): ML-based decision agent predicts actions
-4. **Synthesis**: Manager Agent combines all data and generates insights
-5. **Visualization**: Dashboard/API displays comprehensive farm status
-6. **Persistence**: Data is saved for historical analysis
-7. **Continuous Monitoring**: Cycle repeats at configured intervals
+1. **Initialization**: All agents are created and configured (or lazy-initialized in the API)
+2. **Data Collection**: Specialized agents generate domain-specific data for each pond; the API can run water quality, then feed/energy, then labor in parallel when `PARALLEL_DATA_COLLECTION` is true
+3. **Labor schedule**: Labor agent (or API) builds morning/afternoon/evening shift schedule via LLM (if available) or rule-based logic
+4. **Decision Making** (optional): ML-based decision agent predicts actions
+5. **Synthesis**: Manager Agent combines all data and generates insights (optional when `RUN_MANAGER_SYNTHESIS` is true)
+6. **Visualization**: Dashboard/API/React views display comprehensive farm status, forecasts, benchmarking, and labor schedule
+7. **Persistence**: Data is saved to JSON (main orchestrator) and/or MongoDB for historical analysis and history endpoints
+8. **Continuous Monitoring**: Cycle repeats at configured intervals (CLI); API generates data on demand
 
 The system is designed to be:
 - **Modular**: Each agent operates independently

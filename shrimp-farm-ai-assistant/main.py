@@ -14,12 +14,11 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 from crewai import Crew
-# LangChain: prefer langchain_openai to avoid deprecation warning from langchain_community.
 try:
-    from langchain_openai import ChatOpenAI  # type: ignore
-except ImportError:  # pragma: no cover
+    from langchain_openai import ChatOpenAI  
+except ImportError:
     print("Hint: pip install langchain-openai to avoid LangChain deprecation warning.")
-    from langchain.chat_models import ChatOpenAI  # type: ignore
+    from langchain.chat_models import ChatOpenAI 
 
 from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, FARM_CONFIG, AGENT_CONFIG, RUN_MANAGER_SYNTHESIS, PARALLEL_DATA_COLLECTION
 from models import ShrimpFarmDashboard, WaterQualityData, FeedData, EnergyData, LaborData
@@ -333,15 +332,7 @@ class ShrimpFarmOrchestrator:
             'recommendations_count': len(dashboard.recommendations)
         }
     
-    def save_farm_data(self, filename: str = None):
-        """
-        Save farm data to MongoDB (deprecated - data is now saved automatically during collect_agent_data).
-        
-        This method is kept for backward compatibility but does nothing since data is already
-        saved to MongoDB during the data collection phase.
-        """
-        logger.info("Farm data is automatically saved to MongoDB during data collection")
-        return None
+    
     
     def stop_monitoring(self):
         """Stop the monitoring cycle"""

@@ -7,7 +7,7 @@ try:
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
 from models import EnergyData, WaterQualityData
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, ENERGY_COST_PER_KWH_LKR
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
@@ -55,7 +55,7 @@ class EnergyOptimizationAgent:
             - Pump: {current_energy_data.pump_usage:.2f} kWh  
             - Heater: {current_energy_data.heater_usage:.2f} kWh
             - Total: {current_energy_data.total_energy:.2f} kWh
-            - Cost: ${current_energy_data.cost:.2f}
+            - Cost: Rs. {current_energy_data.cost:,.2f} (LKR)
             - Efficiency Score: {current_energy_data.efficiency_score:.2f}
             
             Water Quality Context:
@@ -163,7 +163,7 @@ class EnergyOptimizationAgent:
                 "category": "Aerator Optimization",
                 "priority": "High",
                 "recommendation": "Consider variable speed aerators or scheduling optimization",
-                "potential_savings": f"${(energy_data.aerator_usage - 15) * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {(energy_data.aerator_usage - 15) * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "Medium"
             })
         
@@ -173,7 +173,7 @@ class EnergyOptimizationAgent:
                 "category": "Pump Optimization", 
                 "priority": "Medium",
                 "recommendation": "Implement smart pumping schedules based on water quality",
-                "potential_savings": f"${(energy_data.pump_usage - 10) * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {(energy_data.pump_usage - 10) * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "Low"
             })
         
@@ -183,7 +183,7 @@ class EnergyOptimizationAgent:
                 "category": "Heating Optimization",
                 "priority": "High", 
                 "recommendation": "Consider solar heating or improved insulation",
-                "potential_savings": f"${energy_data.heater_usage * 0.12 * 30:.2f}/month",
+                "potential_savings": f"Rs. {energy_data.heater_usage * ENERGY_COST_PER_KWH_LKR * 30:,.2f}/month",
                 "implementation": "High"
             })
         
@@ -193,7 +193,7 @@ class EnergyOptimizationAgent:
                 "category": "Renewable Energy",
                 "priority": "Medium",
                 "recommendation": "Consider solar panel installation for aerators",
-                "potential_savings": f"${energy_data.total_energy * 0.12 * 30 * 0.6:.2f}/month",
+                "potential_savings": f"Rs. {energy_data.total_energy * ENERGY_COST_PER_KWH_LKR * 30 * 0.6:,.2f}/month",
                 "implementation": "High"
             })
         
@@ -202,16 +202,22 @@ class EnergyOptimizationAgent:
             "category": "Smart Scheduling",
             "priority": "Low",
             "recommendation": "Implement IoT-based equipment scheduling",
-            "potential_savings": f"${energy_data.total_energy * 0.12 * 30 * 0.15:.2f}/month",
+            "potential_savings": f"Rs. {energy_data.total_energy * ENERGY_COST_PER_KWH_LKR * 30 * 0.15:,.2f}/month",
             "implementation": "Medium"
         })
         
         return recommendations
     
     def calculate_roi(self, recommendations: List[Dict], current_monthly_cost: float) -> Dict:
-        """Calculate ROI for optimization recommendations"""
-        total_monthly_savings = sum(float(rec["potential_savings"].replace("$", "").replace("/month", "")) 
-                                 for rec in recommendations)
+        """Calculate ROI (savings strings in Rs./month)."""
+        def _parse_monthly_savings(s: str) -> float:
+            t = s.replace("Rs.", "").replace("Rs", "").replace("/month", "").replace(",", "").strip()
+            try:
+                return float(t)
+            except ValueError:
+                return 0.0
+
+        total_monthly_savings = sum(_parse_monthly_savings(rec["potential_savings"]) for rec in recommendations)
         
         # Estimate implementation costs (simplified)
         implementation_costs = {
