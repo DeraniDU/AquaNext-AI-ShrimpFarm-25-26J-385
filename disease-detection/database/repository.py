@@ -41,7 +41,7 @@ class Repository:
         except Exception:
             pass
 
-        if not self.behavior_collection:
+        if self.behavior_collection is None:
             return f"mem-{len(pond_behavior_store[record['pond_id']])}"
 
         result = self.behavior_collection.insert_one(record)
@@ -125,7 +125,7 @@ class Repository:
         except Exception:
             pass
 
-        if not self.prediction_collection:
+        if self.prediction_collection is None:
             return f"mem-{len(pond_prediction_store[record['pond_id']])}"
 
         result = self.prediction_collection.insert_one(record)
@@ -161,14 +161,14 @@ class PredictionRepository:
 
     def save_prediction(self, record: Dict[str, Any]) -> str:
         record["created_at"] = datetime.utcnow()
-        if not self.collection:
+        if self.collection is None:
             pond_prediction_store[record.get("pond_id", "unknown")].append(record)
             return "mem"
         result = self.collection.insert_one(record)
         return str(result.inserted_id)
 
     def get_all_predictions(self, limit: int = 50):
-        if not self.collection:
+        if self.collection is None:
             # flatten in-memory store
             all_items = []
             for _pond_id, items in pond_prediction_store.items():
@@ -180,7 +180,7 @@ class PredictionRepository:
         return data
 
     def get_predictions_by_pond(self, pond_id: str, limit: int = 50):
-        if not self.collection:
+        if self.collection is None:
             items = list(pond_prediction_store.get(pond_id, []))
             items.sort(key=lambda r: str(r.get("created_at", r.get("timestamp", ""))), reverse=True)
             # drop _id-like fields if any

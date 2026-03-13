@@ -11,19 +11,35 @@ const Dashboard = ({ pondId }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [predictions, setPredictions] = useState([]);
 
-  const { data: pondStatus, loading: statusLoading, refetch: refetchStatus } = 
-    useApi(getPondStatus, [pondId]);
+  const {
+    data: pondStatus,
+    loading: statusLoading,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useApi(getPondStatus, [pondId]);
 
-  const { data: predictionsData, loading: predictionsLoading, refetch: refetchPredictions } = 
-    useApi(getAllPredictions, []);
+  const {
+    data: predictionsData,
+    loading: predictionsLoading,
+    error: predictionsError,
+    refetch: refetchPredictions,
+  } = useApi(getAllPredictions, []);
 
+  // Backend returns { ok, data: [...] }; normalize so we always set an array
   useEffect(() => {
-    if (predictionsData?.data) {
-      const filteredByPond = predictionsData.data.filter(
-        p => !p.pond_id || p.pond_id === pondId
-      );
-      setPredictions(filteredByPond);
+    if (!predictionsData) {
+      setPredictions([]);
+      return;
     }
+    const list = Array.isArray(predictionsData.data)
+      ? predictionsData.data
+      : Array.isArray(predictionsData)
+        ? predictionsData
+        : [];
+    const filteredByPond = list.filter(
+      (p) => !p?.pond_id || p.pond_id === pondId
+    );
+    setPredictions(filteredByPond);
   }, [predictionsData, pondId]);
 
   const handlePredictionSuccess = () => {
@@ -33,6 +49,17 @@ const Dashboard = ({ pondId }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {(statusError || predictionsError) && (
+        <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-900/20 px-4 py-3 text-sm text-amber-200">
+          API warning:{' '}
+          {typeof statusError === 'string'
+            ? statusError
+            : statusError?.detail || JSON.stringify(statusError)}{' '}
+          {typeof predictionsError === 'string'
+            ? predictionsError
+            : predictionsError?.detail || ''}
+        </div>
+      )}
       {/* Tabs */}
       <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
         {[
@@ -61,7 +88,7 @@ const Dashboard = ({ pondId }) => {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RiskScoreCard 
+            <RiskScoreCard
               data={pondStatus?.latest_prediction}
               loading={statusLoading}
               pondId={pondId}

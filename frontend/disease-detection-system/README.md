@@ -167,10 +167,15 @@ The frontend communicates with the backend API endpoints:
 
 ### Changing API Endpoint
 
-Edit `src/services/api.js`:
+`src/services/api.js` uses:
 
-```javascript
-const API_BASE_URL = 'http://your-api-url:port';
+1. **`VITE_API_BASE_URL`** from `.env` when set
+2. **Dev:** `/api` → Vite proxy → `http://localhost:8001` (no CORS issues)
+3. **Prod build fallback:** `http://localhost:8001`
+
+```env
+# .env
+VITE_API_BASE_URL=http://localhost:8001
 ```
 
 ### Theming
@@ -187,7 +192,9 @@ Edit `tailwind.config.js` to customize colors and styles.
 ### No Data Displayed
 - Submit prediction data using the "Submit Data" tab
 - Wait for background calculations to complete
-- Check browser console for API errors
+- Check browser **Network** tab: `/api/predictions` and `/api/pond-status/...` should be 200
+- If backend has no MongoDB, predictions list is empty until you POST `/predict-risk` or push behavior+feeding
+- Dashboard shows an **API warning** banner when a request fails
 
 ### Styling Issues
 - Clear Tailwind cache: `rm -rf .next` or rebuild

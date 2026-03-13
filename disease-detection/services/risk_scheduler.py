@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 from agents.risk_prediction_agent import RiskPredictionAgent
-from database.repository import Repository
+from database.repository import Repository, PredictionRepository
 from services.data_fusion_service import DataFusionService
 from models.risk_model import FEATURES
 
@@ -13,10 +13,13 @@ class RiskSchedulerService:
         repository: Repository,
         fusion_service: DataFusionService,
         prediction_agent: RiskPredictionAgent,
+        prediction_repository: Optional[PredictionRepository] = None,
     ):
         self.repository = repository
         self.fusion_service = fusion_service
         self.prediction_agent = prediction_agent
+        # Use same persistence as POST /predict-risk so background recalcs appear in GET /predictions
+        self._prediction_repository = prediction_repository
 
     def recalculate_for_pond(self, pond_id: str) -> Optional[Dict[str, Any]]:
         fused = self.fusion_service.get_latest_fused_input(pond_id)
@@ -40,7 +43,10 @@ class RiskSchedulerService:
             "prediction_result": prediction,
         }
 
-        inserted_id = self.repository.save_prediction(record)
+        if self._prediction_repository is not None:
+            inserted_id = self._prediction_repository.save_prediction(record)
+        else:
+            inserted_id = self.repository.save_prediction(record)
 
         return {
             "saved": True,

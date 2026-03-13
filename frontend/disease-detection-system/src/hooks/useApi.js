@@ -10,14 +10,16 @@ export const useApi = (apiFunction, dependencies = []) => {
       setLoading(true);
       setError(null);
       const result = await apiFunction(...args);
-      setData(result.data);
+      // Axios response: result.data is the API JSON body
+      setData(result?.data ?? null);
     } catch (err) {
+      setData(null);
       setError(err.response?.data || err.message || 'An error occurred');
       console.error('API Error:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFunction]);
 
   useEffect(() => {
     fetchData(...dependencies);

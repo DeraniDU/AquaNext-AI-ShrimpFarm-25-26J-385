@@ -1,7 +1,8 @@
 import os
 
-import certifi
 from pymongo import MongoClient
+
+from database.mongo_tls import mongo_client_tls_kwargs
 from pymongo.errors import PyMongoError
 
 
@@ -36,10 +37,10 @@ class FeedingMongoDB:
             try:
                 cls._client = MongoClient(
                     mongo_uri,
-                    tlsCAFile=certifi.where(),
                     serverSelectionTimeoutMS=10_000,
                     connectTimeoutMS=10_000,
                     socketTimeoutMS=20_000,
+                    **mongo_client_tls_kwargs(),
                 )
                 cls._client.admin.command("ping")
                 cls._db = cls._client[db_name]

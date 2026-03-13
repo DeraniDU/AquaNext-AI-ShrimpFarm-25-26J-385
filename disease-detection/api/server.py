@@ -1,3 +1,5 @@
+import os
+from contextlib import asynccontextmanager
 from typing import Optional
 import logging
 
@@ -22,29 +24,49 @@ logger = logging.getLogger("disease_detection")
 logging.basicConfig(level=logging.INFO)
 
 
-app = FastAPI(title=settings.APP_NAME)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: ensure DB is initialized before serving (retries from env)
+    MongoDB.init_connection()
+    yield
+    # Shutdown: close Mongo client cleanly
+    MongoDB.disconnect()
 
-# ---------------- CORS FIX ----------------
-origins = [
+
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+# ---------------- CORS ----------------
+# Default dev origins; set CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:5174" to add more
+_default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
+_extra = os.getenv("CORS_ORIGINS", "").strip()
+origins = _default_origins + [o.strip() for o in _extra.split(",") if o.strip()] if _extra else _default_origins
+_cors_allow_all = (
+    settings.ENV == "development"
+    and os.getenv("CORS_ALLOW_ALL", "").lower() in {"1", "true", "yes"}
+)
+if _cors_allow_all:
+    origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    # credentials + wildcard origin is invalid for browsers; disable credentials when using *
+    allow_credentials=not _cors_allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 # ------------------------------------------
 
 
-# Initialize DB (optional)
-try:
-    MongoDB.connect()
-except Exception as e:
-    logger.warning("MongoDB not available, running with dummy/in-memory fallbacks: %s", str(e))
+# Initialize DB before repositories so collections bind to a live connection
+# (lifespan also calls init_connection on startup; this covers import-time workers)
+if not MongoDB.is_connected():
+    MongoDB.init_connection()
 
 repository = Repository()
 prediction_repository = PredictionRepository()
@@ -64,7 +86,12 @@ behavior_agent = BehaviorAgent()
 
 # services
 fusion_service = DataFusionService(repository)
-risk_scheduler = RiskSchedulerService(repository, fusion_service, prediction_agent)
+risk_scheduler = RiskSchedulerService(
+    repository,
+    fusion_service,
+    prediction_agent,
+    prediction_repository=prediction_repository,
+)
 
 
 class RiskInput(BaseModel):
@@ -92,10 +119,18 @@ class FeedingInput(BaseModel):
 
 @app.get("/health")
 def health():
+    from utils.prediction_store import pond_prediction_store
+
+    mongo_ok = MongoDB.is_connected()
+    pred_mem = sum(len(d) for d in pond_prediction_store.values())
+    behavior_mem = sum(len(points) for points in pond_behavior_store.values())
     return {
         "ok": True,
         "service": settings.APP_NAME,
         "env": settings.ENV,
+        "mongo_connected": mongo_ok,
+        "in_memory_predictions": pred_mem,
+        "in_memory_behavior_points": behavior_mem,
     }
 
 
