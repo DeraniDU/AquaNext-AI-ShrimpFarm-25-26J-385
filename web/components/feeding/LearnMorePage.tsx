@@ -161,10 +161,12 @@ export default function LearnMorePage() {
             </div>
           </div>
 
-          {/* Success Metrics */}
+          {/* Success Metrics + Charts */}
           <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Average Performance Improvements</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+              Average Performance Improvements
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
               <div className="text-center">
                 <div className="text-4xl font-bold text-green-600 mb-2">18%</div>
                 <p className="text-gray-700 font-medium">Feed Cost Reduction</p>
@@ -180,6 +182,172 @@ export default function LearnMorePage() {
               <div className="text-center">
                 <div className="text-4xl font-bold text-emerald-600 mb-2">12%</div>
                 <p className="text-gray-700 font-medium">Higher Survival Rate</p>
+              </div>
+            </div>
+
+            {/* Mini chart-style cards for feeding */}
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-sm p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-gray-800">Feed Usage per Day</p>
+                  <span className="text-sm text-green-600 font-medium">
+                    -16% waste
+                  </span>
+                </div>
+                <div className="h-24 flex items-end gap-2">
+                  <div className="flex-1 bg-green-100 rounded-t-md relative">
+                    <div className="absolute bottom-0 left-0 right-0 bg-green-500 rounded-t-md h-[85%]" />
+                  </div>
+                  <div className="flex-1 bg-green-100 rounded-t-md relative">
+                    <div className="absolute bottom-0 left-0 right-0 bg-green-500 rounded-t-md h-[70%]" />
+                  </div>
+                  <div className="flex-1 bg-green-100 rounded-t-md relative">
+                    <div className="absolute bottom-0 left-0 right-0 bg-green-500 rounded-t-md h-[64%]" />
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  Example reduction in daily feed usage over three production
+                  cycles after enabling smart feeding.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-gray-800">FCR Trend</p>
+                  <span className="text-sm text-emerald-600 font-medium">
+                    trending down
+                  </span>
+                </div>
+                <div className="relative h-20">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full h-px bg-gradient-to-r from-red-200 via-gray-200 to-emerald-300" />
+                  </div>
+                  <svg
+                    viewBox="0 0 100 40"
+                    className="absolute inset-0 w-full h-full text-emerald-500"
+                    preserveAspectRatio="none"
+                  >
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      points="0,28 20,26 40,24 60,22 80,20 100,18"
+                    />
+                  </svg>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  Illustrative improvement in Feed Conversion Ratio (FCR) as the
+                  system continuously tunes feed quantity and timing.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-5 md:col-span-3">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-gray-800">
+                    Sample Daily Feeding Profile
+                  </p>
+                  <span className="text-sm text-blue-600 font-medium">
+                    Feed rate vs. shrimp response
+                  </span>
+                </div>
+                <div className="relative h-44 mb-4">
+                  {/* grid background */}
+                  <div className="absolute inset-0">
+                    <div className="w-full h-full border border-gray-200 rounded-lg">
+                      {/* horizontal grid lines */}
+                      <div className="absolute inset-x-0 top-1/4 border-t border-dashed border-gray-200" />
+                      <div className="absolute inset-x-0 top-2/4 border-t border-dashed border-gray-200" />
+                      <div className="absolute inset-x-0 top-3/4 border-t border-dashed border-gray-200" />
+                    </div>
+                  </div>
+                  <svg
+                    viewBox="0 0 100 40"
+                    className="absolute inset-0 w-full h-full text-blue-500"
+                    preserveAspectRatio="none"
+                  >
+                    {/* y-axis */}
+                    <line
+                      x1="8"
+                      y1="2"
+                      x2="8"
+                      y2="38"
+                      stroke="#e5e7eb"
+                      strokeWidth="1"
+                    />
+                    {/* x-axis */}
+                    <line
+                      x1="8"
+                      y1="38"
+                      x2="98"
+                      y2="38"
+                      stroke="#e5e7eb"
+                      strokeWidth="1"
+                    />
+                    {/* Feed rate line */}
+                    <polyline
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      points="8,32 20,31 32,25 44,21 56,32 68,27 80,20 92,24 98,28"
+                    />
+                    {/* Shrimp response line */}
+                    <polyline
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth="2"
+                      strokeDasharray="4 3"
+                      points="8,33 20,32 32,27 44,23 56,31 68,29 80,23 92,25 98,29"
+                    />
+
+                    {/* Feed rate points */}
+                    <g fill="#3b82f6">
+                      <circle cx="8" cy="32" r="1.6" />
+                      <circle cx="20" cy="31" r="1.6" />
+                      <circle cx="32" cy="25" r="1.6" />
+                      <circle cx="44" cy="21" r="1.6" />
+                      <circle cx="56" cy="32" r="1.6" />
+                      <circle cx="68" cy="27" r="1.6" />
+                      <circle cx="80" cy="20" r="1.6" />
+                      <circle cx="92" cy="24" r="1.6" />
+                      <circle cx="98" cy="28" r="1.6" />
+                    </g>
+                    {/* Shrimp response points */}
+                    <g fill="#38bdf8">
+                      <circle cx="8" cy="33" r="1.4" />
+                      <circle cx="20" cy="32" r="1.4" />
+                      <circle cx="32" cy="27" r="1.4" />
+                      <circle cx="44" cy="23" r="1.4" />
+                      <circle cx="56" cy="31" r="1.4" />
+                      <circle cx="68" cy="29" r="1.4" />
+                      <circle cx="80" cy="23" r="1.4" />
+                      <circle cx="92" cy="25" r="1.4" />
+                      <circle cx="98" cy="29" r="1.4" />
+                    </g>
+                  </svg>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+                  <span>05:00</span>
+                  <span>09:00</span>
+                  <span>13:00</span>
+                  <span>17:00</span>
+                  <span>21:00</span>
+                  <span>01:00</span>
+                  <span>03:00</span>
+                </div>
+                <div className="flex items-center gap-4 mt-2 text-[11px] text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-[2px] rounded-full bg-blue-500" />
+                    <span>Feed rate (%)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-[2px] rounded-full bg-sky-400" />
+                    <span>Shrimp response (%)</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  Visual example of how the smart feeder continuously aligns feed
+                  delivery with real shrimp feeding activity across the day.
+                </p>
               </div>
             </div>
           </div>
