@@ -13,9 +13,8 @@ import {
 	type ChartOptions
 } from 'chart.js'
 import { useState } from 'react'
-import type { DashboardApiResponse, SavedFarmSnapshot, FeedingPlan } from '../lib/types'
+import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
-import { useFeedingOptimization } from '../lib/useFeedingOptimization'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler, Tooltip, Legend, RadialLinearScale)
 
@@ -23,7 +22,6 @@ type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
-	ponds?: number
 }
 
 // Circular Progress Component
@@ -113,65 +111,12 @@ function OctagonalProgress({ percentage, size = 120, color = '#16a34a' }: { perc
 	)
 }
 
-export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props) {
+export function OptimizationView({ data, history, pondFilter }: Props) {
 	const { dashboard } = data
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 	const energy = pondFilter ? data.energy.filter((e) => e.pond_id === pondFilter) : data.energy
 	const labor = pondFilter ? data.labor.filter((l) => l.pond_id === pondFilter) : data.labor
-	const laborOptimization = data.labor_optimization
-		? (pondFilter
-			? data.labor_optimization.filter((o) => o.pond_id === pondFilter)
-			: data.labor_optimization)
-		: []
-	const primaryLaborOpt = laborOptimization.length > 0 ? laborOptimization[0] : null
-
-	const workerNames = ['Eric', 'Sarah', 'Alex', 'Ryan', 'Luis']
-
-	const buildShiftAssignments = (tasks: string[] | undefined, workers: number | undefined) => {
-		const assignments = Array(workerNames.length).fill('-')
-		if (!tasks || tasks.length === 0) {
-			return assignments
-		}
-		const nWorkers =
-			workers && workers > 0 ? Math.min(workerNames.length, workers) : workerNames.length
-		for (let i = 0; i < nWorkers; i++) {
-			assignments[i] = tasks[i % tasks.length]
-		}
-		return assignments
-	}
-
-	const morningAssignments = primaryLaborOpt?.schedule
-		? buildShiftAssignments(
-				primaryLaborOpt.schedule.morning_shift?.tasks,
-				primaryLaborOpt.schedule.morning_shift?.workers,
-		  )
-		: Array(workerNames.length).fill('-')
-	const afternoonAssignments = primaryLaborOpt?.schedule
-		? buildShiftAssignments(
-				primaryLaborOpt.schedule.afternoon_shift?.tasks,
-				primaryLaborOpt.schedule.afternoon_shift?.workers,
-		  )
-		: Array(workerNames.length).fill('-')
-	const eveningAssignments = primaryLaborOpt?.schedule
-		? buildShiftAssignments(
-				primaryLaborOpt.schedule.evening_shift?.tasks,
-				primaryLaborOpt.schedule.evening_shift?.workers,
-		  )
-		: Array(workerNames.length).fill('-')
-
-	// Feeding optimization data from backend
-	const { data: feedingOpt, loading: feedingLoading, error: feedingError, refresh: refreshFeeding } = useFeedingOptimization(ponds)
-	// Filter to selected pond if a pond filter is active
-	const feedingPlans: FeedingPlan[] = feedingOpt
-		? pondFilter
-			? feedingOpt.plans.filter((p) => p.pond_id === pondFilter)
-			: feedingOpt.plans
-		: []
-	// Primary plan used for single-pond charts (first plan, or best plan by adjustment)
-	const primaryPlan = feedingPlans.length > 0
-		? feedingPlans.reduce((a, b) => a.adjustment_factor < b.adjustment_factor ? a : b)
-		: null
 
 	// State for interactive elements
 	const [costWeight, setCostWeight] = useState(40)
@@ -316,13 +261,10 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const nextTasks = labor.flatMap(l => l.next_tasks)
 	const urgentNextTasks = nextTasks.filter(t => t.toLowerCase().includes('urgent') || t.toLowerCase().includes('emergency') || t.toLowerCase().includes('critical')).length
 	
-	// Benchmarking calculations (use dashboard.survival_rate when backend provides it so KPIs can update)
+	// Benchmarking calculations
 	const totalShrimpCount = feed.reduce((sum, f) => sum + f.shrimp_count, 0)
-	const survivalRateFromDashboard = typeof (dashboard as Record<string, unknown>)['survival_rate'] === 'number'
-		? (dashboard as Record<string, unknown>)['survival_rate'] as number
-		: null
-	const initialShrimpCount = totalShrimpCount * 1.22 // Estimate initial count (assuming 82% survival) when survival not provided
-	const survivalRate = survivalRateFromDashboard ?? (totalShrimpCount > 0 && initialShrimpCount > 0 ? (totalShrimpCount / initialShrimpCount) * 100 : 82)
+	const initialShrimpCount = totalShrimpCount * 1.22 // Estimate initial count (assuming 82% survival)
+	const survivalRate = totalShrimpCount > 0 && initialShrimpCount > 0 ? (totalShrimpCount / initialShrimpCount) * 100 : 82
 	const yieldKgHa = projectedYieldTons > 0 && pondIds.length > 0 ? (projectedYieldTons * 1000) / (pondIds.length * 0.5) : 5200 // Assume 0.5 ha per pond
 	const costPerKgShrimp = projectedYieldTons > 0 ? (totalFeedCost + totalLaborCost + totalEnergyCost) / (projectedYieldTons * 1000) : 1150
 	const energyPerKgShrimp = projectedYieldTons > 0 && totalEnergyKwh > 0 ? totalEnergyKwh / (projectedYieldTons * 1000) : 3.2
@@ -372,21 +314,13 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 		]
 	}
 
-	const feedingPlanChartLabels = primaryPlan
-		? primaryPlan.schedule.map((s) => s.time)
-		: ['7 AM', '1 PM', '5 PM']
-	const feedingPlanChartData = primaryPlan
-		? primaryPlan.schedule.map((s) => Math.round(s.amount_g))
-		: [0, 0, 0]
 	const feedingPlanChart = {
-		labels: feedingPlanChartLabels,
+		labels: ['6 AM', '7 AM', '8 AM', '12 PM', '4 PM', '8 PM'],
 		datasets: [
 			{
-				label: 'Feed Amount (g)',
-				data: feedingPlanChartData,
-				backgroundColor: feedingPlanChartLabels.map((_, i) =>
-					i === 0 ? 'rgba(245, 158, 11, 0.8)' : i === 2 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(34, 197, 94, 0.6)'
-				),
+				label: 'Feed Amount',
+				data: [0, 140, 0, 0, 90, 0],
+				backgroundColor: ['rgba(34, 197, 94, 0.6)', 'rgba(245, 158, 11, 0.8)', 'rgba(34, 197, 94, 0.6)', 'rgba(34, 197, 94, 0.6)', 'rgba(245, 158, 11, 0.8)', 'rgba(34, 197, 94, 0.6)'],
 				borderColor: 'rgba(34, 197, 94, 0.8)',
 				borderWidth: 1,
 				borderRadius: 4
@@ -749,223 +683,176 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 					</div>
 				</div>
 
-			{/* Daily Feed Volume */}
-			<div className="panel">
-				<div className="panelHeader" style={{ padding: '6px 10px' }}>
-					<div className="panelTitle" style={{ fontSize: 18 }}>Daily Feed Volume</div>
-					{feedingLoading && <div style={{ fontSize: 13, color: 'var(--muted)' }}>Calculating…</div>}
-					{feedingError && <div style={{ fontSize: 13, color: '#dc2626' }}>⚠ {feedingError}</div>}
-				</div>
-				<div style={{ padding: '6px 0' }}>
-					{primaryPlan ? (
-						<>
-							<div style={{ marginBottom: 8 }}>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-									<div style={{ fontSize: 18, color: 'var(--muted)' }}>Recommended daily total</div>
-									<div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>
-										{formatNumber(primaryPlan.daily_feed_kg * 1000, { maximumFractionDigits: 0 })} g
-									</div>
-								</div>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-									<div style={{ fontSize: 18, color: 'var(--muted)' }}>Currently feeding</div>
-									<div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
-										{formatNumber(primaryPlan.current_daily_feed_kg * 1000, { maximumFractionDigits: 0 })} g
-									</div>
-								</div>
-								<div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-									<div style={{ fontSize: 18, color: 'var(--muted)' }}>Adjustment factor</div>
-									<div style={{ fontSize: 18, fontWeight: 600, color: primaryPlan.adjustment_factor < 0.9 ? '#dc2626' : '#16a34a' }}>
-										{formatNumber(primaryPlan.adjustment_factor * 100, { maximumFractionDigits: 0 })}%
-									</div>
-								</div>
-							</div>
-							<div style={{ marginBottom: 5 }}>
-								<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Optimized Schedule:</div>
-								{primaryPlan.schedule.map((entry) => (
-									<div key={entry.time} style={{ fontSize: 18, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-										<span style={{ color: '#16a34a' }}>✓</span>
-										<span><strong>{entry.time}</strong> — {formatNumber(entry.amount_g, { maximumFractionDigits: 0 })} g</span>
-										<span style={{ color: 'var(--muted)', fontSize: 14 }}>({entry.notes.split('—')[0].trim()})</span>
-									</div>
-								))}
-							</div>
-							<div style={{ marginBottom: 5 }}>
-								<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>Feed type</div>
-								<div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{primaryPlan.feed_type}</div>
-							</div>
-							<div>
-								<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>Biomass estimate</div>
-								<div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
-									{formatNumber(primaryPlan.current_biomass_kg * 1000, { maximumFractionDigits: 1 })} g total
-								</div>
-							</div>
-						</>
-					) : !feedingLoading ? (
-						<div style={{ fontSize: 18, color: 'var(--muted)', padding: '12px 0' }}>
-							No optimization data available. Click Refresh.
-						</div>
-					) : null}
-				</div>
-			</div>
-
-			{/* AI Recommendations - Feed */}
-			<div className="panel">
-				<div className="panelHeader" style={{ padding: '6px 10px' }}>
-					<div className="panelTitle" style={{ fontSize: 18 }}>
-						<span style={{ marginRight: 4 }}>🤖</span>
-						AI Action Plan
+				{/* Daily Feed Volume */}
+				<div className="panel">
+					<div className="panelHeader" style={{ padding: '6px 10px' }}>
+						<div className="panelTitle" style={{ fontSize: 18 }}>Daily Feed Volume</div>
 					</div>
-					<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-						{feedingLoading && <span style={{ fontSize: 13, color: 'var(--muted)' }}>Calculating…</span>}
-						<button
-							onClick={() => void refreshFeeding()}
-							disabled={feedingLoading}
-							style={{ fontSize: 13, padding: '2px 8px', cursor: 'pointer' }}
-						>
-							Refresh
-						</button>
+					<div style={{ padding: '6px 0' }}>
+						<div style={{ marginBottom: 6 }}>
+							<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 3 }}>AI Optimization</div>
+							<div style={{ height: 50 }}>
+								<Line
+									data={{
+										labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+										datasets: [
+											{
+												label: 'AI Optimization',
+												data: [135, 140, 145, 150, 155, 160],
+												borderColor: '#3b82f6',
+												backgroundColor: 'rgba(59, 130, 246, 0.1)',
+												tension: 0.4,
+												fill: true,
+												pointRadius: 2
+											},
+											{
+												label: 'Daily Feed',
+												data: [130, 138, 142, 148, 153, 158],
+												borderColor: '#16a34a',
+												backgroundColor: 'rgba(34, 197, 94, 0.1)',
+												tension: 0.4,
+												fill: true,
+												pointRadius: 2,
+												borderDash: [5, 5]
+											}
+										]
+									}}
+									options={{
+										responsive: true,
+										maintainAspectRatio: false,
+										plugins: {
+											legend: { display: false }
+										},
+										scales: {
+											y: { min: 120, max: 160, grid: { display: true, color: gridColor } },
+											x: { grid: { display: false } }
+										}
+									} as ChartOptions<'line'>}
+								/>
+							</div>
+						</div>
+						<div style={{ marginBottom: 5 }}>
+							<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2 }}>Optimized Feed:</div>
+							<div style={{ fontSize: 18, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+								<span style={{ color: '#16a34a' }}>✓</span>
+								<span>140 kg at 7:00 AM</span>
+							</div>
+							<div style={{ fontSize: 18, display: 'flex', alignItems: 'center', gap: 4 }}>
+								<span style={{ color: '#16a34a' }}>✓</span>
+								<span>90 kg at 4:00 PM</span>
+							</div>
+						</div>
+						<div>
+							<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>Feed Comp: 11%</div>
+							<div style={{ height: 3, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden' }}>
+								<div style={{ width: '11%', height: '100%', backgroundColor: '#16a34a' }} />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* AI Recommendations - Feed */}
+				<div className="panel">
+					<div className="panelHeader" style={{ padding: '6px 10px' }}>
+						<div className="panelTitle" style={{ fontSize: 18 }}>
+							<span style={{ marginRight: 4 }}>🤖</span>
+							AI Action Plan
+						</div>
 						<div style={{ fontSize: 18, color: 'var(--muted)' }}>
 							Updated {formatDateTime(dashboard.timestamp)}
 						</div>
 					</div>
-				</div>
-				<div style={{ padding: '6px 0' }}>
-					{feedingPlans.length > 0 ? (
-						<>
-							{/* Per-pond action items */}
-							{feedingPlans.map((plan) => {
-								const isReduced = plan.adjustment_factor < 0.85
-								const isOptimal = plan.adjustment_factor >= 0.95
-								const color = isReduced ? '#dc2626' : isOptimal ? '#16a34a' : '#f59e0b'
-								const icon = isReduced ? '🔴' : isOptimal ? '💡' : '🟡'
-								const label = isReduced ? 'Attention' : isOptimal ? 'Optimal' : 'Adjust'
-								return (
-									<div key={plan.pond_id} style={{ marginBottom: 8 }}>
-										<div style={{ fontSize: 18, fontWeight: 700, color, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-											<span>{icon}</span>
-											<span>Pond {plan.pond_id} — {label}</span>
-										</div>
-										<div style={{ padding: 6, backgroundColor: `${color}10`, borderRadius: 6, border: `1px solid ${color}33` }}>
-											<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2, color: 'var(--text)' }}>
-												⚡ {plan.feed_type.split('(')[0].trim()}
-											</div>
-											<div style={{ fontSize: 16, color: 'var(--muted)', lineHeight: 1.4, marginBottom: 4 }}>
-												Daily: {formatNumber(plan.daily_feed_kg * 1000, { maximumFractionDigits: 0 })} g
-												&nbsp;·&nbsp;
-												FCR {formatNumber(plan.fcr_current, { maximumFractionDigits: 2 })} → {formatNumber(plan.fcr_target, { maximumFractionDigits: 2 })}
-											</div>
-											{plan.schedule.map((entry) => (
-												<div key={entry.time} style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-													<span style={{ color: '#16a34a' }}>✓</span>
-													<span><strong>{entry.time}</strong> — {formatNumber(entry.amount_g, { maximumFractionDigits: 0 })} g &nbsp;<span style={{ color: 'var(--muted)' }}>{entry.notes.split('—')[0].trim()}</span></span>
-												</div>
-											))}
-											{plan.adjustment_factor < 1.0 && (
-												<div style={{ fontSize: 14, color, marginTop: 4, fontStyle: 'italic' }}>
-													⚠ {plan.adjustment_reason}
-												</div>
-											)}
-										</div>
-									</div>
-								)
-							})}
-
-							{/* Overall summary */}
-							{feedingOpt && (
-								<div style={{ marginTop: 8, padding: 6, backgroundColor: 'rgba(22, 163, 74, 0.05)', borderRadius: 6, border: '1px solid rgba(22, 163, 74, 0.2)' }}>
-									<div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
-										Farm-wide summary
-									</div>
-									<div style={{ fontSize: 16, color: 'var(--muted)', lineHeight: 1.5 }}>
-										Overall FCR: <strong>{formatNumber(feedingOpt.overall_fcr, { maximumFractionDigits: 2 })}</strong>
-										{feedingOpt.potential_savings_pct !== 0 && (
-											<>
-												&nbsp;·&nbsp;
-												{feedingOpt.potential_savings_pct > 0
-													? <span style={{ color: '#16a34a' }}>↓ {formatNumber(feedingOpt.potential_savings_pct, { maximumFractionDigits: 1 })}% feed saving vs current</span>
-													: <span style={{ color: '#f59e0b' }}>↑ {formatNumber(Math.abs(feedingOpt.potential_savings_pct), { maximumFractionDigits: 1 })}% more feed needed</span>
-												}
-											</>
-										)}
-									</div>
-									<div style={{ fontSize: 16, color: 'var(--text)', marginTop: 4 }}>
-										🏆 {feedingOpt.top_recommendation}
-									</div>
+					<div style={{ padding: '6px 0' }}>
+						{/* Critical Priority Recommendations */}
+						<div style={{ marginBottom: 8 }}>
+							<div style={{ fontSize: 18, fontWeight: 700, color: '#dc2626', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+								<span>🔴</span>
+								<span>Critical</span>
+							</div>
+							<div style={{ padding: 6, backgroundColor: 'rgba(220, 38, 38, 0.05)', borderRadius: 6, border: '1px solid rgba(220, 38, 38, 0.2)' }}>
+								<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2, color: 'var(--text)' }}>
+									⚡ Feed 140 kg at 7:00 AM (High-Protein 35%+)
 								</div>
-							)}
-						</>
-					) : feedingLoading ? (
-						<div style={{ fontSize: 18, color: 'var(--muted)', padding: '12px 0' }}>Computing optimized feeding plans…</div>
-					) : feedingError ? (
-						<div style={{ fontSize: 18, color: '#dc2626', padding: '12px 0' }}>
-							Could not load optimization: {feedingError}
+								<div style={{ fontSize: 18, color: 'var(--muted)', lineHeight: 1.3 }}>
+									Peak 6-9 AM. Impact: +5-8% growth, FCR {formatNumber(fcr, { maximumFractionDigits: 2 })} → {formatNumber(fcr * 0.93, { maximumFractionDigits: 2 })}
+								</div>
+							</div>
 						</div>
-					) : (
-						<div style={{ fontSize: 18, color: 'var(--muted)', padding: '12px 0' }}>No data. Click Refresh.</div>
-					)}
-				</div>
-			</div>
 
-			{/* Feed Comp — derived from optimizer feed type selection */}
-			<div className="panel">
-				<div className="panelHeader" style={{ padding: '6px 10px' }}>
-					<div className="panelTitle" style={{ fontSize: 18 }}>Feed Composition</div>
+						{/* High Priority Recommendations */}
+						<div style={{ marginBottom: 8 }}>
+							<div style={{ fontSize: 18, fontWeight: 700, color: '#f59e0b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+								<span>🟡</span>
+								<span>High Priority</span>
+							</div>
+							
+							<div style={{ padding: 6, backgroundColor: 'rgba(245, 158, 11, 0.05)', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.2)', marginBottom: 4 }}>
+								<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2, color: 'var(--text)' }}>
+									🌅 Afternoon: 90 kg at 4:00 PM
+								</div>
+								<div style={{ fontSize: 18, color: 'var(--muted)', lineHeight: 1.3 }}>
+									Reduces waste ~12%, maintains growth. Temp {formatNumber(avgTemp, { maximumFractionDigits: 1 })}°C optimal.
+								</div>
+							</div>
+
+							<div style={{ padding: 6, backgroundColor: 'rgba(245, 158, 11, 0.05)', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+								<div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2, color: 'var(--text)' }}>
+									📉 Adaptive Reduction
+								</div>
+								<div style={{ fontSize: 18, color: 'var(--muted)', lineHeight: 1.3 }}>
+									If activity &lt;30/hr, reduce 15-20%. Save Rs. {formatNumber((totalFeedCost * 0.15) / 100, { maximumFractionDigits: 0 })}/day
+								</div>
+							</div>
+						</div>
+
+						{/* Suggested Optimizations */}
+						<div>
+							<div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+								<span>💡</span>
+								<span>Suggested</span>
+							</div>
+							
+							<div style={{ padding: 5, backgroundColor: 'rgba(22, 163, 74, 0.05)', borderRadius: 5, border: '1px solid rgba(22, 163, 74, 0.2)', marginBottom: 4 }}>
+								<div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
+									🔬 Increase protein to 38-40% | Add probiotics
+								</div>
+							</div>
+
+							<div style={{ padding: 5, backgroundColor: 'rgba(22, 163, 74, 0.05)', borderRadius: 5, border: '1px solid rgba(22, 163, 74, 0.2)' }}>
+								<div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
+									⏰ Shift afternoon feed to 3:00 PM (peak activity)
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
-				<div style={{ padding: '6px 0' }}>
-					{feedingPlans.length > 0 ? (
-						<>
-							{feedingPlans.map((plan) => {
-								// Parse protein % from feed_type string, e.g. "Grower Feed (38% protein ...)"
-								const proteinMatch = plan.feed_type.match(/(\d+)%\s*protein/i)
-								const proteinPct = proteinMatch ? parseInt(proteinMatch[1]) : 35
-								const carbPct = Math.round((100 - proteinPct) * 0.55)
-								const fatPct = Math.round((100 - proteinPct) * 0.10)
-								return (
-									<div key={plan.pond_id} style={{ marginBottom: 12 }}>
-										<div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>
-											Pond {plan.pond_id}
-										</div>
-										<div style={{ fontSize: 15, color: 'var(--muted)', marginBottom: 2 }}>{plan.feed_type.split('(')[0].trim()}</div>
-										{[
-											{ label: `${proteinPct}% Protein`, pct: proteinPct, color: '#16a34a' },
-											{ label: `${carbPct}% Carbohydrates`, pct: carbPct, color: '#f59e0b' },
-											{ label: `${fatPct}% Fat`, pct: fatPct, color: '#3b82f6' },
-										].map(({ label, pct, color }) => (
-											<div key={label} style={{ marginBottom: 4 }}>
-												<div style={{ fontSize: 15, color: 'var(--muted)', marginBottom: 1 }}>{label}</div>
-												<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden' }}>
-													<div style={{ width: `${pct}%`, height: '100%', backgroundColor: color }} />
-												</div>
-											</div>
-										))}
-									</div>
-								)
-							})}
-						</>
-					) : (
-						<>
-							<div style={{ marginBottom: 5 }}>
-								<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>35% Protein</div>
-								<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-									<div style={{ width: '35%', height: '100%', backgroundColor: '#16a34a' }} />
-								</div>
+
+				{/* Feed Comp */}
+				<div className="panel">
+					<div className="panelHeader" style={{ padding: '6px 10px' }}>
+						<div className="panelTitle" style={{ fontSize: 18 }}>Feed Comp</div>
+					</div>
+					<div style={{ padding: '6px 0' }}>
+						<div style={{ marginBottom: 5 }}>
+							<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>35% Protein</div>
+							<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+								<div style={{ width: '35%', height: '100%', backgroundColor: '#16a34a' }} />
 							</div>
-							<div style={{ marginBottom: 5 }}>
-								<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>30% Carbohydrates</div>
-								<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-									<div style={{ width: '30%', height: '100%', backgroundColor: '#f59e0b' }} />
-								</div>
+						</div>
+						<div style={{ marginBottom: 5 }}>
+							<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>30% Carbohydrates</div>
+							<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+								<div style={{ width: '30%', height: '100%', backgroundColor: '#f59e0b' }} />
 							</div>
-							<div>
-								<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>1% Fat</div>
-								<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden' }}>
-									<div style={{ width: '1%', height: '100%', backgroundColor: '#3b82f6' }} />
-								</div>
+						</div>
+						<div>
+							<div style={{ fontSize: 18, color: 'var(--muted)', marginBottom: 2 }}>1% Fat</div>
+							<div style={{ height: 4, backgroundColor: 'rgba(17, 24, 39, 0.1)', borderRadius: 2, overflow: 'hidden' }}>
+								<div style={{ width: '1%', height: '100%', backgroundColor: '#3b82f6' }} />
 							</div>
-						</>
-					)}
+						</div>
+					</div>
 				</div>
-			</div>
 			</div>
 				</>
 			)}
@@ -989,34 +876,6 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 						<div className="panelTitle">Optimized Shift & Schedule Planning</div>
 					</div>
 					<div style={{ padding: '12px 0' }}>
-						{primaryLaborOpt?.schedule && (primaryLaborOpt.schedule.morning_shift || primaryLaborOpt.schedule.afternoon_shift || primaryLaborOpt.schedule.evening_shift) && (
-							<div style={{ marginBottom: 16, padding: 10, backgroundColor: 'rgba(34, 197, 94, 0.08)', borderRadius: 8, border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-								<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>Recommended shifts (AI)</div>
-								<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-									{primaryLaborOpt.schedule.morning_shift && (
-										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
-											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.morning_shift.time}</span>
-											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.morning_shift.tasks.join(' · ')}</div>
-											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.morning_shift.workers} worker(s)</div>
-										</div>
-									)}
-									{primaryLaborOpt.schedule.afternoon_shift && (
-										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
-											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.afternoon_shift.time}</span>
-											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.afternoon_shift.tasks.join(' · ')}</div>
-											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.afternoon_shift.workers} worker(s)</div>
-										</div>
-									)}
-									{primaryLaborOpt.schedule.evening_shift && (
-										<div style={{ flex: '1 1 140px', fontSize: 12 }}>
-											<span style={{ fontWeight: 600, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.evening_shift.time}</span>
-											<div style={{ marginTop: 4 }}>{primaryLaborOpt.schedule.evening_shift.tasks.join(' · ')}</div>
-											<div style={{ marginTop: 2, color: 'var(--muted)' }}>{primaryLaborOpt.schedule.evening_shift.workers} worker(s)</div>
-										</div>
-									)}
-								</div>
-							</div>
-						)}
 						<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>Today's Schedule</div>
 						<div style={{ overflowX: 'auto' }}>
 							<div style={{ display: 'grid', gridTemplateColumns: '120px repeat(4, 1fr)', gap: 8, minWidth: 600 }}>
@@ -1027,79 +886,49 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 								<div style={{ fontWeight: 600, fontSize: 20, color: 'var(--muted)', padding: '8px 4px', textAlign: 'center' }}>Evening<br />(6:00 PM - 12:00 AM)</div>
 								<div style={{ fontWeight: 600, fontSize: 20, color: 'var(--muted)', padding: '8px 4px', textAlign: 'center' }}>Night<br />(12:00 AM - 6:00 AM)</div>
 								
-								{/* Worker rows (driven by AI schedule when available) */}
-								{workerNames.map((worker, idx) => (
+								{/* Worker rows */}
+								{['Eric', 'Sarah', 'Alex', 'Ryan', 'Luis'].map((worker, idx) => (
 									<>
-										<div
-											key={`worker-${idx}`}
-											style={{
-												fontSize: 13,
-												fontWeight: 600,
-												padding: '8px 4px',
-												display: 'flex',
-												alignItems: 'center',
-											}}
-										>
+										<div key={`worker-${idx}`} style={{ fontSize: 13, fontWeight: 600, padding: '8px 4px', display: 'flex', alignItems: 'center' }}>
 											{worker}
 										</div>
 										<div key={`morning-${idx}`} style={{ padding: '8px 4px' }}>
-											{morningAssignments[idx] !== '-' ? (
-												<div
-													style={{
-														backgroundColor: 'rgba(34, 197, 94, 0.2)',
-														padding: '6px 8px',
-														borderRadius: 4,
-														fontSize: 20,
-														textAlign: 'center',
-														border: '1px solid rgba(34, 197, 94, 0.4)',
-													}}
-												>
-													{morningAssignments[idx]}
+											{idx < 3 ? (
+												<div style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(34, 197, 94, 0.4)' }}>
+													Pond Cleaning
+												</div>
+											) : idx === 3 ? (
+												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+													Feeding
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
-													-
-												</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
 											)}
 										</div>
 										<div key={`afternoon-${idx}`} style={{ padding: '8px 4px' }}>
-											{afternoonAssignments[idx] !== '-' ? (
-												<div
-													style={{
-														backgroundColor: 'rgba(59, 130, 246, 0.2)',
-														padding: '6px 8px',
-														borderRadius: 4,
-														fontSize: 20,
-														textAlign: 'center',
-														border: '1px solid rgba(59, 130, 246, 0.4)',
-													}}
-												>
-													{afternoonAssignments[idx]}
+											{idx === 0 ? (
+												<div style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+													Water Quality Sampling
+												</div>
+											) : idx < 3 ? (
+												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+													Feeding
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
-													-
-												</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
 											)}
 										</div>
 										<div key={`evening-${idx}`} style={{ padding: '8px 4px' }}>
-											{eveningAssignments[idx] !== '-' ? (
-												<div
-													style={{
-														backgroundColor: 'rgba(139, 92, 246, 0.2)',
-														padding: '6px 8px',
-														borderRadius: 4,
-														fontSize: 20,
-														textAlign: 'center',
-														border: '1px solid rgba(139, 92, 246, 0.4)',
-													}}
-												>
-													{eveningAssignments[idx]}
+											{idx === 2 ? (
+												<div style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+													Harvest Preparation
+												</div>
+											) : idx < 2 ? (
+												<div style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', padding: '6px 8px', borderRadius: 4, fontSize: 20, textAlign: 'center', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+													Feeding
 												</div>
 											) : (
-												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>
-													-
-												</div>
+												<div style={{ fontSize: 20, color: 'var(--muted)', textAlign: 'center' }}>-</div>
 											)}
 										</div>
 										<div key={`night-${idx}`} style={{ padding: '8px 4px' }}>
@@ -1110,32 +939,15 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 							</div>
 						</div>
 						
-						{/* AI Labor Optimization: plan + recommendations from backend */}
+						{/* AI Recommendations */}
 						<div style={{ marginTop: 16, padding: 10, backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: 8, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-							<div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>🤖 AI Labor Recommendations</div>
-							{primaryLaborOpt ? (
-								<>
-									{primaryLaborOpt.ai_plan && (
-										<div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, marginBottom: 12, whiteSpace: 'pre-wrap' }}>
-											{primaryLaborOpt.ai_plan}
-										</div>
-									)}
-									{primaryLaborOpt.recommendations.length > 0 ? (
-										<ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
-											{primaryLaborOpt.recommendations.slice(0, 5).map((r, i) => (
-												<li key={i} style={{ marginBottom: 4 }}>
-													<strong>{r.category}</strong> ({r.priority}): {r.recommendation}
-													{r.expected_improvement ? ` — ${r.expected_improvement}` : ''}
-												</li>
-											))}
-										</ul>
-									) : !primaryLaborOpt.ai_plan && (
-										<div style={{ fontSize: 13, color: 'var(--muted)' }}>No specific recommendations. Labor efficiency is within target.</div>
-									)}
-								</>
-							) : (
-								<div style={{ fontSize: 13, color: 'var(--muted)' }}>Load dashboard with labor optimization to see AI recommendations and schedules.</div>
-							)}
+							<div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>🤖 AI Recommendations</div>
+							<div style={{ fontSize: 18, color: 'var(--text)', lineHeight: 1.6, marginBottom: 4 }}>
+								• Add one more worker to the evening operation detected at Friday 6 PM
+							</div>
+							<div style={{ fontSize: 18, color: '#dc2626', lineHeight: 1.6 }}>
+								⚠️ Alert: Ryan is overloaded with back-to-back tasks
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1402,9 +1214,6 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 								</tbody>
 							</table>
 						</div>
-						<p style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
-							KPIs are from the current dashboard snapshot. Click <strong>Refresh</strong> in the top bar after new data is saved, or run a monitoring cycle, to see updated values.
-						</p>
 						<div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
 							<div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 6, backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 6 }}>
 								<span style={{ fontSize: 20 }}>✅</span>

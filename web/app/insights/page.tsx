@@ -1,4 +1,5 @@
 import React from 'react';
+import NewsletterForm from '../../components/NewsletterForm';
 
 const insights = [
   {
@@ -355,27 +356,7 @@ export default function InsightsPage() {
 
         {/* Newsletter Subscription Section */}
         <div className="mt-20">
-          <div className="bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl p-8 md:p-12 text-center text-white">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Stay Updated with Latest Research
-            </h2>
-            <p className="text-cyan-50 mb-8 max-w-2xl mx-auto text-lg">
-              Get weekly insights, research summaries, and industry updates delivered directly to your inbox.
-            </p>
-            <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                placeholder="Enter your email address"
-                className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white"
-              />
-              <button className="bg-white text-cyan-600 px-6 py-3 rounded-lg font-semibold hover:bg-cyan-50 transition-colors whitespace-nowrap">
-                Subscribe Now
-              </button>
-            </div>
-            <p className="text-cyan-100 text-sm mt-4">
-              Join over 5,000 researchers and industry professionals
-            </p>
-          </div>
+          <NewsletterForm />
         </div>
 
         {/* Additional Resources Section */}
