@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = "http://localhost:5000/api/sensor/reading"
+url = "http://localhost:8000/api/sensor/reading"
 payload = {
     "device_id": "esp32_test_prediction",
     "tds_value": 1200.5,

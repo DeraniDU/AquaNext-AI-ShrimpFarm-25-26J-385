@@ -1,0 +1,79 @@
+"""
+Basic configuration for the shrimp farm management system.
+
+Values can be overridden with environment variables if desired.
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from a local .env file when running locally.
+# This keeps secrets like API keys out of the codebase and allows easy
+# per-machine configuration.
+# Explicitly load .env next to this file so it works regardless of cwd.
+_ENV_PATH = Path(__file__).with_name(".env")
+if _ENV_PATH.exists():
+	load_dotenv(dotenv_path=_ENV_PATH)
+else:
+	load_dotenv()
+
+# OpenAI settings
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
+OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.2"))
+
+# Farm configuration
+FARM_CONFIG = {
+    # Number of ponds to simulate/monitor
+    "pond_count": int(os.getenv("FARM_POND_COUNT", "4")),
+    # Water quality targets
+    "optimal_ph_range": (7.5, 8.5),
+    "optimal_temperature_range": (26, 30),  # °C
+    "optimal_dissolved_oxygen": 2.2,  # mg/L
+    "optimal_salinity_range": (15, 25),  # ppt
+}
+
+# Energy cost in Sri Lankan Rupees per kWh (used for EnergyData.cost and DB persistence).
+# Override with env ENERGY_COST_PER_KWH_LKR e.g. 65–90 depending on tariff tier.
+ENERGY_COST_PER_KWH_LKR = float(os.getenv("ENERGY_COST_PER_KWH_LKR", "65"))
+
+# Agent scheduling configuration (minutes)
+AGENT_CONFIG = {
+    "water_quality_check_interval": int(os.getenv("WATER_QUALITY_CHECK_INTERVAL_MIN", "30")),
+    "feed_prediction_interval": int(os.getenv("FEED_PREDICTION_INTERVAL_MIN", "24")) * 60,
+    "energy_optimization_interval": int(os.getenv("ENERGY_OPTIMIZATION_INTERVAL_MIN", "60")),
+    "labor_optimization_interval": int(os.getenv("LABOR_OPTIMIZATION_INTERVAL_MIN", "120")),
+}
+
+# Decision Model configuration
+DECISION_MODEL_CONFIG = {
+    "model_path": os.getenv("DECISION_MODEL_PATH", "models/decision_model.pth"),
+    "use_decision_model": os.getenv("USE_DECISION_MODEL", "true").lower() == "true",
+    # Which decision agent to use when enabled:
+    # - "autogluon" (default): ML-based (requires AutoGluon + trained models)
+    # - "xgboost": lightweight ML-based (requires xgboost + trained models)
+    # - "tiny": minimal rule-based agent (few rules, safest defaults)
+    # - "simple": deterministic rule-based baseline (no ML dependencies)
+    # - "none": disable decision recommendations
+    # Default to XGBoost for a lightweight, production-friendly ML baseline.
+    "agent_type": os.getenv("DECISION_AGENT_TYPE", "xgboost").lower(),
+    "confidence_threshold": float(os.getenv("DECISION_CONFIDENCE_THRESHOLD", "0.7")),
+    "enable_auto_actions": os.getenv("ENABLE_AUTO_ACTIONS", "false").lower() == "true",
+}
+
+# MongoDB configuration (Shrimp-farm-ai-assistant uses only MongoDB for data when enabled)
+MONGO_URI = os.getenv("MONGO_URI", "")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
+# Default to false if not explicitly enabled to avoid hard failures in local dev.
+USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
+
+# When true, dashboard/agents use only MongoDB *_readings collections—no simulated
+# water/feed/energy/labor data if a pond has no row. Requires USE_MONGODB=true and
+# populated water_quality_readings, feed_readings, energy_readings, labor_readings.
+USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
+
+# Orchestration: parallel data collection and optional LLM steps
+RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
+PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect
+

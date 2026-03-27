@@ -501,3 +501,14 @@ exit
 
 **Your complete Smart Shrimp Farm system is ready to run! 🦐**
 
+
+/////starting commands
+
+
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/backend-v2/iot_gateway
+source /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/.venv/bin/activate
+python app.py
+
+source /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/.venv/bin/activate
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/backend-v2/iot_gateway
+python serial_to_api_bridge.py

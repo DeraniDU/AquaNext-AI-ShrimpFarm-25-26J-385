@@ -1,0 +1,5834 @@
+[
+  {
+    "timestamp": "2024-06-21T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.29,
+        "temperature": 26.3,
+        "dissolved_oxygen": 7.7,
+        "salinity": 21.3,
+        "ammonia": 0.199,
+        "nitrite": 0.052,
+        "nitrate": 2.53,
+        "turbidity": 2.94,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9573,
+        "average_weight": 11.37,
+        "feed_amount": 1327.76,
+        "feed_type": "Grower Feed (35% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 43.23,
+        "cost": 5.19,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.47,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2033-07-27T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.8,
+        "temperature": 30.0,
+        "dissolved_oxygen": 5.7,
+        "salinity": 22.6,
+        "ammonia": 0.5,
+        "nitrite": 0.058,
+        "nitrate": 0.52,
+        "turbidity": 4.0,
+        "status": "poor",
+        "alerts": [
+          "WARNING: pH too high (8.80) - monitor closely",
+          "WARNING: Temperature too high (30.0\u00b0C) - consider cooling",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8752,
+        "average_weight": 25.0,
+        "feed_amount": 1442.95,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 44.82,
+        "cost": 5.38,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 3.53,
+        "worker_count": 1,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.88,
+        "temperature": 28.2,
+        "dissolved_oxygen": 5.9,
+        "salinity": 19.4,
+        "ammonia": 0.186,
+        "nitrite": 0.088,
+        "nitrate": 2.98,
+        "turbidity": 2.94,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10926,
+        "average_weight": 18.97,
+        "feed_amount": 2200.6,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 43.67,
+        "cost": 5.24,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.37,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2029-02-27T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.09,
+        "temperature": 26.0,
+        "dissolved_oxygen": 5.5,
+        "salinity": 19.6,
+        "ammonia": 0.5,
+        "nitrite": 0.066,
+        "nitrate": 6.86,
+        "turbidity": 0.25,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1955.87,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 43.78,
+        "cost": 5.25,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.41,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-09-03T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.48,
+        "temperature": 30.1,
+        "dissolved_oxygen": 5.8,
+        "salinity": 16.8,
+        "ammonia": 0.497,
+        "nitrite": 0.073,
+        "nitrate": 5.47,
+        "turbidity": 1.42,
+        "status": "poor",
+        "alerts": [
+          "CRITICAL: pH too low (7.48) - immediate action required",
+          "WARNING: Temperature too high (30.1\u00b0C) - consider cooling",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 1794.34,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 47.25,
+        "cost": 5.67,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.72,
+        "worker_count": 2,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-07-04T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.61,
+        "temperature": 26.8,
+        "dissolved_oxygen": 6.6,
+        "salinity": 19.5,
+        "ammonia": 0.154,
+        "nitrite": 0.094,
+        "nitrate": 2.33,
+        "turbidity": 4.95,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 3561.66,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 42.25,
+        "cost": 5.07,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.51,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-06-01T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.57,
+        "temperature": 27.4,
+        "dissolved_oxygen": 6.7,
+        "salinity": 19.6,
+        "ammonia": 0.407,
+        "nitrite": 0.094,
+        "nitrate": 5.93,
+        "turbidity": 2.26,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.57) - monitor closely",
+          "CRITICAL: High ammonia levels (0.41 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9477,
+        "average_weight": 25.0,
+        "feed_amount": 1548.51,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 45.13,
+        "cost": 5.42,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.79,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-05-05T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.54,
+        "temperature": 28.7,
+        "dissolved_oxygen": 6.0,
+        "salinity": 22.1,
+        "ammonia": 0.348,
+        "nitrite": 0.015,
+        "nitrate": 1.33,
+        "turbidity": 2.24,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.35 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1456.1,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.2,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.81,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-05-09T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 8.02,
+        "temperature": 30.8,
+        "dissolved_oxygen": 5.7,
+        "salinity": 17.2,
+        "ammonia": 0.177,
+        "nitrite": 0.091,
+        "nitrate": 3.79,
+        "turbidity": 4.32,
+        "status": "good",
+        "alerts": [
+          "WARNING: Temperature too high (30.8\u00b0C) - consider cooling"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10178,
+        "average_weight": 19.19,
+        "feed_amount": 2393.0,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 39.88,
+        "cost": 4.79,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.28,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-03-04T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.48,
+        "temperature": 29.7,
+        "dissolved_oxygen": 6.9,
+        "salinity": 20.0,
+        "ammonia": 0.356,
+        "nitrite": 0.007,
+        "nitrate": 9.91,
+        "turbidity": 3.44,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.36 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 1271.21,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.01,
+        "cost": 5.52,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.08,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-06-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.62,
+        "temperature": 29.4,
+        "dissolved_oxygen": 6.9,
+        "salinity": 18.8,
+        "ammonia": 0.269,
+        "nitrite": 0.1,
+        "nitrate": 2.3,
+        "turbidity": 0.63,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.27 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10707,
+        "average_weight": 25.0,
+        "feed_amount": 1421.53,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 44.27,
+        "cost": 5.31,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.67,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-03-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.4,
+        "temperature": 27.8,
+        "dissolved_oxygen": 7.6,
+        "salinity": 19.9,
+        "ammonia": 0.081,
+        "nitrite": 0.037,
+        "nitrate": 2.46,
+        "turbidity": 1.53,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 2637.21,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 43.51,
+        "cost": 5.22,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.72,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2031-01-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 8.08,
+        "temperature": 29.6,
+        "dissolved_oxygen": 6.9,
+        "salinity": 19.9,
+        "ammonia": 0.22,
+        "nitrite": 0.035,
+        "nitrate": 4.07,
+        "turbidity": 4.04,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.22 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10388,
+        "average_weight": 25.0,
+        "feed_amount": 1619.52,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 43.69,
+        "cost": 5.24,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.55,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-06-06T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.87,
+        "temperature": 27.3,
+        "dissolved_oxygen": 6.9,
+        "salinity": 19.8,
+        "ammonia": 0.332,
+        "nitrite": 0.088,
+        "nitrate": 9.83,
+        "turbidity": 4.08,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.33 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 2018.51,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.12,
+        "cost": 5.41,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.56,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-10-03T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.46,
+        "temperature": 28.4,
+        "dissolved_oxygen": 5.4,
+        "salinity": 19.7,
+        "ammonia": 0.186,
+        "nitrite": 0.095,
+        "nitrate": 9.28,
+        "turbidity": 3.24,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 2508.08,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 39.52,
+        "cost": 4.74,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.3,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-03-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.84,
+        "temperature": 26.6,
+        "dissolved_oxygen": 6.4,
+        "salinity": 19.6,
+        "ammonia": 0.289,
+        "nitrite": 0.002,
+        "nitrate": 7.01,
+        "turbidity": 4.36,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.29 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 2144.49,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.2,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.63,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-08-26T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.58,
+        "temperature": 28.8,
+        "dissolved_oxygen": 6.8,
+        "salinity": 20.8,
+        "ammonia": 0.5,
+        "nitrite": 0.095,
+        "nitrate": 8.44,
+        "turbidity": 4.3,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.58) - monitor closely",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1262.91,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 42.63,
+        "cost": 5.12,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.02,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2032-05-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.67,
+        "temperature": 27.1,
+        "dissolved_oxygen": 6.3,
+        "salinity": 20.1,
+        "ammonia": 0.5,
+        "nitrite": 0.07,
+        "nitrate": 7.5,
+        "turbidity": 3.41,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9975,
+        "average_weight": 25.0,
+        "feed_amount": 1936.83,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 44.53,
+        "cost": 5.34,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.8,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-09-26T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.14,
+        "temperature": 30.0,
+        "dissolved_oxygen": 6.0,
+        "salinity": 20.4,
+        "ammonia": 0.5,
+        "nitrite": 0.029,
+        "nitrate": 9.73,
+        "turbidity": 0.65,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 1234.83,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.18,
+        "cost": 5.54,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.68,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2035-02-15T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.97,
+        "temperature": 30.0,
+        "dissolved_oxygen": 5.0,
+        "salinity": 18.9,
+        "ammonia": 0.393,
+        "nitrite": 0.019,
+        "nitrate": 5.11,
+        "turbidity": 4.47,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.39 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 1693.94,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 45.45,
+        "cost": 5.45,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.01,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-06-07T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.6,
+        "temperature": 26.7,
+        "dissolved_oxygen": 5.1,
+        "salinity": 17.2,
+        "ammonia": 0.324,
+        "nitrite": 0.011,
+        "nitrate": 8.16,
+        "turbidity": 1.92,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.32 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 2116.71,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 45.17,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.98,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-06-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.72,
+        "temperature": 29.7,
+        "dissolved_oxygen": 6.0,
+        "salinity": 18.8,
+        "ammonia": 0.22,
+        "nitrite": 0.077,
+        "nitrate": 4.74,
+        "turbidity": 2.89,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.22 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10707,
+        "average_weight": 25.0,
+        "feed_amount": 1467.43,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.82,
+        "cost": 5.5,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.02,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-11-21T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.16,
+        "temperature": 29.2,
+        "dissolved_oxygen": 6.6,
+        "salinity": 21.6,
+        "ammonia": 0.135,
+        "nitrite": 0.092,
+        "nitrate": 9.56,
+        "turbidity": 3.03,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 2301.47,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 39.96,
+        "cost": 4.8,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.18,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-07-19T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.17,
+        "temperature": 27.5,
+        "dissolved_oxygen": 7.4,
+        "salinity": 21.4,
+        "ammonia": 0.298,
+        "nitrite": 0.066,
+        "nitrate": 7.56,
+        "turbidity": 1.48,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.30 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9573,
+        "average_weight": 25.0,
+        "feed_amount": 2049.55,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 48.56,
+        "cost": 5.83,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.93,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2035-05-01T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.35,
+        "temperature": 26.3,
+        "dissolved_oxygen": 6.6,
+        "salinity": 21.6,
+        "ammonia": 0.5,
+        "nitrite": 0.011,
+        "nitrate": 0.69,
+        "turbidity": 1.4,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8752,
+        "average_weight": 25.0,
+        "feed_amount": 1896.09,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 43.27,
+        "cost": 5.19,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.71,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-04-09T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.79,
+        "temperature": 29.8,
+        "dissolved_oxygen": 5.7,
+        "salinity": 19.3,
+        "ammonia": 0.44,
+        "nitrite": 0.01,
+        "nitrate": 6.1,
+        "turbidity": 0.61,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.44 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1351.17,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 48.37,
+        "cost": 5.8,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.88,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-08-12T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.3,
+        "temperature": 29.6,
+        "dissolved_oxygen": 4.7,
+        "salinity": 22.5,
+        "ammonia": 0.341,
+        "nitrite": 0.011,
+        "nitrate": 3.3,
+        "turbidity": 3.48,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: Low dissolved oxygen (4.7 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.34 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8664,
+        "average_weight": 25.0,
+        "feed_amount": 1118.06,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 56.61,
+        "cost": 6.79,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 4.0,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2031-09-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.36,
+        "temperature": 26.1,
+        "dissolved_oxygen": 5.4,
+        "salinity": 21.5,
+        "ammonia": 0.3,
+        "nitrite": 0.086,
+        "nitrate": 2.6,
+        "turbidity": 3.97,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.30 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8841,
+        "average_weight": 25.0,
+        "feed_amount": 1654.59,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 45.7,
+        "cost": 5.48,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.25,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-06-20T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.58,
+        "temperature": 30.4,
+        "dissolved_oxygen": 4.1,
+        "salinity": 19.9,
+        "ammonia": 0.293,
+        "nitrite": 0.095,
+        "nitrate": 1.17,
+        "turbidity": 4.45,
+        "status": "poor",
+        "alerts": [
+          "WARNING: Temperature too high (30.4\u00b0C) - consider cooling",
+          "CRITICAL: Low dissolved oxygen (4.1 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.29 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10076,
+        "average_weight": 25.0,
+        "feed_amount": 795.5,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 60.31,
+        "cost": 7.24,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.07,
+        "worker_count": 1,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-06-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.09,
+        "temperature": 26.6,
+        "dissolved_oxygen": 6.8,
+        "salinity": 22.0,
+        "ammonia": 0.216,
+        "nitrite": 0.038,
+        "nitrate": 2.88,
+        "turbidity": 1.81,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.22 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9573,
+        "average_weight": 11.44,
+        "feed_amount": 694.66,
+        "feed_type": "Grower Feed (35% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 45.15,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.94,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-07-08T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.58,
+        "temperature": 26.5,
+        "dissolved_oxygen": 6.4,
+        "salinity": 18.0,
+        "ammonia": 0.248,
+        "nitrite": 0.056,
+        "nitrate": 6.05,
+        "turbidity": 3.62,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.25 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 2397.64,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 45.18,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.74,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-07-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.08,
+        "temperature": 26.4,
+        "dissolved_oxygen": 7.2,
+        "salinity": 21.5,
+        "ammonia": 0.5,
+        "nitrite": 0.049,
+        "nitrate": 6.81,
+        "turbidity": 1.53,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 2030.21,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 44.45,
+        "cost": 5.33,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.24,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-11-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.32,
+        "temperature": 28.4,
+        "dissolved_oxygen": 7.3,
+        "salinity": 20.5,
+        "ammonia": 0.404,
+        "nitrite": 0.078,
+        "nitrate": 8.08,
+        "turbidity": 2.78,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.40 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 1594.59,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 47.8,
+        "cost": 5.74,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.25,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-05-30T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.74,
+        "temperature": 27.6,
+        "dissolved_oxygen": 7.0,
+        "salinity": 21.4,
+        "ammonia": 0.5,
+        "nitrite": 0.085,
+        "nitrate": 4.7,
+        "turbidity": 1.03,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 1861.65,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 41.38,
+        "cost": 4.97,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.08,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-02-14T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.58,
+        "temperature": 27.9,
+        "dissolved_oxygen": 6.8,
+        "salinity": 21.1,
+        "ammonia": 0.297,
+        "nitrite": 0.01,
+        "nitrate": 2.92,
+        "turbidity": 2.75,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.30 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 1583.88,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.33,
+        "cost": 5.44,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.39,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-25T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.51,
+        "temperature": 29.3,
+        "dissolved_oxygen": 5.9,
+        "salinity": 20.6,
+        "ammonia": 0.086,
+        "nitrite": 0.003,
+        "nitrate": 8.49,
+        "turbidity": 4.3,
+        "status": "good",
+        "alerts": [
+          "WARNING: pH too high (8.51) - monitor closely"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9477,
+        "average_weight": 25.0,
+        "feed_amount": 2877.7,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 40.28,
+        "cost": 4.83,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.95,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-05T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.62,
+        "temperature": 29.4,
+        "dissolved_oxygen": 6.0,
+        "salinity": 20.2,
+        "ammonia": 0.263,
+        "nitrite": 0.031,
+        "nitrate": 2.21,
+        "turbidity": 3.56,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.26 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10178,
+        "average_weight": 17.65,
+        "feed_amount": 1227.66,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 46.19,
+        "cost": 5.54,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.84,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-05-10T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.97,
+        "temperature": 28.6,
+        "dissolved_oxygen": 5.6,
+        "salinity": 19.7,
+        "ammonia": 0.268,
+        "nitrite": 0.036,
+        "nitrate": 4.03,
+        "turbidity": 3.49,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.27 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10926,
+        "average_weight": 25.0,
+        "feed_amount": 1399.99,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.51,
+        "cost": 5.46,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.23,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-02-09T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.38,
+        "temperature": 25.7,
+        "dissolved_oxygen": 6.8,
+        "salinity": 20.7,
+        "ammonia": 0.367,
+        "nitrite": 0.024,
+        "nitrate": 8.77,
+        "turbidity": 3.06,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too low (25.7\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.37 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 3143.27,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 47.89,
+        "cost": 5.75,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.91,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-10-30T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.51,
+        "temperature": 29.8,
+        "dissolved_oxygen": 4.8,
+        "salinity": 19.5,
+        "ammonia": 0.206,
+        "nitrite": 0.009,
+        "nitrate": 8.14,
+        "turbidity": 2.85,
+        "status": "poor",
+        "alerts": [
+          "WARNING: pH too high (8.51) - monitor closely",
+          "CRITICAL: Low dissolved oxygen (4.8 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.21 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 754.29,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 58.23,
+        "cost": 6.99,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.65,
+        "worker_count": 1,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2031-12-05T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.67,
+        "temperature": 26.8,
+        "dissolved_oxygen": 6.0,
+        "salinity": 19.3,
+        "ammonia": 0.203,
+        "nitrite": 0.073,
+        "nitrate": 2.74,
+        "turbidity": 1.95,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.20 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 2238.9,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 47.37,
+        "cost": 5.68,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.78,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-02-09T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.81,
+        "temperature": 27.5,
+        "dissolved_oxygen": 7.6,
+        "salinity": 20.5,
+        "ammonia": 0.142,
+        "nitrite": 0.034,
+        "nitrate": 7.12,
+        "turbidity": 3.61,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10707,
+        "average_weight": 25.0,
+        "feed_amount": 4314.36,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 41.82,
+        "cost": 5.02,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.88,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-01-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.48,
+        "temperature": 30.4,
+        "dissolved_oxygen": 4.7,
+        "salinity": 19.6,
+        "ammonia": 0.5,
+        "nitrite": 0.027,
+        "nitrate": 1.21,
+        "turbidity": 0.57,
+        "status": "critical",
+        "alerts": [
+          "CRITICAL: pH too low (7.48) - immediate action required",
+          "WARNING: Temperature too high (30.4\u00b0C) - consider cooling",
+          "CRITICAL: Low dissolved oxygen (4.7 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10076,
+        "average_weight": 25.0,
+        "feed_amount": 964.87,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 60.34,
+        "cost": 7.24,
+        "efficiency_score": 0.6
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.39,
+        "worker_count": 2,
+        "efficiency_score": 0.75,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-07-18T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.28,
+        "temperature": 28.6,
+        "dissolved_oxygen": 5.1,
+        "salinity": 20.0,
+        "ammonia": 0.5,
+        "nitrite": 0.069,
+        "nitrate": 7.62,
+        "turbidity": 0.06,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8664,
+        "average_weight": 25.0,
+        "feed_amount": 1053.77,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 48.61,
+        "cost": 5.83,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.95,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-05-15T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.3,
+        "temperature": 27.8,
+        "dissolved_oxygen": 6.0,
+        "salinity": 19.0,
+        "ammonia": 0.163,
+        "nitrite": 0.067,
+        "nitrate": 2.28,
+        "turbidity": 1.63,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: pH too low (7.30) - immediate action required"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 3975.33,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 41.9,
+        "cost": 5.03,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.52,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-01-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.87,
+        "temperature": 30.8,
+        "dissolved_oxygen": 4.1,
+        "salinity": 19.2,
+        "ammonia": 0.475,
+        "nitrite": 0.06,
+        "nitrate": 2.98,
+        "turbidity": 3.77,
+        "status": "poor",
+        "alerts": [
+          "WARNING: Temperature too high (30.8\u00b0C) - consider cooling",
+          "CRITICAL: Low dissolved oxygen (4.1 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.47 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10076,
+        "average_weight": 25.0,
+        "feed_amount": 1194.95,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 54.21,
+        "cost": 6.5,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 3.17,
+        "worker_count": 2,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2035-02-15T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.75,
+        "temperature": 28.7,
+        "dissolved_oxygen": 6.4,
+        "salinity": 19.7,
+        "ammonia": 0.5,
+        "nitrite": 0.038,
+        "nitrate": 1.0,
+        "turbidity": 2.39,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1361.02,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 45.09,
+        "cost": 5.41,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.11,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2029-06-30T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.46,
+        "temperature": 28.8,
+        "dissolved_oxygen": 5.0,
+        "salinity": 22.8,
+        "ammonia": 0.304,
+        "nitrite": 0.088,
+        "nitrate": 7.96,
+        "turbidity": 1.48,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: Low dissolved oxygen (5.0 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.30 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1017.66,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 49.32,
+        "cost": 5.92,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.92,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-02T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.6,
+        "temperature": 29.6,
+        "dissolved_oxygen": 6.3,
+        "salinity": 22.8,
+        "ammonia": 0.257,
+        "nitrite": 0.001,
+        "nitrate": 8.79,
+        "turbidity": 2.39,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.60) - monitor closely",
+          "CRITICAL: High ammonia levels (0.26 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 20.0,
+        "feed_amount": 1067.78,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 45.38,
+        "cost": 5.45,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.91,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2031-04-30T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.45,
+        "temperature": 30.2,
+        "dissolved_oxygen": 7.1,
+        "salinity": 21.2,
+        "ammonia": 0.124,
+        "nitrite": 0.094,
+        "nitrate": 7.86,
+        "turbidity": 1.88,
+        "status": "good",
+        "alerts": [
+          "WARNING: Temperature too high (30.2\u00b0C) - consider cooling"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 2424.16,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 41.25,
+        "cost": 4.95,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.52,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-09-04T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.24,
+        "temperature": 25.6,
+        "dissolved_oxygen": 6.8,
+        "salinity": 19.5,
+        "ammonia": 0.174,
+        "nitrite": 0.036,
+        "nitrate": 3.48,
+        "turbidity": 3.36,
+        "status": "good",
+        "alerts": [
+          "WARNING: Temperature too low (25.6\u00b0C) - consider heating"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 4372.17,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 46.79,
+        "cost": 5.61,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.38,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-09-21T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.68,
+        "temperature": 28.3,
+        "dissolved_oxygen": 5.1,
+        "salinity": 21.6,
+        "ammonia": 0.315,
+        "nitrite": 0.058,
+        "nitrate": 7.8,
+        "turbidity": 0.99,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.68) - monitor closely",
+          "CRITICAL: High ammonia levels (0.32 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1217.45,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 42.67,
+        "cost": 5.12,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.08,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-08-08T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.42,
+        "temperature": 28.8,
+        "dissolved_oxygen": 7.4,
+        "salinity": 22.4,
+        "ammonia": 0.246,
+        "nitrite": 0.028,
+        "nitrate": 1.43,
+        "turbidity": 2.93,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.25 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1476.16,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 43.98,
+        "cost": 5.28,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.73,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-05-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.39,
+        "temperature": 25.2,
+        "dissolved_oxygen": 7.9,
+        "salinity": 20.2,
+        "ammonia": 0.408,
+        "nitrite": 0.056,
+        "nitrate": 4.7,
+        "turbidity": 1.6,
+        "status": "poor",
+        "alerts": [
+          "CRITICAL: pH too low (7.39) - immediate action required",
+          "WARNING: Temperature too low (25.2\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.41 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 2767.65,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 51.03,
+        "cost": 6.12,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.22,
+        "worker_count": 2,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2035-11-20T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.76,
+        "temperature": 26.6,
+        "dissolved_oxygen": 7.7,
+        "salinity": 22.3,
+        "ammonia": 0.5,
+        "nitrite": 0.048,
+        "nitrate": 5.7,
+        "turbidity": 4.76,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1688.95,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 49.67,
+        "cost": 5.96,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.1,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-09-03T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.22,
+        "temperature": 28.3,
+        "dissolved_oxygen": 6.3,
+        "salinity": 21.0,
+        "ammonia": 0.44,
+        "nitrite": 0.048,
+        "nitrate": 8.84,
+        "turbidity": 2.58,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.44 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 1069.97,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.98,
+        "cost": 5.64,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.75,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2031-10-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.36,
+        "temperature": 25.2,
+        "dissolved_oxygen": 7.1,
+        "salinity": 19.6,
+        "ammonia": 0.5,
+        "nitrite": 0.034,
+        "nitrate": 5.66,
+        "turbidity": 0.73,
+        "status": "poor",
+        "alerts": [
+          "CRITICAL: pH too low (7.36) - immediate action required",
+          "WARNING: Temperature too low (25.2\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10284,
+        "average_weight": 25.0,
+        "feed_amount": 3167.9,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 51.31,
+        "cost": 6.16,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.4,
+        "worker_count": 1,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-10T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.56,
+        "temperature": 29.1,
+        "dissolved_oxygen": 7.0,
+        "salinity": 20.4,
+        "ammonia": 0.361,
+        "nitrite": 0.063,
+        "nitrate": 5.89,
+        "turbidity": 3.26,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.56) - monitor closely",
+          "CRITICAL: High ammonia levels (0.36 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9573,
+        "average_weight": 23.31,
+        "feed_amount": 1439.4,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 45.69,
+        "cost": 5.48,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.31,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-04-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.45,
+        "temperature": 27.2,
+        "dissolved_oxygen": 5.1,
+        "salinity": 17.0,
+        "ammonia": 0.23,
+        "nitrite": 0.044,
+        "nitrate": 0.93,
+        "turbidity": 2.86,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: pH too low (7.45) - immediate action required",
+          "CRITICAL: High ammonia levels (0.23 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10076,
+        "average_weight": 25.0,
+        "feed_amount": 2292.96,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 47.48,
+        "cost": 5.7,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.37,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-09-26T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.7,
+        "temperature": 25.4,
+        "dissolved_oxygen": 7.9,
+        "salinity": 22.4,
+        "ammonia": 0.356,
+        "nitrite": 0.055,
+        "nitrate": 1.94,
+        "turbidity": 1.19,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too low (25.4\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.36 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10599,
+        "average_weight": 25.0,
+        "feed_amount": 3552.82,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 51.26,
+        "cost": 6.15,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.16,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-04-23T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.16,
+        "temperature": 29.4,
+        "dissolved_oxygen": 6.4,
+        "salinity": 20.0,
+        "ammonia": 0.5,
+        "nitrite": 0.063,
+        "nitrate": 5.21,
+        "turbidity": 0.3,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9477,
+        "average_weight": 25.0,
+        "feed_amount": 1267.63,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.3,
+        "cost": 5.56,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.61,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2033-09-10T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.97,
+        "temperature": 28.8,
+        "dissolved_oxygen": 6.4,
+        "salinity": 19.2,
+        "ammonia": 0.422,
+        "nitrite": 0.012,
+        "nitrate": 1.56,
+        "turbidity": 2.02,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.42 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1832.54,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 46.35,
+        "cost": 5.56,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.77,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-04-18T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.56,
+        "temperature": 25.9,
+        "dissolved_oxygen": 7.9,
+        "salinity": 19.1,
+        "ammonia": 0.332,
+        "nitrite": 0.012,
+        "nitrate": 2.93,
+        "turbidity": 4.03,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too low (25.9\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.33 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 2841.54,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 51.87,
+        "cost": 6.22,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.87,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-04-18T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.19,
+        "temperature": 26.6,
+        "dissolved_oxygen": 5.3,
+        "salinity": 20.4,
+        "ammonia": 0.474,
+        "nitrite": 0.094,
+        "nitrate": 5.22,
+        "turbidity": 0.92,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.47 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8664,
+        "average_weight": 25.0,
+        "feed_amount": 1894.01,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 44.94,
+        "cost": 5.39,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.12,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-02-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.54,
+        "temperature": 26.5,
+        "dissolved_oxygen": 6.0,
+        "salinity": 21.7,
+        "ammonia": 0.18,
+        "nitrite": 0.039,
+        "nitrate": 3.52,
+        "turbidity": 2.69,
+        "status": "good",
+        "alerts": [
+          "WARNING: pH too high (8.54) - monitor closely"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 3095.98,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 39.51,
+        "cost": 4.74,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.97,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-04-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.68,
+        "temperature": 29.3,
+        "dissolved_oxygen": 6.4,
+        "salinity": 20.9,
+        "ammonia": 0.5,
+        "nitrite": 0.012,
+        "nitrate": 6.39,
+        "turbidity": 3.73,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.68) - monitor closely",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1098.77,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 43.71,
+        "cost": 5.24,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.23,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-04-29T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.42,
+        "temperature": 25.8,
+        "dissolved_oxygen": 7.1,
+        "salinity": 22.4,
+        "ammonia": 0.131,
+        "nitrite": 0.028,
+        "nitrate": 8.94,
+        "turbidity": 3.16,
+        "status": "good",
+        "alerts": [
+          "WARNING: Temperature too low (25.8\u00b0C) - consider heating"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8752,
+        "average_weight": 25.0,
+        "feed_amount": 3738.14,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 45.81,
+        "cost": 5.5,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.99,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-02-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.21,
+        "temperature": 26.2,
+        "dissolved_oxygen": 5.9,
+        "salinity": 23.2,
+        "ammonia": 0.5,
+        "nitrite": 0.028,
+        "nitrate": 0.28,
+        "turbidity": 1.9,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1485.66,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 44.61,
+        "cost": 5.35,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.96,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-04-12T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.3,
+        "temperature": 29.5,
+        "dissolved_oxygen": 5.7,
+        "salinity": 20.8,
+        "ammonia": 0.179,
+        "nitrite": 0.093,
+        "nitrate": 3.63,
+        "turbidity": 3.37,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 2159.36,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 43.64,
+        "cost": 5.24,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.39,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-03-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.62,
+        "temperature": 30.4,
+        "dissolved_oxygen": 4.1,
+        "salinity": 17.1,
+        "ammonia": 0.5,
+        "nitrite": 0.094,
+        "nitrate": 3.72,
+        "turbidity": 4.98,
+        "status": "poor",
+        "alerts": [
+          "WARNING: Temperature too high (30.4\u00b0C) - consider cooling",
+          "CRITICAL: Low dissolved oxygen (4.1 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 1141.16,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 56.91,
+        "cost": 6.83,
+        "efficiency_score": 0.75
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording",
+          "Emergency water exchange",
+          "Equipment maintenance"
+        ],
+        "time_spent": 2.17,
+        "worker_count": 2,
+        "efficiency_score": 0.85,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-01-12T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.13,
+        "temperature": 29.8,
+        "dissolved_oxygen": 6.7,
+        "salinity": 20.5,
+        "ammonia": 0.223,
+        "nitrite": 0.036,
+        "nitrate": 5.88,
+        "turbidity": 3.37,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.22 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1345.78,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 48.42,
+        "cost": 5.81,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.71,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-03-05T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.33,
+        "temperature": 26.7,
+        "dissolved_oxygen": 5.2,
+        "salinity": 20.1,
+        "ammonia": 0.267,
+        "nitrite": 0.013,
+        "nitrate": 9.45,
+        "turbidity": 4.58,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.27 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1893.91,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 48.56,
+        "cost": 5.83,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.89,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-11-25T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.72,
+        "temperature": 27.5,
+        "dissolved_oxygen": 6.0,
+        "salinity": 18.0,
+        "ammonia": 0.184,
+        "nitrite": 0.037,
+        "nitrate": 0.72,
+        "turbidity": 4.49,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 3188.35,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 39.52,
+        "cost": 4.74,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.92,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-07-12T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.76,
+        "temperature": 29.8,
+        "dissolved_oxygen": 6.2,
+        "salinity": 22.3,
+        "ammonia": 0.088,
+        "nitrite": 0.028,
+        "nitrate": 4.85,
+        "turbidity": 0.12,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10493,
+        "average_weight": 25.0,
+        "feed_amount": 2394.38,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 38.46,
+        "cost": 4.62,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.37,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-07-25T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.04,
+        "temperature": 26.9,
+        "dissolved_oxygen": 6.3,
+        "salinity": 21.1,
+        "ammonia": 0.235,
+        "nitrite": 0.083,
+        "nitrate": 2.36,
+        "turbidity": 1.59,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.23 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9477,
+        "average_weight": 25.0,
+        "feed_amount": 1677.41,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 45.16,
+        "cost": 5.42,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.43,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2032-02-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.28,
+        "temperature": 26.2,
+        "dissolved_oxygen": 6.0,
+        "salinity": 21.4,
+        "ammonia": 0.219,
+        "nitrite": 0.055,
+        "nitrate": 1.91,
+        "turbidity": 3.35,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.22 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1701.96,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 48.09,
+        "cost": 5.77,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.17,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2029-03-01T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 7.98,
+        "temperature": 27.2,
+        "dissolved_oxygen": 7.1,
+        "salinity": 21.5,
+        "ammonia": 0.255,
+        "nitrite": 0.058,
+        "nitrate": 6.99,
+        "turbidity": 3.98,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.25 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1427.8,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.27,
+        "cost": 5.55,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.08,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-08-25T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.49,
+        "temperature": 29.4,
+        "dissolved_oxygen": 6.8,
+        "salinity": 20.8,
+        "ammonia": 0.245,
+        "nitrite": 0.062,
+        "nitrate": 6.08,
+        "turbidity": 1.5,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.24 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9573,
+        "average_weight": 25.0,
+        "feed_amount": 1280.54,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 43.98,
+        "cost": 5.28,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.87,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-02-11T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.27,
+        "temperature": 26.7,
+        "dissolved_oxygen": 6.1,
+        "salinity": 20.2,
+        "ammonia": 0.24,
+        "nitrite": 0.026,
+        "nitrate": 0.14,
+        "turbidity": 4.83,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.24 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1481.42,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 46.97,
+        "cost": 5.64,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.57,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-04-19T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.49,
+        "temperature": 30.0,
+        "dissolved_oxygen": 5.4,
+        "salinity": 19.0,
+        "ammonia": 0.185,
+        "nitrite": 0.012,
+        "nitrate": 9.22,
+        "turbidity": 4.66,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: pH too low (7.49) - immediate action required"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10178,
+        "average_weight": 18.19,
+        "feed_amount": 2157.49,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 42.41,
+        "cost": 5.09,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.54,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-08-31T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.7,
+        "temperature": 29.2,
+        "dissolved_oxygen": 7.2,
+        "salinity": 18.8,
+        "ammonia": 0.154,
+        "nitrite": 0.087,
+        "nitrate": 7.52,
+        "turbidity": 0.26,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 2512.05,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 42.93,
+        "cost": 5.15,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.15,
+        "worker_count": 1,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-07-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 8.01,
+        "temperature": 27.8,
+        "dissolved_oxygen": 6.1,
+        "salinity": 19.7,
+        "ammonia": 0.452,
+        "nitrite": 0.051,
+        "nitrate": 2.11,
+        "turbidity": 1.98,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.45 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10707,
+        "average_weight": 25.0,
+        "feed_amount": 1629.88,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 47.4,
+        "cost": 5.69,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.24,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-01-07T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.68,
+        "temperature": 28.1,
+        "dissolved_oxygen": 6.7,
+        "salinity": 22.6,
+        "ammonia": 0.271,
+        "nitrite": 0.023,
+        "nitrate": 3.08,
+        "turbidity": 4.7,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.68) - monitor closely",
+          "CRITICAL: High ammonia levels (0.27 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8931,
+        "average_weight": 25.0,
+        "feed_amount": 1164.81,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 44.1,
+        "cost": 5.29,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.54,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-06-14T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.6,
+        "temperature": 26.8,
+        "dissolved_oxygen": 6.3,
+        "salinity": 17.7,
+        "ammonia": 0.17,
+        "nitrite": 0.029,
+        "nitrate": 8.59,
+        "turbidity": 3.01,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 3743.84,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 41.36,
+        "cost": 4.96,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.4,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-04-16T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.77,
+        "temperature": 28.8,
+        "dissolved_oxygen": 4.8,
+        "salinity": 19.3,
+        "ammonia": 0.5,
+        "nitrite": 0.04,
+        "nitrate": 5.85,
+        "turbidity": 2.33,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: Low dissolved oxygen (4.8 mg/L) - increase aeration",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10178,
+        "average_weight": 25.0,
+        "feed_amount": 922.5,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 56.63,
+        "cost": 6.8,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.27,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2035-02-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 4,
+        "ph": 8.29,
+        "temperature": 28.9,
+        "dissolved_oxygen": 6.0,
+        "salinity": 22.3,
+        "ammonia": 0.5,
+        "nitrite": 0.004,
+        "nitrate": 1.0,
+        "turbidity": 2.75,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 4,
+        "shrimp_count": 8752,
+        "average_weight": 25.0,
+        "feed_amount": 1516.56,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 4,
+        "total_energy": 43.18,
+        "cost": 5.18,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 4,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.36,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-10-26T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.24,
+        "temperature": 30.1,
+        "dissolved_oxygen": 6.3,
+        "salinity": 21.1,
+        "ammonia": 0.5,
+        "nitrite": 0.001,
+        "nitrate": 9.5,
+        "turbidity": 2.15,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too high (30.1\u00b0C) - consider cooling",
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 1561.71,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 47.82,
+        "cost": 5.74,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.79,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-01-31T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.89,
+        "temperature": 28.4,
+        "dissolved_oxygen": 5.6,
+        "salinity": 18.5,
+        "ammonia": 0.212,
+        "nitrite": 0.016,
+        "nitrate": 6.85,
+        "turbidity": 3.54,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.21 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 1540.1,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 46.53,
+        "cost": 5.58,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.95,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2028-09-17T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.54,
+        "temperature": 26.6,
+        "dissolved_oxygen": 5.2,
+        "salinity": 17.2,
+        "ammonia": 0.5,
+        "nitrite": 0.077,
+        "nitrate": 6.04,
+        "turbidity": 1.39,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.50 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10076,
+        "average_weight": 25.0,
+        "feed_amount": 2493.22,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 47.75,
+        "cost": 5.73,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.52,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-06-19T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.36,
+        "temperature": 25.5,
+        "dissolved_oxygen": 7.5,
+        "salinity": 19.1,
+        "ammonia": 0.142,
+        "nitrite": 0.037,
+        "nitrate": 2.93,
+        "turbidity": 3.7,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: pH too low (7.36) - immediate action required",
+          "WARNING: Temperature too low (25.5\u00b0C) - consider heating"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 4331.87,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 43.86,
+        "cost": 5.26,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.26,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-01-22T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.64,
+        "temperature": 30.4,
+        "dissolved_oxygen": 6.7,
+        "salinity": 19.6,
+        "ammonia": 0.175,
+        "nitrite": 0.076,
+        "nitrate": 5.62,
+        "turbidity": 0.36,
+        "status": "fair",
+        "alerts": [
+          "WARNING: pH too high (8.64) - monitor closely",
+          "WARNING: Temperature too high (30.4\u00b0C) - consider cooling"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1856.55,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 42.22,
+        "cost": 5.07,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.88,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2036-01-20T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.59,
+        "temperature": 26.6,
+        "dissolved_oxygen": 6.4,
+        "salinity": 20.3,
+        "ammonia": 0.321,
+        "nitrite": 0.019,
+        "nitrate": 3.5,
+        "turbidity": 1.79,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.32 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1725.5,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 44.72,
+        "cost": 5.37,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.65,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-07-28T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.76,
+        "temperature": 27.6,
+        "dissolved_oxygen": 6.9,
+        "salinity": 20.8,
+        "ammonia": 0.402,
+        "nitrite": 0.055,
+        "nitrate": 6.49,
+        "turbidity": 4.66,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.40 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1533.68,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 46.27,
+        "cost": 5.55,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.43,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2030-12-02T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.45,
+        "temperature": 29.9,
+        "dissolved_oxygen": 6.9,
+        "salinity": 23.4,
+        "ammonia": 0.138,
+        "nitrite": 0.093,
+        "nitrate": 2.69,
+        "turbidity": 1.73,
+        "status": "excellent",
+        "alerts": []
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9288,
+        "average_weight": 25.0,
+        "feed_amount": 1829.46,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 42.38,
+        "cost": 5.09,
+        "efficiency_score": 0.95
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.54,
+        "worker_count": 2,
+        "efficiency_score": 1.0,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2027-08-13T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 2,
+        "ph": 8.14,
+        "temperature": 27.2,
+        "dissolved_oxygen": 6.2,
+        "salinity": 20.2,
+        "ammonia": 0.227,
+        "nitrite": 0.049,
+        "nitrate": 1.9,
+        "turbidity": 0.25,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.23 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 2,
+        "shrimp_count": 9382,
+        "average_weight": 25.0,
+        "feed_amount": 2319.54,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 2,
+        "total_energy": 44.61,
+        "cost": 5.35,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 2,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.29,
+        "worker_count": 2,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-05-24T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.7,
+        "temperature": 30.2,
+        "dissolved_oxygen": 6.1,
+        "salinity": 17.4,
+        "ammonia": 0.356,
+        "nitrite": 0.044,
+        "nitrate": 0.94,
+        "turbidity": 3.26,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too high (30.2\u00b0C) - consider cooling",
+          "CRITICAL: High ammonia levels (0.36 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 10178,
+        "average_weight": 25.0,
+        "feed_amount": 1389.39,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 4
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 46.14,
+        "cost": 5.54,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.63,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-02-02T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.48,
+        "temperature": 26.9,
+        "dissolved_oxygen": 7.3,
+        "salinity": 20.6,
+        "ammonia": 0.202,
+        "nitrite": 0.018,
+        "nitrate": 9.24,
+        "turbidity": 2.15,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: pH too low (7.48) - immediate action required",
+          "CRITICAL: High ammonia levels (0.20 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 2447.42,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 43.07,
+        "cost": 5.17,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.56,
+        "worker_count": 2,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2034-01-10T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 8.04,
+        "temperature": 27.4,
+        "dissolved_oxygen": 7.7,
+        "salinity": 20.3,
+        "ammonia": 0.291,
+        "nitrite": 0.041,
+        "nitrate": 7.05,
+        "turbidity": 4.53,
+        "status": "good",
+        "alerts": [
+          "CRITICAL: High ammonia levels (0.29 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 1937.39,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 46.73,
+        "cost": 5.61,
+        "efficiency_score": 0.9
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.1,
+        "worker_count": 1,
+        "efficiency_score": 0.95,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2033-10-05T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 3,
+        "ph": 7.46,
+        "temperature": 27.8,
+        "dissolved_oxygen": 5.1,
+        "salinity": 17.5,
+        "ammonia": 0.423,
+        "nitrite": 0.084,
+        "nitrate": 7.73,
+        "turbidity": 0.38,
+        "status": "fair",
+        "alerts": [
+          "CRITICAL: pH too low (7.46) - immediate action required",
+          "CRITICAL: High ammonia levels (0.42 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 3,
+        "shrimp_count": 9875,
+        "average_weight": 25.0,
+        "feed_amount": 1567.35,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 3
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 3,
+        "total_energy": 43.7,
+        "cost": 5.24,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 3,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 3.44,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  },
+  {
+    "timestamp": "2037-07-09T00:00:00",
+    "water_quality": [
+      {
+        "pond_id": 1,
+        "ph": 7.56,
+        "temperature": 25.3,
+        "dissolved_oxygen": 8.0,
+        "salinity": 19.8,
+        "ammonia": 0.434,
+        "nitrite": 0.061,
+        "nitrate": 8.37,
+        "turbidity": 4.83,
+        "status": "fair",
+        "alerts": [
+          "WARNING: Temperature too low (25.3\u00b0C) - consider heating",
+          "CRITICAL: High ammonia levels (0.43 mg/L) - water change needed"
+        ]
+      }
+    ],
+    "feed": [
+      {
+        "pond_id": 1,
+        "shrimp_count": 10181,
+        "average_weight": 25.0,
+        "feed_amount": 3495.47,
+        "feed_type": "Finisher Feed (30% protein)",
+        "feeding_frequency": 2
+      }
+    ],
+    "energy": [
+      {
+        "pond_id": 1,
+        "total_energy": 52.32,
+        "cost": 6.28,
+        "efficiency_score": 0.85
+      }
+    ],
+    "labor": [
+      {
+        "pond_id": 1,
+        "tasks_completed": [
+          "Shrimp health monitoring",
+          "Water quality testing",
+          "Feed distribution",
+          "Pond cleaning",
+          "Data recording"
+        ],
+        "time_spent": 2.84,
+        "worker_count": 1,
+        "efficiency_score": 0.9,
+        "next_tasks": [
+          "Daily monitoring",
+          "Feed schedule check",
+          "Water quality analysis"
+        ]
+      }
+    ]
+  }
+]

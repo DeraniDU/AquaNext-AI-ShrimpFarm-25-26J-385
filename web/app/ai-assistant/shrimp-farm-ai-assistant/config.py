@@ -28,6 +28,9 @@ FARM_CONFIG = {
     "optimal_salinity_range": (15, 25),  # ppt
 }
 
+# Energy cost in Sri Lankan Rupees per kWh (EnergyData.cost + DB). Override via ENERGY_COST_PER_KWH_LKR.
+ENERGY_COST_PER_KWH_LKR = float(os.getenv("ENERGY_COST_PER_KWH_LKR", "65"))
+
 # Agent scheduling configuration (minutes)
 AGENT_CONFIG = {
     "water_quality_check_interval": int(os.getenv("WATER_QUALITY_CHECK_INTERVAL_MIN", "30")),
@@ -56,4 +59,7 @@ DECISION_MODEL_CONFIG = {
 MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
 USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"  # Enable MongoDB data fetching
+
+# Dashboard/agents use only *_readings collections—no simulation if missing rows.
+USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
 
