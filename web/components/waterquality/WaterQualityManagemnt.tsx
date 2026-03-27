@@ -10,9 +10,9 @@ export default function WaterQualityMonitoring() {
   const [selectedParameter, setSelectedParameter] = useState('all');
 
   const heroImages = [
-    '/hero/water-quality-1.jpg',
-    '/hero/water-quality-2.jpg',
-    '/hero/water-quality-3.jpg',
+    '/hero/11.jpg',
+    '/hero/10.jpg',
+    '/hero/12.jpg',
   ];
 
   useEffect(() => {
@@ -111,9 +111,9 @@ export default function WaterQualityMonitoring() {
         {heroImages.map((image, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === currentSlide ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'
+              }`}
+            style={{ backgroundImage: `url('${image}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-blue-900/70 via-cyan-900/50 to-blue-900/70" />
             <div className="absolute inset-0 bg-[url('/water-pattern.svg')] opacity-10" />
@@ -144,9 +144,8 @@ export default function WaterQualityMonitoring() {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all ${
-                index === currentSlide ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/75'
-              }`}
+              className={`w-3 h-3 rounded-full transition-all ${index === currentSlide ? 'bg-white w-8' : 'bg-white/50 hover:bg-white/75'
+                }`}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
@@ -205,13 +204,12 @@ export default function WaterQualityMonitoring() {
                     </div>
                   </div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      param.status === 'OPTIMAL' || param.status === 'GOOD'
-                        ? 'bg-green-100 text-green-700'
-                        : param.status === 'SAFE'
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${param.status === 'OPTIMAL' || param.status === 'GOOD'
+                      ? 'bg-green-100 text-green-700'
+                      : param.status === 'SAFE'
                         ? 'bg-blue-100 text-blue-700'
                         : 'bg-yellow-100 text-yellow-700'
-                    }`}
+                      }`}
                   >
                     {param.status}
                   </div>
@@ -313,11 +311,10 @@ export default function WaterQualityMonitoring() {
               <button
                 key={tab}
                 onClick={() => setActiveChartTab(tab)}
-                className={`px-8 py-3 rounded-lg font-semibold transition-all ${
-                  activeChartTab === tab
-                    ? 'bg-cyan-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`px-8 py-3 rounded-lg font-semibold transition-all ${activeChartTab === tab
+                  ? 'bg-cyan-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 {tab === 'realtime' && '24-Hour Trends'}
                 {tab === 'weekly' && 'Weekly Overview'}
@@ -345,7 +342,7 @@ export default function WaterQualityMonitoring() {
                 </ResponsiveContainer>
                 <div className="mt-6 p-4 bg-blue-50 rounded-xl">
                   <p className="text-sm text-gray-700">
-                    <strong>Analysis:</strong> All parameters maintained within optimal ranges over the past 24 hours. 
+                    <strong>Analysis:</strong> All parameters maintained within optimal ranges over the past 24 hours.
                     Minor DO fluctuation detected during early morning hours (typical pattern).
                   </p>
                 </div>
@@ -407,7 +404,7 @@ export default function WaterQualityMonitoring() {
                 <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-200">
                   <h4 className="font-bold text-purple-900 mb-2">🤖 AI Recommendation</h4>
                   <p className="text-sm text-gray-700">
-                    Models predict slight temperature drop in 12 hours. Consider activating heaters if temperature 
+                    Models predict slight temperature drop in 12 hours. Consider activating heaters if temperature
                     falls below 28°C. DO levels expected to remain stable with current aeration settings.
                   </p>
                 </div>
@@ -425,30 +422,26 @@ export default function WaterQualityMonitoring() {
                         <div key={i} className="flex gap-2 mb-2">
                           <div className="w-24 font-semibold text-sm text-gray-700">{row.parameter}</div>
                           <div
-                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${
-                              Math.abs(row.pH) > 0.3 ? 'bg-red-500' : 'bg-green-500'
-                            }`}
+                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${Math.abs(row.pH) > 0.3 ? 'bg-red-500' : 'bg-green-500'
+                              }`}
                           >
                             {row.pH.toFixed(2)}
                           </div>
                           <div
-                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${
-                              Math.abs(row.DO) > 0.3 ? 'bg-red-500' : 'bg-green-500'
-                            }`}
+                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${Math.abs(row.DO) > 0.3 ? 'bg-red-500' : 'bg-green-500'
+                              }`}
                           >
                             {row.DO.toFixed(2)}
                           </div>
                           <div
-                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${
-                              Math.abs(row.temp) > 0.3 ? 'bg-red-500' : 'bg-green-500'
-                            }`}
+                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${Math.abs(row.temp) > 0.3 ? 'bg-red-500' : 'bg-green-500'
+                              }`}
                           >
                             {row.temp.toFixed(2)}
                           </div>
                           <div
-                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${
-                              Math.abs(row.salinity) > 0.3 ? 'bg-red-500' : 'bg-green-500'
-                            }`}
+                            className={`flex-1 h-8 rounded flex items-center justify-center text-white text-sm font-bold ${Math.abs(row.salinity) > 0.3 ? 'bg-red-500' : 'bg-green-500'
+                              }`}
                           >
                             {row.salinity.toFixed(2)}
                           </div>
@@ -543,9 +536,9 @@ export default function WaterQualityMonitoring() {
           </div>
 
           <div className="mt-12 bg-white rounded-2xl p-8 shadow-lg">
-           <h3 className="text-2xl font-bold mb-6 text-blue-600">
-  Sensor Specifications
-</h3>
+            <h3 className="text-2xl font-bold mb-6 text-blue-600">
+              Sensor Specifications
+            </h3>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
@@ -617,23 +610,21 @@ export default function WaterQualityMonitoring() {
                 {alertHistory.map((alert, i) => (
                   <div
                     key={i}
-                    className={`p-4 rounded-lg border-l-4 ${
-                      alert.severity === 'high'
-                        ? 'bg-red-50 border-red-500'
-                        : alert.severity === 'medium'
+                    className={`p-4 rounded-lg border-l-4 ${alert.severity === 'high'
+                      ? 'bg-red-50 border-red-500'
+                      : alert.severity === 'medium'
                         ? 'bg-yellow-50 border-yellow-500'
                         : 'bg-blue-50 border-blue-500'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          alert.severity === 'high'
-                            ? 'bg-red-200 text-red-800'
-                            : alert.severity === 'medium'
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${alert.severity === 'high'
+                          ? 'bg-red-200 text-red-800'
+                          : alert.severity === 'medium'
                             ? 'bg-yellow-200 text-yellow-800'
                             : 'bg-blue-200 text-blue-800'
-                        }`}
+                          }`}
                       >
                         {alert.type}
                       </span>
