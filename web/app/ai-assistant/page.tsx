@@ -69,6 +69,180 @@ export default function AIAssistantPage() {
           </div>
         </section>
 
+        {/* Advanced AI Technology — split layout (aligned with feeding page) */}
+        <section className="mb-20 py-4">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+                Advanced AI Technology
+              </h2>
+              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+                The assistant combines large-language reasoning with farm-specific
+                analytics trained on production, water quality, and cost
+                patterns—so recommendations stay grounded in real pond outcomes,
+                not generic advice.
+              </p>
+
+              <div className="space-y-6">
+                <div className="flex gap-4 p-5 rounded-xl bg-teal-50 hover:bg-teal-100/80 transition-colors border border-teal-100">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="w-12 h-12 text-teal-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2 text-gray-900">
+                      Unified Farm Data
+                    </h3>
+                    <p className="text-gray-600">
+                      Connects stocking, feed, harvest, water parameters, and
+                      costs into one model of each pond so answers always reflect
+                      your actual numbers.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 p-5 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 transition-colors border border-indigo-100">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="w-12 h-12 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2 text-gray-900">
+                      Real-Time Insight
+                    </h3>
+                    <p className="text-gray-600">
+                      Surfaces deviations from targets (FCR, survival, margin)
+                      as they emerge and explains what to check first—no waiting
+                      for end-of-cycle reports.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 p-5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100/80 transition-colors border border-fuchsia-100">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="w-12 h-12 text-fuchsia-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2 text-gray-900">
+                      Scenario &amp; Forecast Models
+                    </h3>
+                    <p className="text-gray-600">
+                      Compares harvest timing, stocking, and input plans with
+                      projected revenue and risk so you can choose the path that
+                      fits your goals.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-800">
+              <div className="bg-slate-900 rounded-xl p-5 md:p-6 mb-4 border border-slate-800">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-white font-bold text-sm md:text-base">
+                    Live Assistant Status
+                  </span>
+                  <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-xs font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    ACTIVE
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6">
+                  <div className="bg-slate-800 rounded-lg p-4 hover:bg-slate-700/90 transition-colors border border-slate-700/80">
+                    <div className="text-cyan-400 text-xs mb-1">Active Ponds</div>
+                    <div className="text-white text-xl md:text-2xl font-bold">
+                      6
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 rounded-lg p-4 hover:bg-slate-700/90 transition-colors border border-slate-700/80">
+                    <div className="text-blue-400 text-xs mb-1">Cycle Day</div>
+                    <div className="text-white text-xl md:text-2xl font-bold">
+                      42
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 rounded-lg p-4 hover:bg-slate-700/90 transition-colors border border-slate-700/80">
+                    <div className="text-violet-400 text-xs mb-1">Target FCR</div>
+                    <div className="text-white text-xl md:text-2xl font-bold">
+                      1.15
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 rounded-lg p-4 hover:bg-slate-700/90 transition-colors border border-slate-700/80">
+                    <div className="text-emerald-400 text-xs mb-1">Open Alerts</div>
+                    <div className="text-white text-xl md:text-2xl font-bold">
+                      2
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 rounded-lg p-4 border border-slate-700/80">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white text-sm font-bold">
+                      AI Analysis
+                    </span>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+                      ON TRACK
+                    </span>
+                  </div>
+                  <div className="h-24 flex items-end justify-between gap-1">
+                    {[
+                      68, 82, 74, 88, 92, 86, 90, 84, 91, 88, 93, 89, 94, 90, 95,
+                    ].map((height, i) => (
+                      <div
+                        key={i}
+                        className="flex-1 min-w-0 bg-gradient-to-t from-cyan-500 to-blue-500 rounded-t hover:opacity-90 transition-opacity"
+                        style={{ height: `${height}%` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-slate-500 text-xs mt-3">
+                    Confidence: 97.2%
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-slate-500 text-sm text-center">
+                The assistant processes farm data continuously and prioritizes
+                the actions that protect margin and survival.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Technical Deep Dive */}
         <section className="mb-20">
           <div className="flex items-center gap-3 mb-8">
@@ -238,7 +412,7 @@ export default function AIAssistantPage() {
                 <h3 className="text-2xl font-bold mb-2">🏭 Commercial Farms</h3>
                 <p className="text-blue-100">10+ ponds • 50+ tons production</p>
               </div>
-              <div className="p-6">
+              <div className="p-6">   
                 <p className="text-gray-600 mb-4">
                   Perfect for owners and managers who need farm-wide visibility
                   and standardized decision support.

@@ -659,7 +659,7 @@ export default function FeedingSection() {
                     cy="50%"
                     outerRadius={120}
                     label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
+                      `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                     }
                     dataKey="value"
                   >
