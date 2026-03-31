@@ -1,11 +1,14 @@
+import FarmManagementAI from '@/components/ai-assistant/FarmManagementAI';
+
 export const metadata = {
-  title: 'Farm Management AI Assistant',
+  title: 'Farm Management AI Assistant | AquaNext',
   description:
-    'Deep-dive into how the Farm Management AI Assistant supports shrimp farmers with decisions, planning, and analytics.',
+    'Intelligent decision support for harvest timing, resource optimization, and predictive farm analytics.',
 };
 
 export default function AIAssistantPage() {
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-white">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-16 px-8 md:px-16">
@@ -652,5 +655,10 @@ export default function AIAssistantPage() {
         </div>
       </div>
     </div>
+
+    <main>
+      <FarmManagementAI />
+    </main>
+    </>
   );
 }
