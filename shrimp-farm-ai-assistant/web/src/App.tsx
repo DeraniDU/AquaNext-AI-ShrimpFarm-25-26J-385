@@ -12,20 +12,20 @@ import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
+import { useAnalyticsChartsData } from './lib/useAnalyticsChartsData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
 	const [selectedPond, setSelectedPond] = useState<'all' | number>('all')
-	const [autoRefresh, setAutoRefresh] = useState(false)
 	const [activeView, setActiveView] = useState('dashboard')
 
 	const { data, loading, error, lastUpdatedAt, refresh } = useDashboardData({
-		ponds,
-		autoRefreshMs: autoRefresh ? 15_000 : null
+		ponds
 	})
 	const { data: historyData, loading: historyLoading, error: historyError, refresh: refreshHistory } = useHistoryData({
 		days: 7
 	})
+	const { charts: analyticsCharts, refresh: refreshAnalytics } = useAnalyticsChartsData({ ponds })
 
 	const pondIds = useMemo(() => {
 		if (!data) return []
@@ -55,7 +55,7 @@ export default function App() {
 
 		switch (activeView) {
 			case 'dashboard':
-				return <DashboardView {...viewProps} />
+				return <DashboardView {...viewProps} analyticsCharts={analyticsCharts} />
 			case 'forecasting':
 				return <ForecastingView {...viewProps} />
 		case 'optimization':
@@ -73,8 +73,6 @@ export default function App() {
 					<SettingsView
 						ponds={ponds}
 						onPondsChange={setPonds}
-						autoRefresh={autoRefresh}
-						onAutoRefreshChange={setAutoRefresh}
 					/>
 				)
 			default:
@@ -134,18 +132,6 @@ export default function App() {
 											))}
 										</select>
 									</div>
-
-									<div className="controlGroup">
-										<span className="label">Auto</span>
-										<label className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-											<input
-												type="checkbox"
-												checked={autoRefresh}
-												onChange={(e) => setAutoRefresh(e.target.checked)}
-											/>
-											15s
-										</label>
-									</div>
 								</>
 							)}
 
@@ -153,6 +139,7 @@ export default function App() {
 								onClick={() => {
 									void refresh()
 									void refreshHistory()
+									void refreshAnalytics()
 								}}
 								disabled={loading || historyLoading}
 							>

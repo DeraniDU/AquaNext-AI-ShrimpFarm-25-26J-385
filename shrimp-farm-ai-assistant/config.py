@@ -77,3 +77,10 @@ USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
 PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect
 
+# API /api/dashboard: in-memory snapshot TTL (seconds). 0 = no cache (every request recomputes).
+# Set e.g. 30–120 in production to cut CPU and duplicate agent work when the UI polls or refreshes often.
+DASHBOARD_CACHE_TTL_S = int(os.getenv("DASHBOARD_CACHE_TTL_S", "0"))
+
+# When false, decision recommendation text uses fast templates only (no OpenAI call per dashboard request).
+DECISION_RECO_ENABLE_LLM = os.getenv("DECISION_RECO_ENABLE_LLM", "true").lower() == "true"
+

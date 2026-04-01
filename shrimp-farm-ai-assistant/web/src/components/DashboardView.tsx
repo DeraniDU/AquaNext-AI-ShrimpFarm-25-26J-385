@@ -15,6 +15,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { formatDateTime, formatNumber, formatPercent01 } from '../lib/format'
 import type {
+	AnalyticsChartsFromDb,
 	DashboardApiResponse,
 	DecisionOutput,
 	DecisionRecommendation,
@@ -23,13 +24,25 @@ import type {
 } from '../lib/types'
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler, Tooltip, Legend)
 
+function mergeHourlySeries(
+	dbSeries: (number | null)[] | undefined,
+	fallback: (hourIndex: number) => number
+): number[] {
+	if (!dbSeries || dbSeries.length !== 24) {
+		return Array.from({ length: 24 }, (_, i) => fallback(i))
+	}
+	return dbSeries.map((v, i) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback(i)))
+}
+
 type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
+	/** When MongoDB has readings, these series replace simulated Analytics & Trends data. */
+	analyticsCharts?: AnalyticsChartsFromDb | null
 }
 
-export function DashboardView({ data, history, pondFilter }: Props) {
+export function DashboardView({ data, history, pondFilter, analyticsCharts = null }: Props) {
 	const { dashboard } = data
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
@@ -216,15 +229,31 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		(topReco ? ('text' in topReco ? topReco.text : (topReco as DecisionOutput).reasoning) : null) ??
 		`Pond ${aiRecoPond} shows declining dissolved oxygen levels and elevated ammonia. Historical data indicates immediate water exchange will improve conditions within 8 hours. Temperature also trending above optimal range.`
 
-	// Generate 24h trend data for charts (simulated from current values, deterministic)
+	// Analytics & Trends: prefer MongoDB readings (/api/charts/analytics); else simulated from KPIs
 	const hours24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
+	const useDbDo =
+		analyticsCharts?.source === 'mongodb' && Boolean(analyticsCharts.series_sources?.dissolved_oxygen)
+	const useDbNh3 =
+		analyticsCharts?.source === 'mongodb' && Boolean(analyticsCharts.series_sources?.ammonia)
+	const useDbFeed =
+		analyticsCharts?.source === 'mongodb' &&
+		Boolean(analyticsCharts.series_sources?.feed) &&
+		(analyticsCharts.feed_7d?.values_kg?.length ?? 0) > 0
+	const useDbEnergy =
+		analyticsCharts?.source === 'mongodb' &&
+		Boolean(analyticsCharts.series_sources?.energy) &&
+		analyticsCharts.energy_kwh_24h?.length === 24
+
 	const doTrendData = pondIds.map((pid, idx) => {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.dissolved_oxygen ?? 5.5
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		const fallback = (i: number) =>
+			base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16
+		const dbSeries = useDbDo ? analyticsCharts?.dissolved_oxygen_by_pond[String(pid)] : undefined
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16),
+			data: mergeHourlySeries(dbSeries, fallback),
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}20`,
 			fill: true,
@@ -235,22 +264,44 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.ammonia ?? 0.1
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		// Pond-specific offsets so lines never perfectly overlap (DO chart already varies by pid; ammonia did not).
+		const fallback = (i: number) =>
+			Math.min(
+				0.24,
+				Math.max(
+					0.02,
+					base +
+						Math.sin((i / 24) * Math.PI) * 0.08 +
+						(pid - 2.5) * 0.015 +
+						((pid * 7 + i) % 5) * 0.006
+				)
+			)
+		const dbSeries = useDbNh3 ? analyticsCharts?.ammonia_by_pond[String(pid)] : undefined
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08)),
+			data: mergeHourlySeries(dbSeries, fallback),
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}15`,
-			fill: true,
+			fill: false,
 			tension: 0.35
 		}
 	})
 	const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-	const feedUsage7Days = historyTotalFeedKg.length >= 7 ? historyTotalFeedKg.slice(-7) : Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
-	const feedLabels7 = historyLabels.length >= 7 ? historyLabels.slice(-7) : dayNames
-	const energy24hData = hours24.map((_, i) => {
+	const feedUsage7Days = useDbFeed
+		? analyticsCharts!.feed_7d.values_kg
+		: historyTotalFeedKg.length >= 7
+			? historyTotalFeedKg.slice(-7)
+			: Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
+	const feedLabels7 = useDbFeed
+		? analyticsCharts!.feed_7d.labels
+		: historyLabels.length >= 7
+			? historyLabels.slice(-7)
+			: dayNames
+	const syntheticEnergy24 = hours24.map((_, i) => {
 		const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
 		return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
 	})
+	const energy24hData = useDbEnergy ? [...analyticsCharts!.energy_kwh_24h] : syntheticEnergy24
 
 	return (
 		<div className="dashOverview">

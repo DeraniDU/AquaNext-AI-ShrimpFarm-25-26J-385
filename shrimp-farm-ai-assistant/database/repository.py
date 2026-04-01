@@ -4,14 +4,188 @@ Data Repository for MongoDB operations.
 This module provides a repository pattern for accessing farm data from MongoDB.
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any, Set, Tuple
+from datetime import datetime, timedelta, time as dt_time, timezone
 from database.mongodb import get_database, get_mongo_client
 from models import (
     WaterQualityData, FeedData, EnergyData, LaborData,
     WaterQualityStatus, AlertLevel
 )
 from config import USE_MONGODB, MONGO_URI
+
+
+def _pond_ids_for_mongo_in(pond_ids: List[int]) -> List[Any]:
+    """MongoDB matches $in types strictly; include int, str, and float (BSON double)."""
+    out: List[Any] = []
+    seen: Set[Any] = set()
+    for p in pond_ids:
+        for v in (p, str(p), float(p)):
+            if v not in seen:
+                seen.add(v)
+                out.append(v)
+    return out
+
+
+def _normalize_pond_id(value: Any, allowed: Set[int]) -> Optional[int]:
+    try:
+        if value is None:
+            return None
+        # BSON Int64, Decimal128-as-int paths
+        pid = int(float(value))
+    except (TypeError, ValueError):
+        return None
+    return pid if pid in allowed else None
+
+
+def _extract_pond_id_from_doc(doc: Dict[str, Any], allowed: Set[int]) -> Optional[int]:
+    """Resolve pond id from common schema variants (flat IoT docs, camelCase, etc.)."""
+    for key in ("pond_id", "pond", "pondId", "pondID", "pond_number", "pondNumber"):
+        if key in doc:
+            pid = _normalize_pond_id(doc.get(key), allowed)
+            if pid is not None:
+                return pid
+    return None
+
+
+def _water_pond_clause(pond_mongo_in: List[Any]) -> Dict[str, Any]:
+    return {
+        "$or": [
+            {"pond_id": {"$in": pond_mongo_in}},
+            {"pond": {"$in": pond_mongo_in}},
+            {"pondId": {"$in": pond_mongo_in}},
+            {"pondID": {"$in": pond_mongo_in}},
+            {"pond_number": {"$in": pond_mongo_in}},
+            {"pondNumber": {"$in": pond_mongo_in}},
+        ]
+    }
+
+
+def _to_float_metric(raw: Any, default: float = 0.0) -> float:
+    if raw is None:
+        return default
+    if isinstance(raw, bool):
+        return default
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    try:
+        from bson.decimal128 import Decimal128
+
+        if isinstance(raw, Decimal128):
+            return float(raw.to_decimal())
+    except Exception:
+        pass
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _doc_metric(doc: Dict[str, Any], keys: tuple) -> float:
+    for k in keys:
+        if k in doc and doc.get(k) is not None:
+            return _to_float_metric(doc.get(k), 0.0)
+    return 0.0
+
+
+def _coerce_analytics_datetime(raw: Any) -> Optional[datetime]:
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    if isinstance(raw, (int, float)):
+        try:
+            return datetime.utcfromtimestamp(float(raw))
+        except (OSError, OverflowError, ValueError):
+            return None
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        if s.endswith("Z") and "+" not in s[-6:]:
+            s = s[:-1] + "+00:00"
+        try:
+            return datetime.fromisoformat(s)
+        except ValueError:
+            pass
+        for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%dT%H:%M:%S", 19), ("%Y-%m-%d", 10)):
+            try:
+                return datetime.strptime(s[:n], fmt)
+            except ValueError:
+                continue
+    return None
+
+
+def _analytics_doc_timestamp(doc: Dict[str, Any]) -> Optional[datetime]:
+    for key in ("timestamp", "recorded_at", "time", "created_at"):
+        ts = _coerce_analytics_datetime(doc.get(key))
+        if ts is not None:
+            return ts
+    return None
+
+
+# Order matters: prefer true sensor/event fields over ingest metadata when multiple fall in-window.
+_TIME_KEYS_IN_ORDER = (
+    "timestamp",
+    "recorded_at",
+    "reading_time",
+    "sample_time",
+    "measured_at",
+    "time",
+    "datetime",
+    "date",
+    "ts",
+    "event_time",
+    "eventTime",
+    "created_at",
+    "updated_at",
+)
+
+
+def _pick_event_time_in_window(
+    doc: Dict[str, Any], start_w: datetime, end: datetime
+) -> Optional[datetime]:
+    """
+    Choose a single naive-UTC instant in [start_w, end] from common BSON/string time fields.
+    Avoids using a stale ``timestamp`` when ``date``/``reading_time`` is the real sample time.
+    """
+    best: Optional[Tuple[int, datetime]] = None
+    for pri, key in enumerate(_TIME_KEYS_IN_ORDER):
+        ts = _coerce_analytics_datetime(doc.get(key))
+        if ts is None:
+            continue
+        tn = _naive_utc(ts)
+        if not (start_w <= tn <= end):
+            continue
+        if best is None or pri < best[0]:
+            best = (pri, tn)
+    return None if best is None else best[1]
+
+
+def _water_time_in_window_clause(start_w: datetime, end: datetime) -> Dict[str, Any]:
+    """Match documents whose event time may live on different field names (like feed vs IoT)."""
+    return {
+        "$or": [
+            {"timestamp": {"$gte": start_w, "$lte": end}},
+            {"recorded_at": {"$gte": start_w, "$lte": end}},
+            {"reading_time": {"$gte": start_w, "$lte": end}},
+            {"sample_time": {"$gte": start_w, "$lte": end}},
+            {"measured_at": {"$gte": start_w, "$lte": end}},
+            {"time": {"$gte": start_w, "$lte": end}},
+            {"datetime": {"$gte": start_w, "$lte": end}},
+            {"date": {"$gte": start_w, "$lte": end}},
+            {"ts": {"$gte": start_w, "$lte": end}},
+            {"event_time": {"$gte": start_w, "$lte": end}},
+            {"eventTime": {"$gte": start_w, "$lte": end}},
+            {"created_at": {"$gte": start_w, "$lte": end}},
+            {"updated_at": {"$gte": start_w, "$lte": end}},
+        ]
+    }
+
+
+def _naive_utc(ts: datetime) -> datetime:
+    if ts.tzinfo is None:
+        return ts
+    return ts.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 class DataRepository:
@@ -851,7 +1025,196 @@ class DataRepository:
             traceback.print_exc()
             return []
 
+    def get_analytics_charts_from_readings(
+        self,
+        pond_ids: List[int],
+        hours: int = 24,
+        feed_days: int = 7,
+    ) -> Dict[str, Any]:
+        """
+        Build chart-ready series from MongoDB (no agents).
 
+        - Dissolved oxygen / ammonia: mean per clock hour (0–23 UTC) in the last `hours` window.
+          Reads both ``water_quality_readings`` (IoT / samples) and ``water_quality`` (same schema as
+          save_water_quality_data) so orchestrator saves are not ignored.
+        - Feed: total kg per calendar day for the last `feed_days` days (amount * frequency / 1000).
+        - Energy: sum of total_energy per clock hour across all ponds in the window.
+        """
+        from collections import defaultdict
 
+        weekday_short = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        hours24 = [f"{h:02d}:00" for h in range(24)]
 
-            
+        base_empty = {
+            "source": "none",
+            "has_any_data": False,
+            "series_sources": {
+                "dissolved_oxygen": False,
+                "ammonia": False,
+                "feed": False,
+                "energy": False,
+            },
+            "hours24": hours24,
+            "pond_ids": list(pond_ids),
+            "dissolved_oxygen_by_pond": {str(p): [None] * 24 for p in pond_ids},
+            "ammonia_by_pond": {str(p): [None] * 24 for p in pond_ids},
+            "feed_7d": {
+                "labels": list(weekday_short),
+                "values_kg": [0.0] * feed_days,
+            },
+            "energy_kwh_24h": [0.0] * 24,
+        }
+
+        if not self.is_available or not pond_ids:
+            return base_empty
+
+        end = datetime.utcnow()
+        start_w = end - timedelta(hours=hours)
+        end_date = end.date()
+        day_keys: List = [end_date - timedelta(days=(feed_days - 1 - i)) for i in range(feed_days)]
+        feed_labels = [weekday_short[d.weekday()] for d in day_keys]
+        start_f = datetime.combine(day_keys[0], dt_time.min)
+
+        do_vals: Dict[int, Dict[int, List[float]]] = defaultdict(lambda: defaultdict(list))
+        nh_vals: Dict[int, Dict[int, List[float]]] = defaultdict(lambda: defaultdict(list))
+
+        pond_set = set(pond_ids)
+        pond_mongo_in = _pond_ids_for_mongo_in(pond_ids)
+
+        def _ingest_water_collection(coll_name: str) -> None:
+            do_keys = (
+                "dissolved_oxygen",
+                "dissolvedOxygen",
+                "do",
+                "DO",
+                "dissolved_oxygen_mg_l",
+            )
+            nh_keys = ("ammonia", "nh3", "NH3", "total_ammonia", "tAN")
+
+            def _append(pid: int, hour: int, src: Dict[str, Any]) -> None:
+                do_vals[pid][hour].append(_doc_metric(src, do_keys))
+                nh_vals[pid][hour].append(_doc_metric(src, nh_keys))
+
+            def _ingest_doc(doc: Dict[str, Any]) -> None:
+                wq = doc.get("water_quality")
+                if isinstance(wq, list) and len(wq) > 0:
+                    for sub in wq:
+                        if not isinstance(sub, dict):
+                            continue
+                        merged = {**doc, **sub}
+                        ts_n = _pick_event_time_in_window(merged, start_w, end)
+                        if ts_n is None:
+                            continue
+                        pid = _extract_pond_id_from_doc(sub, pond_set) or _extract_pond_id_from_doc(
+                            doc, pond_set
+                        )
+                        if pid is None:
+                            continue
+                        _append(pid, ts_n.hour, merged)
+                    return
+                ts_n = _pick_event_time_in_window(doc, start_w, end)
+                if ts_n is None:
+                    return
+                pid = _extract_pond_id_from_doc(doc, pond_set)
+                if pid is None:
+                    return
+                _append(pid, ts_n.hour, doc)
+
+            try:
+                coll = self.db[coll_name]
+                pond_q = _water_pond_clause(pond_mongo_in)
+                tw = _water_time_in_window_clause(start_w, end)
+                # Pond + any known time field in window (not only ``timestamp``).
+                q_idx = {"$and": [pond_q, tw]}
+                docs = list(coll.find(q_idx).sort("timestamp", 1).limit(50_000))
+                # Recent rows for those ponds (string times may miss BSON range $or).
+                if not docs:
+                    docs = list(coll.find(pond_q).sort("timestamp", -1).limit(50_000))
+                # Time window on any known field; resolve pond in Python.
+                if not docs:
+                    docs = list(coll.find(tw).sort("timestamp", 1).limit(50_000))
+                for doc in docs:
+                    _ingest_doc(doc)
+            except Exception as e:
+                print(f"[analytics] {coll_name}: {e}")
+
+        # Readings collection (e.g. generate_all_samples / IoT); also legacy/orchestrator collection.
+        _ingest_water_collection("water_quality_readings")
+        _ingest_water_collection("water_quality")
+
+        def hourly_avg(acc: Dict[int, List[float]]) -> List[Optional[float]]:
+            out: List[Optional[float]] = []
+            for h in range(24):
+                xs = acc.get(h, [])
+                if not xs:
+                    out.append(None)
+                else:
+                    out.append(round(sum(xs) / len(xs), 4))
+            return out
+
+        do_by_pond = {str(p): hourly_avg(do_vals[p]) for p in pond_ids}
+        nh_by_pond = {str(p): hourly_avg(nh_vals[p]) for p in pond_ids}
+
+        has_do = any(v is not None for p in pond_ids for v in do_by_pond[str(p)])
+        has_nh3 = any(v is not None for p in pond_ids for v in nh_by_pond[str(p)])
+        has_water = has_do or has_nh3
+
+        feed_totals: Dict[Any, float] = defaultdict(float)
+        try:
+            fc = self.db.feed_readings
+            fq = {"timestamp": {"$gte": start_f, "$lte": end}}
+            for doc in fc.find(fq).sort("timestamp", 1).limit(50_000):
+                ts = doc.get("timestamp")
+                if ts is None:
+                    continue
+                day = ts.date() if hasattr(ts, "date") else None
+                if day is None:
+                    continue
+                amt = float(doc.get("feed_amount", 0))
+                freq = doc.get("feeding_frequency", 1)
+                try:
+                    freq_f = float(freq) if freq is not None else 1.0
+                except (TypeError, ValueError):
+                    freq_f = 1.0
+                feed_totals[day] += amt * freq_f / 1000.0
+        except Exception as e:
+            print(f"[analytics] feed_readings: {e}")
+
+        feed_vals = [round(float(feed_totals.get(d, 0.0)), 4) for d in day_keys]
+        has_feed = sum(feed_vals) > 0
+
+        energy_hour: Dict[int, float] = defaultdict(float)
+        try:
+            ec = self.db.energy_readings
+            eq = {"timestamp": {"$gte": start_w, "$lte": end}}
+            for doc in ec.find(eq).sort("timestamp", 1).limit(50_000):
+                ts = doc.get("timestamp")
+                if ts is None:
+                    continue
+                h = getattr(ts, "hour", None)
+                if h is None:
+                    continue
+                energy_hour[h] += float(doc.get("total_energy", 0))
+        except Exception as e:
+            print(f"[analytics] energy_readings: {e}")
+
+        energy_24 = [round(float(energy_hour.get(h, 0.0)), 4) for h in range(24)]
+        has_energy = sum(energy_24) > 0
+
+        return {
+            "source": "mongodb",
+            "has_any_data": bool(has_water or has_feed or has_energy),
+            "series_sources": {
+                "dissolved_oxygen": has_do,
+                "ammonia": has_nh3,
+                "feed": has_feed,
+                "energy": has_energy,
+            },
+            "hours24": hours24,
+            "pond_ids": list(pond_ids),
+            "dissolved_oxygen_by_pond": do_by_pond,
+            "ammonia_by_pond": nh_by_pond,
+            "feed_7d": {"labels": feed_labels, "values_kg": feed_vals},
+            "energy_kwh_24h": energy_24,
+        }
+
