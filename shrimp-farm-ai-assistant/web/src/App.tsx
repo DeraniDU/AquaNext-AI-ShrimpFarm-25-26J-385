@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
+import { HarvestPredictionView } from './components/HarvestPredictionView'
 import { OptimizationView } from './components/OptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
 import { FeedingView } from './components/FeedingView'
@@ -13,6 +14,7 @@ import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
 import { useAnalyticsChartsData } from './lib/useAnalyticsChartsData'
+import { useHarvestMlData } from './lib/useHarvestMlData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
@@ -26,6 +28,12 @@ export default function App() {
 		days: 7
 	})
 	const { charts: analyticsCharts, refresh: refreshAnalytics } = useAnalyticsChartsData({ ponds })
+
+	const harvestMl = useHarvestMlData({
+		ponds: data?.water_quality?.length ?? ponds,
+		horizonDays: 90,
+		enabled: Boolean(data)
+	})
 
 	const pondIds = useMemo(() => {
 		if (!data) return []
@@ -55,9 +63,17 @@ export default function App() {
 
 		switch (activeView) {
 			case 'dashboard':
-				return <DashboardView {...viewProps} analyticsCharts={analyticsCharts} />
+				return (
+					<DashboardView
+						{...viewProps}
+						analyticsCharts={analyticsCharts}
+						onOpenForecasting={() => setActiveView('forecasting')}
+					/>
+				)
 			case 'forecasting':
-				return <ForecastingView {...viewProps} />
+				return <ForecastingView {...viewProps} harvestMl={harvestMl} />
+			case 'harvest-prediction':
+				return <HarvestPredictionView data={viewProps.data} harvestMl={harvestMl} />
 		case 'optimization':
 			return <OptimizationView {...viewProps} ponds={ponds} />
 			case 'benchmarking':
@@ -76,7 +92,13 @@ export default function App() {
 					/>
 				)
 			default:
-				return <DashboardView {...viewProps} />
+				return (
+					<DashboardView
+						{...viewProps}
+						analyticsCharts={analyticsCharts}
+						onOpenForecasting={() => setActiveView('forecasting')}
+					/>
+				)
 		}
 	}
 
@@ -140,6 +162,7 @@ export default function App() {
 									void refresh()
 									void refreshHistory()
 									void refreshAnalytics()
+									void harvestMl.refresh()
 								}}
 								disabled={loading || historyLoading}
 							>

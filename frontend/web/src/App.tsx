@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
+import { HarvestPredictionView } from './components/HarvestPredictionView'
 import { OptimizationView } from './components/OptimizationView'
 import { LaborOptimizationView } from './components/LaborOptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
@@ -14,6 +15,7 @@ import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
 import { useHourlyHistoryData } from './lib/useHourlyHistoryData'
+import { useHarvestMlData } from './lib/useHarvestMlData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
@@ -30,6 +32,12 @@ export default function App() {
 	})
 	const { data: hourlyHistoryData, loading: hourlyHistoryLoading, error: hourlyHistoryError, refresh: refreshHourlyHistory } = useHourlyHistoryData({
 		hours: 24
+	})
+
+	const harvestMl = useHarvestMlData({
+		ponds: data?.water_quality?.length ?? ponds,
+		horizonDays: 90,
+		enabled: Boolean(data)
 	})
 
 	const pondIds = useMemo(() => {
@@ -86,10 +94,13 @@ export default function App() {
 		switch (activeView) {
 			case 'dashboard':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-				return <DashboardView {...viewProps} />
+				return <DashboardView {...viewProps} onOpenForecasting={() => setActiveView('forecasting')} />
 			case 'forecasting':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-				return <ForecastingView {...viewProps} />
+				return <ForecastingView {...viewProps} harvestMl={harvestMl} />
+			case 'harvest-prediction':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+				return <HarvestPredictionView data={viewProps.data} harvestMl={harvestMl} />
 
 			case 'optimization':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
@@ -119,7 +130,7 @@ export default function App() {
 				)
 			default:
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-				return <DashboardView {...viewProps} />
+				return <DashboardView {...viewProps} onOpenForecasting={() => setActiveView('forecasting')} />
 		}
 	}
 
@@ -195,6 +206,7 @@ export default function App() {
 									void refresh()
 									void refreshHistory()
 									void refreshHourlyHistory()
+									void harvestMl.refresh()
 								}}
 								disabled={loading || historyLoading || hourlyHistoryLoading}
 							>

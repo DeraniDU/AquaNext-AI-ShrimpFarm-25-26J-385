@@ -1218,3 +1218,93 @@ class DataRepository:
             "energy_kwh_24h": energy_24,
         }
 
+    def get_harvest_ml_feed_extras(
+        self,
+        pond_ids: List[int],
+        lookback_days: int = 21,
+    ) -> Dict[int, Dict[str, float]]:
+        """
+        Per-pond tabular extras from MongoDB feed_readings for harvest ML alignment:
+        weight_lag_7d, weight_lag_14d, rolling_feed_kg_7d (sum over last 7 calendar days), days_normalized.
+        """
+        from collections import defaultdict
+
+        out: Dict[int, Dict[str, float]] = {}
+        if not self.is_available or not pond_ids:
+            return out
+
+        end = datetime.utcnow()
+        start = end - timedelta(days=lookback_days)
+        pond_set = set(pond_ids)
+        pond_mongo_in = _pond_ids_for_mongo_in(pond_ids)
+
+        by_pond_day_w: Dict[int, Dict[Any, float]] = defaultdict(dict)
+        by_pond_day_f: Dict[int, Dict[Any, float]] = defaultdict(lambda: defaultdict(float))
+
+        try:
+            fc = self.db.feed_readings
+            q: Dict[str, Any] = {
+                "timestamp": {"$gte": start, "$lte": end},
+                "$or": [
+                    {"pond_id": {"$in": pond_mongo_in}},
+                    {"pond": {"$in": pond_mongo_in}},
+                    {"pondId": {"$in": pond_mongo_in}},
+                    {"pondID": {"$in": pond_mongo_in}},
+                ],
+            }
+            for doc in fc.find(q).sort("timestamp", 1).limit(80_000):
+                pid = _extract_pond_id_from_doc(doc, pond_set)
+                if pid is None:
+                    continue
+                ts = doc.get("timestamp")
+                if ts is None:
+                    continue
+                day = ts.date() if hasattr(ts, "date") else None
+                if day is None:
+                    continue
+                w = _to_float_metric(doc.get("average_weight"), 0.0)
+                if w <= 0:
+                    continue
+                by_pond_day_w[pid][day] = w
+                amt = _to_float_metric(doc.get("feed_amount"), 0.0)
+                freq = doc.get("feeding_frequency", 1)
+                try:
+                    freq_f = float(freq) if freq is not None else 1.0
+                except (TypeError, ValueError):
+                    freq_f = 1.0
+                by_pond_day_f[pid][day] += amt * freq_f / 1000.0
+        except Exception as e:
+            print(f"[harvest_ml] feed_readings extras: {e}")
+            return out
+
+        for pid in pond_ids:
+            days_w = by_pond_day_w.get(pid, {})
+            if not days_w:
+                continue
+            sorted_days = sorted(days_w.keys())
+            last_day = sorted_days[-1]
+            w_now = days_w[last_day]
+
+            def _weight_on_or_before(target_day: Any) -> float:
+                cand = [d for d in sorted_days if d <= target_day]
+                if not cand:
+                    return w_now
+                return days_w[cand[-1]]
+
+            d7 = last_day - timedelta(days=7)
+            d14 = last_day - timedelta(days=14)
+            w7 = _weight_on_or_before(d7)
+            w14 = _weight_on_or_before(d14)
+            feed_sum = 0.0
+            for i in range(7):
+                dd = last_day - timedelta(days=i)
+                feed_sum += float(by_pond_day_f[pid].get(dd, 0.0))
+            dn = min(1.0, len(sorted_days) / 120.0)
+            out[pid] = {
+                "weight_lag_7d": float(w7),
+                "weight_lag_14d": float(w14),
+                "rolling_feed_kg_7d": round(feed_sum, 6),
+                "days_normalized": round(dn, 6),
+            }
+        return out
+

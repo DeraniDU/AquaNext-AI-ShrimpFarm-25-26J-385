@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+_BASE_DIR = Path(__file__).resolve().parent
+
 # Load environment variables from a local .env file when running locally.
 # This keeps secrets like API keys out of the codebase and allows easy
 # per-machine configuration.
@@ -83,4 +85,11 @@ DASHBOARD_CACHE_TTL_S = int(os.getenv("DASHBOARD_CACHE_TTL_S", "0"))
 
 # When false, decision recommendation text uses fast templates only (no OpenAI call per dashboard request).
 DECISION_RECO_ENABLE_LLM = os.getenv("DECISION_RECO_ENABLE_LLM", "true").lower() == "true"
+
+# Harvest ML (XGBoost) — artifacts from train_harvest_ml_models.py
+HARVEST_ML_MODEL_DIR = os.getenv(
+    "HARVEST_ML_MODEL_DIR",
+    str(_BASE_DIR / "models" / "harvest_ml"),
+)
+# Always on at runtime; missing artifacts still yield /api/harvest-ml source=unavailable.
 
