@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+_BASE_DIR = Path(__file__).resolve().parent
+
 # Load environment variables from a local .env file when running locally.
 # This keeps secrets like API keys out of the codebase and allows easy
 # per-machine configuration.
@@ -76,4 +78,18 @@ USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
 # Orchestration: parallel data collection and optional LLM steps
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default
 PARALLEL_DATA_COLLECTION = os.getenv("PARALLEL_DATA_COLLECTION", "true").lower() == "true"  # Use parallel phases in collect
+
+# API /api/dashboard: in-memory snapshot TTL (seconds). 0 = no cache (every request recomputes).
+# Set e.g. 30–120 in production to cut CPU and duplicate agent work when the UI polls or refreshes often.
+DASHBOARD_CACHE_TTL_S = int(os.getenv("DASHBOARD_CACHE_TTL_S", "0"))
+
+# When false, decision recommendation text uses fast templates only (no OpenAI call per dashboard request).
+DECISION_RECO_ENABLE_LLM = os.getenv("DECISION_RECO_ENABLE_LLM", "true").lower() == "true"
+
+# Harvest ML (XGBoost) — artifacts from train_harvest_ml_models.py
+HARVEST_ML_MODEL_DIR = os.getenv(
+    "HARVEST_ML_MODEL_DIR",
+    str(_BASE_DIR / "models" / "harvest_ml"),
+)
+# Always on at runtime; missing artifacts still yield /api/harvest-ml source=unavailable.
 

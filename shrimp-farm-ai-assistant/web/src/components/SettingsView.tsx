@@ -3,11 +3,9 @@ import { useState } from 'react'
 type Props = {
 	ponds: number
 	onPondsChange: (ponds: number) => void
-	autoRefresh: boolean
-	onAutoRefreshChange: (enabled: boolean) => void
 }
 
-export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshChange }: Props) {
+export function SettingsView({ ponds, onPondsChange }: Props) {
 	const [notifications, setNotifications] = useState({
 		alerts: true,
 		feeding: true,
@@ -43,13 +41,10 @@ export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshC
 					{/* Data Refresh */}
 					<div style={{ marginBottom: 32 }}>
 						<h3 style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Data Refresh</h3>
-						<div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-							<label style={{ minWidth: 150 }}>Auto Refresh</label>
-							<label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-								<input type="checkbox" checked={autoRefresh} onChange={(e) => onAutoRefreshChange(e.target.checked)} />
-								<span>Enable (15 second interval)</span>
-							</label>
-						</div>
+						<p className="muted" style={{ fontSize: '0.9rem', lineHeight: 1.5, maxWidth: 520 }}>
+							The dashboard does not poll the API automatically. Use <strong>Refresh</strong> in the top bar to load
+							the latest snapshot, or change the pond count to reload.
+						</p>
 					</div>
 
 					{/* Notifications */}

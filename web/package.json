@@ -27,7 +27,7 @@
     "recharts": "^3.6.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^20.19.37",
     "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1864,6 +1864,373 @@ button:disabled {
   overflow-y: auto;
 }
 
+/* Harvest prediction dashboard */
+.harvestPredictionPage {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 4px 32px;
+}
+
+.harvestPredictionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.harvestPredictionTitle {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: rgba(17, 24, 39, 0.92);
+}
+
+.harvestPredictionSubtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 52ch;
+  line-height: 1.45;
+}
+
+.harvestPredictionHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.harvestPredictionBanner {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.harvestPredictionBanner.bad {
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: rgba(254, 242, 242, 0.9);
+  color: var(--bad);
+}
+
+.harvestPredictionBanner.warn {
+  border: 1px solid rgba(202, 138, 4, 0.35);
+  background: rgba(254, 252, 232, 0.95);
+  color: rgba(113, 63, 18, 0.95);
+}
+
+.harvestKpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.harvestKpiCard {
+  padding: 14px 16px;
+  min-height: 96px;
+}
+
+.harvestKpiGaugeCard {
+  min-width: 140px;
+}
+
+.harvestKpiLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.harvestKpiValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.9);
+}
+
+.harvestKpiHint {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.harvestGaugeWrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin: 4px auto 0;
+}
+
+.harvestGaugeRing {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.harvestGaugeInner {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 2px rgba(17, 24, 39, 0.06);
+}
+
+.harvestGaugePct {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.88);
+}
+
+.harvestSectionTitle {
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(17, 24, 39, 0.55);
+  margin: 0 0 10px;
+}
+
+.harvestPondRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.harvestPondCard {
+  padding: 14px;
+}
+
+.harvestPondCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.harvestPondName {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.harvestPondBadge {
+  font-size: 0.65rem;
+  font-weight: 650;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.harvestPondStats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.harvestPondStats li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  padding-bottom: 6px;
+}
+
+.harvestPondStats li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.harvestConfBar {
+  margin-top: 12px;
+}
+
+.harvestConfTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.08);
+  overflow: hidden;
+}
+
+.harvestConfFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.harvestConfPct {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: right;
+}
+
+.harvestRecs {
+  padding: 0;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.harvestRecRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.harvestRecRow:last-child {
+  border-bottom: none;
+}
+
+.harvestRec-good {
+  background: rgba(22, 163, 74, 0.06);
+  border-left: 3px solid #16a34a;
+}
+
+.harvestRec-warn {
+  background: rgba(234, 179, 8, 0.08);
+  border-left: 3px solid #ca8a04;
+}
+
+.harvestRec-info {
+  background: rgba(8, 145, 178, 0.06);
+  border-left: 3px solid #0891b2;
+}
+
+.harvestChartsRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 960px) {
+  .harvestChartsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.harvestChartPanel {
+  padding: 14px 16px;
+}
+
+.harvestChartTitle {
+  font-weight: 650;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  color: rgba(17, 24, 39, 0.82);
+}
+
+.harvestChartBox {
+  height: 240px;
+  position: relative;
+}
+
+.harvestChartBoxTall {
+  height: 280px;
+}
+
+.harvestChartFoot {
+  font-size: 0.72rem;
+  margin-top: 8px;
+}
+
+.harvestBottomRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 960px) {
+  .harvestBottomRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spanBiomass {
+  min-width: 0;
+}
+
+.harvestRiskPanel {
+  padding: 14px 16px;
+}
+
+.harvestRiskList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 160px;
+}
+
+.harvestRiskList li {
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.harvestRiskBad {
+  border-color: rgba(220, 38, 38, 0.25);
+  background: rgba(254, 242, 242, 0.5);
+}
+
+.harvestRiskLabel {
+  font-weight: 650;
+  color: rgba(17, 24, 39, 0.85);
+}
+
+.harvestRiskFooter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.harvestRiskStat {
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.muted.tiny {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.harvestPageFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  font-size: 0.75rem;
+}
+
 
 
 

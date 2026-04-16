@@ -11,7 +11,12 @@ import random
 
 import numpy as np
 
-from config import PARALLEL_DATA_COLLECTION
+from config import (
+	PARALLEL_DATA_COLLECTION,
+	DASHBOARD_CACHE_TTL_S,
+	DECISION_RECO_ENABLE_LLM,
+	USE_MONGODB,
+)
 from agents.water_quality_agent import WaterQualityAgent
 from agents.feed_prediction_agent import FeedPredictionAgent
 from agents.energy_optimization_agent import EnergyOptimizationAgent
@@ -28,10 +33,21 @@ app = FastAPI(title="Shrimp Farm Management API", version="0.1.0")
 # Keyed by (ponds, seed). Values are already-serialized JSON dictionaries.
 _DASHBOARD_CACHE: Dict[Tuple[int, Optional[int]], Dict[str, Any]] = {}
 _DASHBOARD_CACHE_TS: Dict[Tuple[int, Optional[int]], float] = {}
-_CACHE_TTL_S_DEFAULT = 0  # Disabled so labor schedule and dashboard always reflect latest run
+_CACHE_TTL_S_DEFAULT = DASHBOARD_CACHE_TTL_S
 
 # Reused agents for dashboard (lazy init to avoid creating per request).
 _dashboard_agents: Optional[Tuple[Any, ...]] = None
+
+_harvest_ml_predictor: Optional[Any] = None
+
+
+def _get_harvest_ml_predictor():
+	global _harvest_ml_predictor
+	if _harvest_ml_predictor is None:
+		from models.harvest_ml_predictor import HarvestMLPredictor
+
+		_harvest_ml_predictor = HarvestMLPredictor()
+	return _harvest_ml_predictor
 
 
 def _get_dashboard_agents():
@@ -171,6 +187,88 @@ def get_hourly_history(hours: int = 24) -> Dict[str, Any]:
 		return {"count": 0, "items": []}
 
 
+@app.get("/api/charts/analytics")
+def get_charts_analytics(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	hours: int = 24,
+	feed_days: int = 7,
+) -> Dict[str, Any]:
+	"""
+	Analytics & Trends chart payloads from MongoDB readings only (no AI agents).
+
+	Requires USE_MONGODB=true. Water (DO/ammonia) uses water_quality_readings + water_quality;
+	feed uses feed_readings; energy uses energy_readings. Each series_sources.* flag is
+	independent (e.g. feed+energy can be true while water is false if no rows in the window).
+	Missing buckets yield nulls; the UI may fall back to simulated series where a flag is false.
+
+	Query params:
+	- ponds: number of ponds (ids 1..ponds)
+	- hours: lookback for water + energy hourly series (default 24)
+	- feed_days: calendar days for daily feed totals (default 7)
+	"""
+	try:
+		from config import USE_MONGODB
+		from database.repository import DataRepository
+
+		ponds = max(1, min(int(ponds), 24))
+		hours = max(1, min(int(hours), 168))
+		feed_days = max(1, min(int(feed_days), 31))
+
+		if not USE_MONGODB:
+			return {
+				"detail": "MongoDB disabled",
+				"charts": _empty_analytics_charts_payload(list(range(1, ponds + 1)), hours, feed_days),
+			}
+
+		repo = DataRepository()
+		if not repo.is_available:
+			return {
+				"detail": "MongoDB unavailable",
+				"charts": _empty_analytics_charts_payload(list(range(1, ponds + 1)), hours, feed_days),
+			}
+
+		pond_ids = list(range(1, ponds + 1))
+		charts = repo.get_analytics_charts_from_readings(
+			pond_ids=pond_ids,
+			hours=hours,
+			feed_days=feed_days,
+		)
+		return {"charts": charts, "timestamp": datetime.utcnow().isoformat()}
+	except Exception as e:
+		import traceback
+		traceback.print_exc()
+		return {
+			"detail": str(e),
+			"charts": _empty_analytics_charts_payload(list(range(1, max(1, min(int(ponds), 24)) + 1)), 24, 7),
+		}
+
+
+def _empty_analytics_charts_payload(pond_ids: List[int], hours: int, feed_days: int) -> Dict[str, Any]:
+	"""Shape-compatible empty charts (source=none) for errors or Mongo off."""
+	_ = hours
+	weekday_short = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+	hours24 = [f"{h:02d}:00" for h in range(24)]
+	return {
+		"source": "none",
+		"has_any_data": False,
+		"series_sources": {
+			"dissolved_oxygen": False,
+			"ammonia": False,
+			"feed": False,
+			"energy": False,
+		},
+		"hours24": hours24,
+		"pond_ids": pond_ids,
+		"dissolved_oxygen_by_pond": {str(p): [None] * 24 for p in pond_ids},
+		"ammonia_by_pond": {str(p): [None] * 24 for p in pond_ids},
+		"feed_7d": {
+			"labels": [weekday_short[i % 7] for i in range(feed_days)],
+			"values_kg": [0.0] * feed_days,
+		},
+		"energy_kwh_24h": [0.0] * 24,
+	}
+
+
 @app.get("/api/forecasts")
 def get_forecasts(
 	ponds: int = FARM_CONFIG.get("pond_count", 4),
@@ -237,6 +335,126 @@ def get_forecasts(
 	}
 
 
+@app.get("/api/harvest-ml")
+def get_harvest_ml(
+	ponds: int = FARM_CONFIG.get("pond_count", 4),
+	target_weight_g: float = 22.0,
+	horizon_days: int = 30,
+	seed: Optional[int] = None,
+) -> Dict[str, Any]:
+	"""
+	XGBoost harvest inference: days to target weight, expected harvest biomass, rolled growth curve,
+	early-harvest risk. Requires trained artifacts under models/harvest_ml/ (see train_harvest_ml_models.py).
+
+	Uses **MongoDB readings only** — latest water quality + latest feed per pond from the repository.
+	Does **not** fall back to simulated WaterQualityAgent / FeedPredictionAgent data.
+	"""
+	ts = datetime.utcnow().isoformat()
+
+	if seed is not None:
+		random.seed(int(seed))
+		np.random.seed(int(seed))
+
+	predictor = _get_harvest_ml_predictor()
+	if not predictor.available:
+		return {
+			"source": "unavailable",
+			"input_source": "n/a",
+			"detail": getattr(predictor, "_load_error", None) or "models not loaded",
+			"ponds": [],
+			"timestamp": ts,
+			"target_weight_g": target_weight_g,
+			"horizon_days": horizon_days,
+		}
+
+	pond_ids = list(range(1, max(1, int(ponds)) + 1))
+	extras: Dict[int, Dict[str, float]] = {}
+	repo = None
+	if USE_MONGODB:
+		try:
+			from database.repository import DataRepository
+
+			repo = DataRepository()
+			if repo.is_available:
+				extras = repo.get_harvest_ml_feed_extras(pond_ids)
+		except Exception as e:
+			print(f"[harvest-ml] Mongo: {e}")
+			repo = None
+
+	mongo_ok = repo is not None and getattr(repo, "is_available", False)
+	pond_results: List[Dict[str, Any]] = []
+
+	if not USE_MONGODB or not mongo_ok:
+		block_detail = (
+			"Harvest ML requires USE_MONGODB=true and a working MongoDB connection (no simulated agent inputs)."
+			if not USE_MONGODB
+			else "Harvest ML requires MongoDB (repository unavailable or not connected); no simulated agent inputs."
+		)
+		for pond_id in pond_ids:
+			pond_results.append(
+				{
+					"pond_id": pond_id,
+					"available": False,
+					"detail": block_detail,
+				}
+			)
+		return {
+			"source": "xgboost",
+			"input_source": "n/a",
+			"detail": block_detail,
+			"ponds": pond_results,
+			"timestamp": ts,
+			"target_weight_g": target_weight_g,
+			"horizon_days": horizon_days,
+		}
+
+	any_available = False
+	for pond_id in pond_ids:
+		db_wq = repo.get_latest_water_quality(pond_id)
+		db_feed = repo.get_latest_feed_data(pond_id)
+		if db_wq is None or db_feed is None:
+			missing: List[str] = []
+			if db_wq is None:
+				missing.append("water quality")
+			if db_feed is None:
+				missing.append("feed")
+			pond_results.append(
+				{
+					"pond_id": pond_id,
+					"available": False,
+					"detail": f"No latest {' and '.join(missing)} reading in MongoDB for this pond",
+				}
+			)
+			continue
+
+		ex = extras.get(pond_id, {})
+		kw: Dict[str, Any] = {
+			"target_weight_g": target_weight_g,
+			"horizon_days": horizon_days,
+		}
+		if ex:
+			kw["weight_lag_7d"] = ex.get("weight_lag_7d")
+			kw["weight_lag_14d"] = ex.get("weight_lag_14d")
+			kw["rolling_feed_kg_7d"] = ex.get("rolling_feed_kg_7d")
+			kw["days_normalized"] = ex.get("days_normalized")
+		pond_results.append(predictor.predict_pond(db_feed, db_wq, **kw))
+		any_available = True
+
+	top_detail: Optional[str] = None
+	if not any_available:
+		top_detail = "No ponds had both latest water quality and feed readings in MongoDB."
+
+	return {
+		"source": "xgboost",
+		"input_source": "mongodb" if any_available else "n/a",
+		**({"detail": top_detail} if top_detail else {}),
+		"ponds": pond_results,
+		"timestamp": ts,
+		"target_weight_g": target_weight_g,
+		"horizon_days": horizon_days,
+	}
+
+
 @app.get("/api/dashboard")
 def get_dashboard(
 	ponds: int = FARM_CONFIG.get("pond_count", 4),
@@ -247,8 +465,8 @@ def get_dashboard(
 	"""
 	Generate dashboard data using simulation (no API key needed).
 
-	Caching is disabled by default so labor schedule and KPIs always reflect the latest run.
-	Use cache_ttl_s to re-enable caching if desired.
+	Default cache TTL comes from env DASHBOARD_CACHE_TTL_S (0 = no cache). Use cache_ttl_s on the
+	request to override. Set DECISION_RECO_ENABLE_LLM=false to skip OpenAI on recommendation text.
 
 	Query params:
 	- fresh: if true, bypass cache and generate a new snapshot
@@ -352,7 +570,7 @@ def get_dashboard(
 
 				# Human-friendly recommendations derived from decision outputs.
 				# Prefer LLM-generated action-plan text (falls back only if LLM unavailable).
-				reco_agent = DecisionRecommendationAgent(enable_llm=True)
+				reco_agent = DecisionRecommendationAgent(enable_llm=DECISION_RECO_ENABLE_LLM)
 				decision_recommendations = [
 					{
 						"pond_id": r.pond_id,

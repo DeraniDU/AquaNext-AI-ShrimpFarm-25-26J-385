@@ -1,4 +1,4 @@
-import { Line, Bar } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import { useState, useEffect } from 'react'
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
@@ -18,7 +18,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 
 	// Fetch AI-generated forecasts
 	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
-		ponds: pondFilter ? 1 : data.water_quality.length,
+		ponds: Math.max(1, data.water_quality.length),
 		forecastDays: 90
 	})
 
@@ -84,7 +84,8 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 	const currentMonth = new Date().getMonth()
 	const chartMonths = months.slice(Math.max(0, currentMonth - 6), currentMonth + 1)
-	const forecastMonths = months.slice(currentMonth + 1, Math.min(12, currentMonth + 7))
+	// Wrap past December: slice(12, …) is empty in Dec, which hid all AI forecast series.
+	const forecastMonths = Array.from({ length: 6 }, (_, i) => months[(currentMonth + 1 + i) % 12])
 
 	// Growth chart - combine historical with AI forecast
 	const historyFiltered = history.map((snap) => ({
@@ -96,67 +97,66 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		return weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : 0
 	})
 
-	// Map AI forecast to monthly data
 	const monthlyGrowthForecast = forecastMonths.map((_, i) => {
-		const dayIndex = Math.floor((i + 1) * 30)
-		if (dayIndex < growthForecast.length) {
-			return growthForecast[dayIndex].avg_weight_g || currentWeight
-		}
-		return currentWeight
+		if (!growthForecast.length) return currentWeight
+		const targetDay = (i + 1) * 30
+		const idx = Math.min(growthForecast.length - 1, Math.max(0, targetDay - 1))
+		return growthForecast[idx].avg_weight_g || currentWeight
 	})
+
+	const histSlice = historyAvgWeight.slice(-chartMonths.length)
+	const histMomChange = histSlice.map((w, i) =>
+		i > 0 ? w - histSlice[i - 1] : null
+	)
+	const fcMomChange = monthlyGrowthForecast.map((w, i) =>
+		i > 0 ? w - monthlyGrowthForecast[i - 1] : w - currentWeight
+	)
 
 	const growthChart = {
 		labels: [...chartMonths, ...forecastMonths],
 		datasets: [
 			{
 				type: 'line' as const,
-				label: 'Historical',
-				data: [...historyAvgWeight.slice(-chartMonths.length), ...Array(forecastMonths.length).fill(null)],
+				label: 'Historical avg weight (g)',
+				data: [...histSlice, ...Array(forecastMonths.length).fill(null)],
 				borderColor: '#2563eb',
 				backgroundColor: 'rgba(37, 99, 235, 0.1)',
 				fill: true,
-				tension: 0.4
-			},
-			{
-				type: 'bar' as const,
-				label: 'Monthly Growth',
-				data: [
-					...historyAvgWeight.slice(-chartMonths.length).map((w, i) => i > 0 ? w - historyAvgWeight[historyAvgWeight.length - chartMonths.length + i - 1] : 0),
-					...Array(forecastMonths.length).fill(null)
-				],
-				backgroundColor: 'rgba(59, 130, 246, 0.6)',
-				borderRadius: 4
+				tension: 0.4,
+				yAxisID: 'y'
 			},
 			{
 				type: 'line' as const,
-				label: 'AI Forecast',
+				label: 'AI forecast avg weight (g)',
 				data: [...Array(chartMonths.length).fill(null), ...monthlyGrowthForecast],
 				borderColor: '#16a34a',
-				backgroundColor: 'rgba(22, 163, 74, 0.1)',
+				backgroundColor: 'rgba(22, 163, 74, 0.08)',
 				fill: true,
-				borderDash: [5, 5],
-				tension: 0.4
+				borderDash: [6, 4],
+				tension: 0.4,
+				yAxisID: 'y'
 			},
 			{
-				type: 'bar' as const,
-				label: 'AI Forecast Growth',
-				data: [
-					...Array(chartMonths.length).fill(null),
-					...monthlyGrowthForecast.map((w, i) => i > 0 ? w - monthlyGrowthForecast[i - 1] : w - currentWeight)
-				],
-				backgroundColor: 'rgba(34, 197, 94, 0.4)',
-				borderRadius: 4
+				type: 'line' as const,
+				label: 'Month-over-month Δ weight (g)',
+				data: [...histMomChange, ...fcMomChange],
+				borderColor: '#8b5cf6',
+				backgroundColor: 'rgba(139, 92, 246, 0.06)',
+				fill: false,
+				tension: 0.35,
+				borderDash: [2, 3],
+				spanGaps: true,
+				yAxisID: 'y1'
 			}
 		]
 	}
 
 	// Profit chart from AI forecast
 	const monthlyProfitForecast = forecastMonths.map((_, i) => {
-		const dayIndex = Math.floor((i + 1) * 30)
-		if (dayIndex < profitForecast.length) {
-			return profitForecast[dayIndex].profit_lkr || 0
-		}
-		return 0
+		if (!profitForecast.length) return 0
+		const targetDay = (i + 1) * 30
+		const idx = Math.min(profitForecast.length - 1, Math.max(0, targetDay - 1))
+		return profitForecast[idx].profit_lkr || 0
 	})
 
 	const profitHistorical = chartMonths.map((_, i) => {
@@ -174,7 +174,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		datasets: [
 			{
 				type: 'line' as const,
-				label: 'Historical',
+				label: 'Historical profit (LKR)',
 				data: [...profitHistorical, ...Array(forecastMonths.length).fill(null)],
 				borderColor: '#16a34a',
 				backgroundColor: 'rgba(22, 163, 74, 0.1)',
@@ -182,28 +182,14 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 				tension: 0.4
 			},
 			{
-				type: 'bar' as const,
-				label: 'Monthly Profit',
-				data: [...profitHistorical, ...Array(forecastMonths.length).fill(null)],
-				backgroundColor: 'rgba(34, 197, 94, 0.6)',
-				borderRadius: 4
-			},
-			{
 				type: 'line' as const,
-				label: 'AI Forecast',
+				label: 'AI forecast profit (LKR)',
 				data: [...Array(chartMonths.length).fill(null), ...monthlyProfitForecast],
 				borderColor: '#f59e0b',
 				backgroundColor: 'rgba(245, 158, 11, 0.1)',
 				fill: true,
-				borderDash: [5, 5],
+				borderDash: [6, 4],
 				tension: 0.4
-			},
-			{
-				type: 'bar' as const,
-				label: 'Forecast Profit',
-				data: [...Array(chartMonths.length).fill(null), ...monthlyProfitForecast],
-				backgroundColor: 'rgba(245, 158, 11, 0.4)',
-				borderRadius: 4
 			}
 		]
 	}
@@ -290,19 +276,20 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		labels: riskDays.filter((_, i) => i % 5 === 0),
 		datasets: [
 			{
-				label: 'Risk Level',
-				data: diseaseRisk,
-				backgroundColor: diseaseRisk.map((r) => (r > 60 ? 'rgba(239, 68, 68, 0.7)' : r > 40 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(34, 197, 94, 0.7)')),
-				borderRadius: 4
-			},
-			{
 				type: 'line' as const,
-				label: 'Forecast',
+				label: 'Disease / environmental risk (%)',
 				data: diseaseRisk,
-				borderColor: '#f59e0b',
-				borderDash: [5, 5],
-				fill: false,
-				tension: 0.4
+				borderColor: '#ea580c',
+				backgroundColor: 'rgba(234, 88, 12, 0.12)',
+				fill: true,
+				tension: 0.4,
+				pointRadius: 3,
+				pointHoverRadius: 5,
+				pointBackgroundColor: diseaseRisk.map((r) =>
+					r > 60 ? 'rgba(239, 68, 68, 0.95)' : r > 40 ? 'rgba(245, 158, 11, 0.95)' : 'rgba(34, 197, 94, 0.95)'
+				),
+				pointBorderColor: 'rgba(17, 24, 39, 0.15)',
+				pointBorderWidth: 1
 			}
 		]
 	}
@@ -330,6 +317,27 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		scales: {
 			x: { grid: { display: false } },
 			y: { grid: { color: 'rgba(17, 24, 39, 0.08)' } }
+		}
+	}
+
+	const growthChartOptions = {
+		...chartOptions,
+		scales: {
+			...chartOptions.scales,
+			y: {
+				type: 'linear' as const,
+				display: true,
+				position: 'left' as const,
+				title: { display: true, text: 'Weight (g)' },
+				grid: { color: 'rgba(17, 24, 39, 0.08)' }
+			},
+			y1: {
+				type: 'linear' as const,
+				display: true,
+				position: 'right' as const,
+				title: { display: true, text: 'Δ month (g)' },
+				grid: { drawOnChartArea: false }
+			}
 		}
 	}
 
@@ -381,7 +389,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 					<div className="panelTitle">Shrimp Growth & Yield Forecast</div>
 				</div>
 				<div className="chartBoxLg" style={{ height: 250 }}>
-					<Line data={growthChart as never} options={chartOptions} />
+					<Line data={growthChart as never} options={growthChartOptions as never} />
 				</div>
 				<div style={{ padding: 12, backgroundColor: 'rgba(37, 99, 235, 0.05)', borderRadius: 8, marginTop: 12 }}>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Estimated Harvest Yield</div>
@@ -513,7 +521,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 					<div className="panelTitle">Disease & Environmental Risk</div>
 				</div>
 				<div className="chartBoxLg" style={{ height: 200 }}>
-					<Bar data={diseaseRiskChart as never} options={chartOptions} />
+					<Line data={diseaseRiskChart as never} options={chartOptions} />
 				</div>
 				<div style={{ padding: 12, backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, marginTop: 12 }}>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Viral Infection Risk</div>

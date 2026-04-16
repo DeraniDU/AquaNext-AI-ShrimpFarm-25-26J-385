@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
 import { ForecastingView } from './components/ForecastingView'
+import { HarvestPredictionView } from './components/HarvestPredictionView'
 import { OptimizationView } from './components/OptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
 import { FeedingView } from './components/FeedingView'
@@ -12,19 +13,26 @@ import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
+import { useAnalyticsChartsData } from './lib/useAnalyticsChartsData'
+import { useHarvestMlData } from './lib/useHarvestMlData'
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
 	const [selectedPond, setSelectedPond] = useState<'all' | number>('all')
-	const [autoRefresh, setAutoRefresh] = useState(false)
 	const [activeView, setActiveView] = useState('dashboard')
 
 	const { data, loading, error, lastUpdatedAt, refresh } = useDashboardData({
-		ponds,
-		autoRefreshMs: autoRefresh ? 15_000 : null
+		ponds
 	})
 	const { data: historyData, loading: historyLoading, error: historyError, refresh: refreshHistory } = useHistoryData({
 		days: 7
+	})
+	const { charts: analyticsCharts, refresh: refreshAnalytics } = useAnalyticsChartsData({ ponds })
+
+	const harvestMl = useHarvestMlData({
+		ponds: data?.water_quality?.length ?? ponds,
+		horizonDays: 90,
+		enabled: Boolean(data)
 	})
 
 	const pondIds = useMemo(() => {
@@ -55,9 +63,17 @@ export default function App() {
 
 		switch (activeView) {
 			case 'dashboard':
-				return <DashboardView {...viewProps} />
+				return (
+					<DashboardView
+						{...viewProps}
+						analyticsCharts={analyticsCharts}
+						onOpenForecasting={() => setActiveView('forecasting')}
+					/>
+				)
 			case 'forecasting':
-				return <ForecastingView {...viewProps} />
+				return <ForecastingView {...viewProps} harvestMl={harvestMl} />
+			case 'harvest-prediction':
+				return <HarvestPredictionView data={viewProps.data} harvestMl={harvestMl} />
 		case 'optimization':
 			return <OptimizationView {...viewProps} ponds={ponds} />
 			case 'benchmarking':
@@ -73,12 +89,16 @@ export default function App() {
 					<SettingsView
 						ponds={ponds}
 						onPondsChange={setPonds}
-						autoRefresh={autoRefresh}
-						onAutoRefreshChange={setAutoRefresh}
 					/>
 				)
 			default:
-				return <DashboardView {...viewProps} />
+				return (
+					<DashboardView
+						{...viewProps}
+						analyticsCharts={analyticsCharts}
+						onOpenForecasting={() => setActiveView('forecasting')}
+					/>
+				)
 		}
 	}
 
@@ -134,18 +154,6 @@ export default function App() {
 											))}
 										</select>
 									</div>
-
-									<div className="controlGroup">
-										<span className="label">Auto</span>
-										<label className="label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-											<input
-												type="checkbox"
-												checked={autoRefresh}
-												onChange={(e) => setAutoRefresh(e.target.checked)}
-											/>
-											15s
-										</label>
-									</div>
 								</>
 							)}
 
@@ -153,6 +161,8 @@ export default function App() {
 								onClick={() => {
 									void refresh()
 									void refreshHistory()
+									void refreshAnalytics()
+									void harvestMl.refresh()
 								}}
 								disabled={loading || historyLoading}
 							>

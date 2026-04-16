@@ -1,0 +1,18 @@
+{
+  "days_to_harvest": {
+    "val_mae": 5.614648342132568,
+    "val_r2": 0.8266264200210571
+  },
+  "harvest_biomass_kg": {
+    "val_mae": 133.2989044189453,
+    "val_r2": 0.9584349989891052
+  },
+  "early_harvest_risk": {
+    "val_auc": 0.9586768490004096,
+    "val_accuracy": 0.901
+  },
+  "weight_delta_next": {
+    "val_mae": 0.01529819704592228,
+    "val_r2": 0.9758572578430176
+  }
+}

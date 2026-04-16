@@ -1,6 +1,7 @@
 """
-Generate feed, energy, and labor samples and insert them into MongoDB.
-Uses the same collection names as DataRepository: feed, energy, labor.
+Generate water, feed, energy, and labor samples and insert them into MongoDB.
+Uses the same collection names as DataRepository / analytics:
+water_quality_readings, feed_readings, energy_readings, labor_readings.
 """
 
 import argparse
@@ -35,6 +36,44 @@ URGENT_TASKS = [
     "Equipment inspection",
     "Emergency feed adjustment"
 ]
+
+
+def generate_water_reading_document(pond_id: int, timestamp: datetime) -> Dict[str, Any]:
+    """Single water row for water_quality_readings (schema aligned with DataRepository / analytics)."""
+    dissolved_oxygen = round(random.uniform(4.2, 8.5), 2)
+    ammonia = round(random.uniform(0.02, 0.35), 4)
+    ph = round(random.uniform(7.2, 8.4), 2)
+    temperature = round(random.uniform(26.0, 31.0), 2)
+    salinity = round(random.uniform(15.0, 25.0), 2)
+    nitrite = round(random.uniform(0.0, 0.15), 4)
+    nitrate = round(random.uniform(0.0, 2.0), 3)
+    turbidity = round(random.uniform(0.5, 8.0), 2)
+    if dissolved_oxygen < 4.5 or ammonia > 0.25:
+        status = "POOR"
+    elif dissolved_oxygen < 5.5 or ammonia > 0.15:
+        status = "FAIR"
+    else:
+        status = "GOOD"
+    alerts: List[str] = []
+    if dissolved_oxygen < 5.0:
+        alerts.append("low_do")
+    if ammonia > 0.2:
+        alerts.append("elevated_ammonia")
+    return {
+        "pond_id": pond_id,
+        "timestamp": timestamp,
+        "ph": ph,
+        "temperature": temperature,
+        "dissolved_oxygen": dissolved_oxygen,
+        "salinity": salinity,
+        "ammonia": ammonia,
+        "nitrite": nitrite,
+        "nitrate": nitrate,
+        "turbidity": turbidity,
+        "status": status,
+        "alerts": alerts,
+        "created_at": datetime.utcnow(),
+    }
 
 
 def generate_feed_document(pond_id: int, timestamp: datetime) -> Dict[str, Any]:
@@ -245,41 +284,76 @@ def generate_labor_document(pond_id: int, timestamp: datetime) -> Dict[str, Any]
     }
 
 
-def generate_samples(num_samples: int = 300, num_ponds: int = 4) -> tuple:
-    """Generate multiple samples for feed, energy, and labor"""
+def generate_samples(
+    num_samples: int = 300,
+    num_ponds: int = 4,
+    spread_hours: float = 24.0,
+) -> tuple:
+    """
+    Generate multiple samples for water, feed, energy, and labor.
+
+    Timestamps are strictly increasing (chronological) and evenly spaced from
+    (utcnow - spread_hours) through utcnow so they cover the full window — e.g.
+    spread_hours=24 distributes points across the last 24 hours (good for hourly
+    analytics). Use spread_hours=168 (7 days) if you need multi-day feed totals.
+    """
+    water_samples = []
     feed_samples = []
     energy_samples = []
     labor_samples = []
-    
-    start_time = datetime.utcnow() - timedelta(days=30)  # Start 30 days ago
-    
+
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=spread_hours)
+    duration_s = max((end_time - start_time).total_seconds(), 0.0)
+    n = max(num_samples, 1)
+    # i=0 -> start_time, i=n-1 -> end_time (inclusive endpoints when n>1)
+    span = max(n - 1, 1)
+
     for i in range(num_samples):
-        # Distribute samples over time
-        hours_offset = i * (24 * 30 / num_samples)  # Spread over 30 days
-        timestamp = start_time + timedelta(hours=hours_offset)
-        
+        frac = i / span
+        timestamp = start_time + timedelta(seconds=frac * duration_s)
+
         # Randomly assign to different ponds
         pond_id = random.randint(1, num_ponds)
         
-        # Generate documents
+        # Generate documents (same pond + timestamp per row so series align)
+        water_doc = generate_water_reading_document(pond_id, timestamp)
         feed_doc = generate_feed_document(pond_id, timestamp)
         energy_doc = generate_energy_document(pond_id, timestamp)
         labor_doc = generate_labor_document(pond_id, timestamp)
-        
+
+        water_samples.append(water_doc)
         feed_samples.append(feed_doc)
         energy_samples.append(energy_doc)
         labor_samples.append(labor_doc)
-    
-    return feed_samples, energy_samples, labor_samples
+
+    # Defensive: keep insertion/query order aligned with time
+    water_samples.sort(key=lambda d: d["timestamp"])
+    feed_samples.sort(key=lambda d: d["timestamp"])
+    energy_samples.sort(key=lambda d: d["timestamp"])
+    labor_samples.sort(key=lambda d: d["timestamp"])
+
+    return water_samples, feed_samples, energy_samples, labor_samples
 
 
-def insert_to_mongodb(feed_samples: List[Dict], energy_samples: List[Dict], 
-                      labor_samples: List[Dict]):
+def insert_to_mongodb(
+    water_samples: List[Dict],
+    feed_samples: List[Dict],
+    energy_samples: List[Dict],
+    labor_samples: List[Dict],
+):
     """Insert samples into MongoDB"""
     try:
         client = get_mongo_client()
         db = get_database(client)
-        
+
+        # Water quality (required for /api/charts/analytics DO + ammonia)
+        water_collection = db["water_quality_readings"]
+        water_result = water_collection.insert_many(water_samples)
+        print(f"✓ Successfully inserted {len(water_result.inserted_ids)} water_quality_readings documents")
+        water_collection.create_index([("timestamp", -1), ("pond_id", 1)])
+        water_collection.create_index([("pond_id", 1), ("timestamp", -1)])
+
         # Insert feed data
         feed_collection = db["feed_readings"]
         feed_result = feed_collection.insert_many(feed_samples)
@@ -306,6 +380,7 @@ def insert_to_mongodb(feed_samples: List[Dict], energy_samples: List[Dict],
         # Verify insertions
         print()
         print("Collection counts:")
+        print(f"  water_quality_readings: {water_collection.count_documents({}):,} documents")
         print(f"  feed_readings: {feed_collection.count_documents({}):,} documents")
         print(f"  energy_readings: {energy_collection.count_documents({}):,} documents")
         print(f"  labor_readings: {labor_collection.count_documents({}):,} documents")
@@ -322,15 +397,36 @@ def insert_to_mongodb(feed_samples: List[Dict], energy_samples: List[Dict],
 
 def main():
     """Main function to generate and insert samples"""
+    parser = argparse.ArgumentParser(
+        description="Generate water/feed/energy/labor samples for MongoDB (analytics + agents)."
+    )
+    parser.add_argument("--samples", type=int, default=300, help="Documents per collection (default 300)")
+    parser.add_argument("--ponds", type=int, default=4, help="Pond ids 1..N (default 4)")
+    parser.add_argument(
+        "--spread-hours",
+        type=float,
+        default=24.0,
+        help="Evenly space timestamps across this many hours ending at UTC now (default 24). "
+        "Use e.g. 168 for a 7-day window (better for daily feed charts).",
+    )
+    args = parser.parse_args()
+
     print("=" * 60)
-    print("MongoDB Atlas Sample Data Generator - Feed, Energy, Labor")
+    print("MongoDB Atlas Sample Data Generator - Water, Feed, Energy, Labor")
     print("=" * 60)
     print(f"Database: {MONGO_DB_NAME}")
     print()
     
-    print("Generating 300 samples each for feed, energy, and labor...")
-    feed_samples, energy_samples, labor_samples = generate_samples(num_samples=300, num_ponds=4)
-    
+    print(
+        f"Generating {args.samples} samples each (spread over last {args.spread_hours:g} h, chronological)..."
+    )
+    water_samples, feed_samples, energy_samples, labor_samples = generate_samples(
+        num_samples=args.samples,
+        num_ponds=args.ponds,
+        spread_hours=args.spread_hours,
+    )
+
+    print(f"Generated {len(water_samples)} water samples")
     print(f"Generated {len(feed_samples)} feed samples")
     print(f"Generated {len(energy_samples)} energy samples")
     print(f"Generated {len(labor_samples)} labor samples")
@@ -338,7 +434,12 @@ def main():
     
     # Show distribution
     print("Sample distribution by pond:")
-    for data_type, samples in [("Feed", feed_samples), ("Energy", energy_samples), ("Labor", labor_samples)]:
+    for data_type, samples in [
+        ("Water", water_samples),
+        ("Feed", feed_samples),
+        ("Energy", energy_samples),
+        ("Labor", labor_samples),
+    ]:
         pond_counts = {}
         for sample in samples:
             pond_id = sample["pond_id"]
@@ -352,7 +453,7 @@ def main():
     print("Inserting into MongoDB Atlas...")
     print("=" * 60)
     
-    success = insert_to_mongodb(feed_samples, energy_samples, labor_samples)
+    success = insert_to_mongodb(water_samples, feed_samples, energy_samples, labor_samples)
     
     if success:
         print()

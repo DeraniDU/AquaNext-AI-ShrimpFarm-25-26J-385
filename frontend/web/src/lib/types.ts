@@ -242,6 +242,43 @@ export type ForecastsResponse = {
 	forecast_days: number
 }
 
+export type HarvestMlEarlyHarvest = {
+	risk: boolean
+	probability: number
+	reason_codes: string[]
+}
+
+export type HarvestMlGrowthPoint = {
+	day: number
+	avg_weight_g: number
+	biomass_kg: number
+}
+
+export type HarvestMlPondResult = {
+	pond_id: number
+	available: boolean
+	detail?: string
+	target_weight_g?: number
+	days_to_harvest?: number
+	predicted_harvest_start?: string
+	predicted_harvest_end?: string
+	expected_biomass_kg?: number
+	early_harvest?: HarvestMlEarlyHarvest
+	growth_forecast?: HarvestMlGrowthPoint[]
+}
+
+export type HarvestMlInputSource = 'mongodb' | 'mixed' | 'agents' | 'n/a'
+
+export type HarvestMlResponse = {
+	source: 'xgboost' | 'unavailable'
+	input_source?: HarvestMlInputSource
+	detail?: string
+	ponds: HarvestMlPondResult[]
+	timestamp: string
+	target_weight_g: number
+	horizon_days: number
+}
+
 // ---------------------------------------------------------------------------
 // Feeding Optimization types
 // ---------------------------------------------------------------------------

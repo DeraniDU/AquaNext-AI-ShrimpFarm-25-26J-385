@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { formatDateTime, formatNumber, formatPercent01 } from '../lib/format'
+import { useForecastsData } from '../lib/useForecastsData'
 import type {
 	DashboardApiResponse,
 	DecisionOutput,
@@ -28,10 +29,34 @@ type Props = {
 	history: SavedFarmSnapshot[]
 	hourlyHistory?: SavedFarmSnapshot[]
 	pondFilter: number | null
+	/** Jump to the full Forecasting view (charts, ML harvest). */
+	onOpenForecasting?: () => void
 }
 
-export function DashboardView({ data, history, hourlyHistory = [], pondFilter }: Props) {
+export function DashboardView({ data, history, hourlyHistory = [], pondFilter, onOpenForecasting }: Props) {
 	const { dashboard } = data
+	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
+		ponds: Math.max(1, data.water_quality.length),
+		forecastDays: 90
+	})
+	const fc = forecastsData?.forecasts
+	const hw = fc?.harvest_window
+	const growthFc = fc?.growth_forecast
+	const lastForecastWeight =
+		growthFc && growthFc.length > 0 ? growthFc[growthFc.length - 1].avg_weight_g : null
+	let harvestWindowShort = '—'
+	if (hw?.optimal_start && hw?.optimal_end) {
+		const a = new Date(hw.optimal_start)
+		const b = new Date(hw.optimal_end)
+		if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime())) {
+			harvestWindowShort = `${a.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+		}
+	}
+	const yieldTonsStr =
+		hw?.projected_yield_tons != null
+			? formatNumber(hw.projected_yield_tons, { maximumFractionDigits: 2 })
+			: '—'
+
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 	const energy = pondFilter ? data.energy.filter((e) => e.pond_id === pondFilter) : data.energy
@@ -380,6 +405,84 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter }:
 					<KpiCard icon="🍽️" iconBg="rgba(245, 158, 11, 0.15)" label="Daily Feed Usage" value={formatNumber(totalFeedKg, { maximumFractionDigits: 0 }) + ' kg'} trend={feedTrend} />
 					<KpiCard icon="⚡" iconBg="rgba(234, 179, 8, 0.15)" label="Energy Consumption" value={formatNumber(totalEnergyKwhNum, { maximumFractionDigits: 0 }) + ' kWh'} trend={energyTrend} trendUp />
 					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'Rs. ' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
+				</div>
+			</div>
+
+			{/* Forecast outlook (summary + link to full Forecasting view) */}
+			<div>
+				<div className="dashSectionTitle">
+					Forecast outlook
+					<span className="dashSectionSubtitle">AI /api/forecasts · 90-day horizon</span>
+				</div>
+				<div className="panel" style={{ padding: 16 }}>
+					<div
+						style={{
+							display: 'flex',
+							flexWrap: 'wrap',
+							alignItems: 'flex-start',
+							justifyContent: 'space-between',
+							gap: 12
+						}}
+					>
+						<div className="panelTitle" style={{ marginBottom: 4 }}>
+							Harvest timing & yield
+						</div>
+						{onOpenForecasting ? (
+							<button type="button" onClick={onOpenForecasting}>
+								Open full forecasting
+							</button>
+						) : null}
+					</div>
+					{forecastsLoading ? (
+						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8 }}>
+							Loading forecast summary…
+						</div>
+					) : null}
+					{forecastsError ? (
+						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8, color: 'var(--bad)' }}>
+							{forecastsError} (charts on the Forecasting page still use calculated fallbacks)
+						</div>
+					) : null}
+					{!forecastsLoading && !forecastsError ? (
+						<div
+							style={{
+								display: 'grid',
+								gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+								gap: 16,
+								marginTop: 12
+							}}
+						>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Optimal harvest window
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{harvestWindowShort}</div>
+							</div>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Projected yield (model)
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+									{yieldTonsStr === '—' ? '—' : `${yieldTonsStr} tons`}
+								</div>
+							</div>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Forecast weight (day 90)
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+									{lastForecastWeight != null
+										? `${formatNumber(lastForecastWeight, { maximumFractionDigits: 1 })} g`
+										: '—'}
+								</div>
+							</div>
+						</div>
+					) : null}
+					{forecastsData?.timestamp ? (
+						<div className="muted" style={{ fontSize: '0.75rem', marginTop: 12 }}>
+							Updated {formatDateTime(forecastsData.timestamp)}
+						</div>
+					) : null}
 				</div>
 			</div>
 

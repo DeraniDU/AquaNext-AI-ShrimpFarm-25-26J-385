@@ -1,0 +1,18 @@
+{
+  "feature_names": [
+    "avg_weight_g",
+    "shrimp_count",
+    "biomass_kg",
+    "feed_amount",
+    "feeding_frequency",
+    "rolling_feed_kg_7d",
+    "dissolved_oxygen",
+    "temperature",
+    "ammonia",
+    "ph",
+    "salinity",
+    "days_normalized",
+    "weight_lag_7d",
+    "weight_lag_14d"
+  ]
+}

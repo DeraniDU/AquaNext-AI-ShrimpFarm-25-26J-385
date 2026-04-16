@@ -1,16 +1,19 @@
-import { Line, Bar } from 'react-chartjs-2'
-import { useState, useEffect } from 'react'
+import { Line } from 'react-chartjs-2'
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatNumber, formatDateTime } from '../lib/format'
 import { useForecastsData } from '../lib/useForecastsData'
+import { useHarvestMlData } from '../lib/useHarvestMlData'
+
+type HarvestMlBundle = ReturnType<typeof useHarvestMlData>
 
 type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
+	harvestMl: HarvestMlBundle
 }
 
-export function ForecastingView({ data, history, pondFilter }: Props) {
+export function ForecastingView({ data, history, pondFilter, harvestMl }: Props) {
 	const { dashboard } = data
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
@@ -18,7 +21,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 
 	// Fetch AI-generated forecasts
 	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
-		ponds: pondFilter ? 1 : data.water_quality.length,
+		ponds: Math.max(1, data.water_quality.length),
 		forecastDays: 90
 	})
 
@@ -77,14 +80,96 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 	}
 
 	// Prepare chart data from AI forecasts
-	const forecastedWeight = growthForecast.length > 0 ? growthForecast[growthForecast.length - 1].avg_weight_g || currentWeight : currentWeight
-	const projectedYieldTons = harvestWindow?.projected_yield_tons || estimatedHarvestYieldTons
+	let forecastedWeight = growthForecast.length > 0 ? growthForecast[growthForecast.length - 1].avg_weight_g || currentWeight : currentWeight
+	let projectedYieldTons = harvestWindow?.projected_yield_tons || estimatedHarvestYieldTons
+
+	const harvestMlRows =
+		harvestMl.data?.ponds?.filter((p) => !pondFilter || p.pond_id === pondFilter) ?? []
+	const harvestMlActive =
+		harvestMl.data?.source === 'xgboost' && harvestMlRows.some((p) => p.available)
+	const primaryHarvestMl = harvestMlRows.find((p) => p.available)
+	const mlAvailableRows = harvestMlRows.filter((p) => p.available && p.growth_forecast && p.growth_forecast.length > 0)
+
+	let mlAvgWeightByDay: number[] = []
+	let mlSumBiomassByDay: number[] = []
+	if (mlAvailableRows.length > 0) {
+		const maxLen = Math.max(...mlAvailableRows.map((p) => p.growth_forecast!.length))
+		for (let di = 0; di < maxLen; di++) {
+			let sw = 0
+			let sb = 0
+			let c = 0
+			for (const p of mlAvailableRows) {
+				const g = p.growth_forecast!
+				if (di < g.length) {
+					sw += g[di].avg_weight_g
+					sb += g[di].biomass_kg
+					c++
+				}
+			}
+			mlAvgWeightByDay.push(c > 0 ? sw / c : currentWeight)
+			mlSumBiomassByDay.push(sb)
+		}
+	}
+	const useMlForForecastCharts = harvestMl.data?.source === 'xgboost' && mlAvgWeightByDay.length > 0
+
+	if (harvestMlActive && primaryHarvestMl?.predicted_harvest_start) {
+		const a = new Date(primaryHarvestMl.predicted_harvest_start)
+		const b = new Date(primaryHarvestMl.predicted_harvest_end ?? primaryHarvestMl.predicted_harvest_start)
+		harvestWindowStr = `${a.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+	}
+	if (useMlForForecastCharts) {
+		forecastedWeight = mlAvgWeightByDay[mlAvgWeightByDay.length - 1] ?? forecastedWeight
+	} else if (harvestMlActive && primaryHarvestMl?.growth_forecast?.length) {
+		const last = primaryHarvestMl.growth_forecast[primaryHarvestMl.growth_forecast.length - 1]
+		forecastedWeight = last.avg_weight_g
+	}
+	if (harvestMlActive && mlAvailableRows.length > 0) {
+		const sumExpected = mlAvailableRows.reduce((s, p) => s + (p.expected_biomass_kg ?? 0), 0)
+		if (sumExpected > 0) {
+			projectedYieldTons = sumExpected / 1000
+		}
+	} else if (harvestMlActive && primaryHarvestMl?.expected_biomass_kg != null) {
+		projectedYieldTons = primaryHarvestMl.expected_biomass_kg / 1000
+	}
+
+	const ML_LINE_COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#db2777', '#0891b2']
+	const maxMlChartLen =
+		mlAvailableRows.length > 0
+			? Math.max(...mlAvailableRows.map((p) => p.growth_forecast!.length))
+			: 0
+	const mlGrowthChart =
+		mlAvailableRows.length > 0 && maxMlChartLen > 0
+			? {
+					labels: Array.from({ length: maxMlChartLen }, (_, i) => `Day ${i + 1}`),
+					datasets: mlAvailableRows.map((p, idx) => {
+						const pts = p.growth_forecast!.map((g) => g.avg_weight_g)
+						const padded: (number | null)[] = [
+							...pts,
+							...Array(Math.max(0, maxMlChartLen - pts.length)).fill(null)
+						]
+						const c = ML_LINE_COLORS[idx % ML_LINE_COLORS.length]
+						return {
+							type: 'line' as const,
+							label: `ML weight · pond ${p.pond_id}`,
+							data: padded,
+							borderColor: c,
+							backgroundColor: `${c}14`,
+							fill: mlAvailableRows.length === 1,
+							tension: 0.25,
+							spanGaps: false
+						}
+					})
+			  }
+			: null
+
+	const mlRiskPonds = harvestMlRows.filter((p) => p.available && p.early_harvest?.risk)
 
 	// Generate monthly labels for charts
 	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 	const currentMonth = new Date().getMonth()
 	const chartMonths = months.slice(Math.max(0, currentMonth - 6), currentMonth + 1)
-	const forecastMonths = months.slice(currentMonth + 1, Math.min(12, currentMonth + 7))
+	// Wrap past December: slice(12, …) is empty in Dec, which hid all AI forecast series.
+	const forecastMonths = Array.from({ length: 6 }, (_, i) => months[(currentMonth + 1 + i) % 12])
 
 	// Growth chart - combine historical with AI forecast
 	const historyFiltered = history.map((snap) => ({
@@ -96,67 +181,83 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		return weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : 0
 	})
 
-	// Map AI forecast to monthly data
+	// Map AI forecast to monthly buckets. API returns one point per day (e.g. 90 entries = days 1..90
+	// at indices 0..89). Using raw (i+1)*30 as an array index overshoots (e.g. 90 < 90 is false)
+	// and wrongly fell back to currentWeight for later months — chart cliff to ~10g and profit → 0.
 	const monthlyGrowthForecast = forecastMonths.map((_, i) => {
-		const dayIndex = Math.floor((i + 1) * 30)
-		if (dayIndex < growthForecast.length) {
-			return growthForecast[dayIndex].avg_weight_g || currentWeight
+		const targetDay = (i + 1) * 30
+		if (useMlForForecastCharts) {
+			const idx = Math.min(mlAvgWeightByDay.length - 1, Math.max(0, targetDay - 1))
+			return mlAvgWeightByDay[idx] ?? currentWeight
 		}
-		return currentWeight
+		if (!growthForecast.length) return currentWeight
+		const idx = Math.min(growthForecast.length - 1, Math.max(0, targetDay - 1))
+		return growthForecast[idx].avg_weight_g || currentWeight
 	})
+
+	const histSlice = historyAvgWeight.slice(-chartMonths.length)
+	const histMomChange = histSlice.map((w, i) =>
+		i > 0 ? w - histSlice[i - 1] : null
+	)
+	const fcMomChange = monthlyGrowthForecast.map((w, i) =>
+		i > 0 ? w - monthlyGrowthForecast[i - 1] : w - currentWeight
+	)
+
+	const forecastWeightLineLabel = useMlForForecastCharts
+		? 'Harvest ML avg weight (g) · /api/harvest-ml'
+		: 'AI forecast avg weight (g) · /api/forecasts'
 
 	const growthChart = {
 		labels: [...chartMonths, ...forecastMonths],
 		datasets: [
 			{
 				type: 'line' as const,
-				label: 'Historical',
-				data: [...historyAvgWeight.slice(-chartMonths.length), ...Array(forecastMonths.length).fill(null)],
+				label: 'Historical avg weight (g)',
+				data: [...histSlice, ...Array(forecastMonths.length).fill(null)],
 				borderColor: '#2563eb',
 				backgroundColor: 'rgba(37, 99, 235, 0.1)',
 				fill: true,
-				tension: 0.4
-			},
-			{
-				type: 'bar' as const,
-				label: 'Monthly Growth',
-				data: [
-					...historyAvgWeight.slice(-chartMonths.length).map((w, i) => i > 0 ? w - historyAvgWeight[historyAvgWeight.length - chartMonths.length + i - 1] : 0),
-					...Array(forecastMonths.length).fill(null)
-				],
-				backgroundColor: 'rgba(59, 130, 246, 0.6)',
-				borderRadius: 4
+				tension: 0.4,
+				yAxisID: 'y'
 			},
 			{
 				type: 'line' as const,
-				label: 'AI Forecast',
+				label: forecastWeightLineLabel,
 				data: [...Array(chartMonths.length).fill(null), ...monthlyGrowthForecast],
 				borderColor: '#16a34a',
-				backgroundColor: 'rgba(22, 163, 74, 0.1)',
+				backgroundColor: 'rgba(22, 163, 74, 0.08)',
 				fill: true,
-				borderDash: [5, 5],
-				tension: 0.4
+				borderDash: [6, 4],
+				tension: 0.4,
+				yAxisID: 'y'
 			},
 			{
-				type: 'bar' as const,
-				label: 'AI Forecast Growth',
-				data: [
-					...Array(chartMonths.length).fill(null),
-					...monthlyGrowthForecast.map((w, i) => i > 0 ? w - monthlyGrowthForecast[i - 1] : w - currentWeight)
-				],
-				backgroundColor: 'rgba(34, 197, 94, 0.4)',
-				borderRadius: 4
+				type: 'line' as const,
+				label: 'Month-over-month Δ weight (g)',
+				data: [...histMomChange, ...fcMomChange],
+				borderColor: '#8b5cf6',
+				backgroundColor: 'rgba(139, 92, 246, 0.06)',
+				fill: false,
+				tension: 0.35,
+				borderDash: [2, 3],
+				spanGaps: true,
+				yAxisID: 'y1'
 			}
 		]
 	}
 
 	// Profit chart from AI forecast
 	const monthlyProfitForecast = forecastMonths.map((_, i) => {
-		const dayIndex = Math.floor((i + 1) * 30)
-		if (dayIndex < profitForecast.length) {
-			return profitForecast[dayIndex].profit_lkr || 0
+		const targetDay = (i + 1) * 30
+		if (useMlForForecastCharts && mlSumBiomassByDay.length > 0) {
+			const idx = Math.min(mlSumBiomassByDay.length - 1, Math.max(0, targetDay - 1))
+			const bio = mlSumBiomassByDay[idx] ?? 0
+			const feedScale = totalBiomassKg > 1e-6 ? bio / totalBiomassKg : 1
+			return Math.max(0, bio * shrimpPricePerKg - totalFeedCost * feedScale - totalEnergyCost)
 		}
-		return 0
+		if (!profitForecast.length) return 0
+		const idx = Math.min(profitForecast.length - 1, Math.max(0, targetDay - 1))
+		return profitForecast[idx].profit_lkr || 0
 	})
 
 	const profitHistorical = chartMonths.map((_, i) => {
@@ -169,12 +270,16 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		return 0
 	})
 
+	const forecastProfitLineLabel = useMlForForecastCharts
+		? 'Harvest ML profit est. (LKR) · biomass from /api/harvest-ml'
+		: 'AI forecast profit (LKR) · /api/forecasts'
+
 	const profitChart = {
 		labels: [...chartMonths, ...forecastMonths],
 		datasets: [
 			{
 				type: 'line' as const,
-				label: 'Historical',
+				label: 'Historical profit (LKR)',
 				data: [...profitHistorical, ...Array(forecastMonths.length).fill(null)],
 				borderColor: '#16a34a',
 				backgroundColor: 'rgba(22, 163, 74, 0.1)',
@@ -182,28 +287,14 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 				tension: 0.4
 			},
 			{
-				type: 'bar' as const,
-				label: 'Monthly Profit',
-				data: [...profitHistorical, ...Array(forecastMonths.length).fill(null)],
-				backgroundColor: 'rgba(34, 197, 94, 0.6)',
-				borderRadius: 4
-			},
-			{
 				type: 'line' as const,
-				label: 'AI Forecast',
+				label: forecastProfitLineLabel,
 				data: [...Array(chartMonths.length).fill(null), ...monthlyProfitForecast],
 				borderColor: '#f59e0b',
 				backgroundColor: 'rgba(245, 158, 11, 0.1)',
 				fill: true,
-				borderDash: [5, 5],
+				borderDash: [6, 4],
 				tension: 0.4
-			},
-			{
-				type: 'bar' as const,
-				label: 'Forecast Profit',
-				data: [...Array(chartMonths.length).fill(null), ...monthlyProfitForecast],
-				backgroundColor: 'rgba(245, 158, 11, 0.4)',
-				borderRadius: 4
 			}
 		]
 	}
@@ -290,19 +381,20 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		labels: riskDays.filter((_, i) => i % 5 === 0),
 		datasets: [
 			{
-				label: 'Risk Level',
-				data: diseaseRisk,
-				backgroundColor: diseaseRisk.map((r) => (r > 60 ? 'rgba(239, 68, 68, 0.7)' : r > 40 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(34, 197, 94, 0.7)')),
-				borderRadius: 4
-			},
-			{
 				type: 'line' as const,
-				label: 'Forecast',
+				label: 'Disease / environmental risk (%)',
 				data: diseaseRisk,
-				borderColor: '#f59e0b',
-				borderDash: [5, 5],
-				fill: false,
-				tension: 0.4
+				borderColor: '#ea580c',
+				backgroundColor: 'rgba(234, 88, 12, 0.12)',
+				fill: true,
+				tension: 0.4,
+				pointRadius: 3,
+				pointHoverRadius: 5,
+				pointBackgroundColor: diseaseRisk.map((r) =>
+					r > 60 ? 'rgba(239, 68, 68, 0.95)' : r > 40 ? 'rgba(245, 158, 11, 0.95)' : 'rgba(34, 197, 94, 0.95)'
+				),
+				pointBorderColor: 'rgba(17, 24, 39, 0.15)',
+				pointBorderWidth: 1
 			}
 		]
 	}
@@ -333,6 +425,27 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 		}
 	}
 
+	const growthChartOptions = {
+		...chartOptions,
+		scales: {
+			...chartOptions.scales,
+			y: {
+				type: 'linear' as const,
+				display: true,
+				position: 'left' as const,
+				title: { display: true, text: 'Weight (g)' },
+				grid: { color: 'rgba(17, 24, 39, 0.08)' }
+			},
+			y1: {
+				type: 'linear' as const,
+				display: true,
+				position: 'right' as const,
+				title: { display: true, text: 'Δ month (g)' },
+				grid: { drawOnChartArea: false }
+			}
+		}
+	}
+
 	return (
 		<div className="dashGrid">
 			{forecastsError && (
@@ -340,6 +453,122 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 					<div style={{ color: 'var(--bad)' }}>Warning: Could not load AI forecasts. Using calculated forecasts.</div>
 				</div>
 			)}
+
+			{/* XGBoost harvest ML */}
+			<div className="panel spanAll">
+				<div className="panelHeader">
+					<div className="panelTitle">ML harvest (XGBoost)</div>
+					<div className="panelRight">
+						{harvestMl.loading && <span className="muted" style={{ fontSize: '0.75rem' }}>Loading…</span>}
+						{harvestMl.data && (
+							<span className="muted" style={{ fontSize: '0.75rem', marginLeft: 8 }}>
+								{harvestMl.data.source === 'xgboost' ? (
+									<span className="badge" style={{ background: 'rgba(124, 58, 237, 0.15)' }}>
+										xgboost
+									</span>
+								) : (
+									<span className="badge warn">unavailable</span>
+								)}
+								{harvestMl.data.source === 'xgboost' && harvestMl.data.input_source && harvestMl.data.input_source !== 'n/a'
+									? ` · inputs: ${harvestMl.data.input_source}`
+									: ''}
+								{harvestMl.data.timestamp ? ` · ${formatDateTime(harvestMl.data.timestamp)}` : ''}
+							</span>
+						)}
+					</div>
+				</div>
+				<div style={{ padding: 16 }}>
+					{harvestMl.error && (
+						<div className="muted" style={{ marginBottom: 12, color: 'var(--bad)' }}>
+							{harvestMl.error}
+						</div>
+					)}
+					{harvestMl.data?.source === 'unavailable' && (
+						<div className="muted" style={{ marginBottom: 12 }}>
+							{harvestMl.data.detail ?? 'Train artifacts with train_harvest_ml_models.py (outputs models/harvest_ml/).'}
+						</div>
+					)}
+					{harvestMl.data?.source === 'xgboost' && !harvestMlActive && harvestMl.data.detail ? (
+						<div className="muted" style={{ marginBottom: 12 }}>
+							{harvestMl.data.detail}
+						</div>
+					) : null}
+					{harvestMlActive && (
+						<>
+							<div style={{ overflowX: 'auto', marginBottom: 16 }}>
+								<table className="dataTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+									<thead>
+										<tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(17,24,39,0.08)' }}>
+											<th style={{ padding: '8px 6px' }}>Pond</th>
+											<th style={{ padding: '8px 6px' }}>Days to harvest</th>
+											<th style={{ padding: '8px 6px' }}>Expected biomass (kg)</th>
+											<th style={{ padding: '8px 6px' }}>Harvest window</th>
+											<th style={{ padding: '8px 6px' }}>Early risk</th>
+											<th style={{ padding: '8px 6px' }}>P(risk)</th>
+										</tr>
+									</thead>
+									<tbody>
+										{harvestMlRows.map((row) => (
+											<tr key={row.pond_id} style={{ borderBottom: '1px solid rgba(17,24,39,0.06)' }}>
+												<td style={{ padding: '8px 6px' }}>{row.pond_id}</td>
+												<td style={{ padding: '8px 6px' }}>{row.available ? row.days_to_harvest ?? '—' : '—'}</td>
+												<td style={{ padding: '8px 6px' }}>
+													{row.available ? formatNumber(row.expected_biomass_kg ?? 0, { maximumFractionDigits: 2 }) : row.detail ?? '—'}
+												</td>
+												<td style={{ padding: '8px 6px' }}>
+													{row.available && row.predicted_harvest_start && row.predicted_harvest_end
+														? `${row.predicted_harvest_start} → ${row.predicted_harvest_end}`
+														: '—'}
+												</td>
+												<td style={{ padding: '8px 6px' }}>
+													{row.available ? (row.early_harvest?.risk ? 'Yes' : 'No') : '—'}
+												</td>
+												<td style={{ padding: '8px 6px' }}>
+													{row.available
+														? formatNumber((row.early_harvest?.probability ?? 0) * 100, { maximumFractionDigits: 1 }) + '%'
+														: '—'}
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+							{mlRiskPonds.length > 0 && (
+								<div
+									style={{
+										marginBottom: 16,
+										padding: 12,
+										borderRadius: 8,
+										backgroundColor: 'rgba(245, 158, 11, 0.12)',
+										border: '1px solid rgba(245, 158, 11, 0.35)'
+									}}
+								>
+									<div style={{ fontWeight: 600, marginBottom: 8 }}>Early harvest alerts</div>
+									<ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.5 }}>
+										{mlRiskPonds.map((p) => (
+											<li key={p.pond_id} className="muted" style={{ fontSize: '0.875rem' }}>
+												Pond {p.pond_id}: probability{' '}
+												{formatNumber((p.early_harvest?.probability ?? 0) * 100, { maximumFractionDigits: 1 })}%
+												{p.early_harvest?.reason_codes?.length
+													? ` — ${p.early_harvest.reason_codes.join(', ')}`
+													: ''}
+											</li>
+										))}
+									</ul>
+								</div>
+							)}
+							{mlGrowthChart && (
+								<div>
+									<div style={{ fontWeight: 600, marginBottom: 8 }}>ML growth trajectory ({harvestMl.data?.horizon_days ?? 30}d horizon)</div>
+									<div className="chartBoxLg" style={{ height: 220 }}>
+										<Line data={mlGrowthChart as never} options={chartOptions} />
+									</div>
+								</div>
+							)}
+						</>
+					)}
+				</div>
+			</div>
 
 			{/* Farm Summary Panel */}
 			<div className="panel">
@@ -381,7 +610,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 					<div className="panelTitle">Shrimp Growth & Yield Forecast</div>
 				</div>
 				<div className="chartBoxLg" style={{ height: 250 }}>
-					<Line data={growthChart as never} options={chartOptions} />
+					<Line data={growthChart as never} options={growthChartOptions as never} />
 				</div>
 				<div style={{ padding: 12, backgroundColor: 'rgba(37, 99, 235, 0.05)', borderRadius: 8, marginTop: 12 }}>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Estimated Harvest Yield</div>
@@ -515,7 +744,7 @@ export function ForecastingView({ data, history, pondFilter }: Props) {
 					<div className="panelTitle">Disease & Environmental Risk</div>
 				</div>
 				<div className="chartBoxLg" style={{ height: 200 }}>
-					<Bar data={diseaseRiskChart as never} options={chartOptions} />
+					<Line data={diseaseRiskChart as never} options={chartOptions} />
 				</div>
 				<div style={{ padding: 12, backgroundColor: 'rgba(239, 68, 68, 0.05)', borderRadius: 8, marginTop: 12 }}>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Viral Infection Risk</div>

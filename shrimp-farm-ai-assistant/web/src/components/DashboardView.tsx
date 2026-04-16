@@ -14,7 +14,9 @@ import {
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { formatDateTime, formatNumber, formatPercent01 } from '../lib/format'
+import { useForecastsData } from '../lib/useForecastsData'
 import type {
+	AnalyticsChartsFromDb,
 	DashboardApiResponse,
 	DecisionOutput,
 	DecisionRecommendation,
@@ -23,14 +25,50 @@ import type {
 } from '../lib/types'
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler, Tooltip, Legend)
 
+function mergeHourlySeries(
+	dbSeries: (number | null)[] | undefined,
+	fallback: (hourIndex: number) => number
+): number[] {
+	if (!dbSeries || dbSeries.length !== 24) {
+		return Array.from({ length: 24 }, (_, i) => fallback(i))
+	}
+	return dbSeries.map((v, i) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback(i)))
+}
+
 type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	pondFilter: number | null
+	/** When MongoDB has readings, these series replace simulated Analytics & Trends data. */
+	analyticsCharts?: AnalyticsChartsFromDb | null
+	/** Jump to the full Forecasting view (charts, ML harvest). */
+	onOpenForecasting?: () => void
 }
 
-export function DashboardView({ data, history, pondFilter }: Props) {
+export function DashboardView({ data, history, pondFilter, analyticsCharts = null, onOpenForecasting }: Props) {
 	const { dashboard } = data
+	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
+		ponds: Math.max(1, data.water_quality.length),
+		forecastDays: 90
+	})
+	const fc = forecastsData?.forecasts
+	const hw = fc?.harvest_window
+	const growthFc = fc?.growth_forecast
+	const lastForecastWeight =
+		growthFc && growthFc.length > 0 ? growthFc[growthFc.length - 1].avg_weight_g : null
+	let harvestWindowShort = '—'
+	if (hw?.optimal_start && hw?.optimal_end) {
+		const a = new Date(hw.optimal_start)
+		const b = new Date(hw.optimal_end)
+		if (!Number.isNaN(a.getTime()) && !Number.isNaN(b.getTime())) {
+			harvestWindowShort = `${a.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+		}
+	}
+	const yieldTonsStr =
+		hw?.projected_yield_tons != null
+			? formatNumber(hw.projected_yield_tons, { maximumFractionDigits: 2 })
+			: '—'
+
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
 	const energy = pondFilter ? data.energy.filter((e) => e.pond_id === pondFilter) : data.energy
@@ -216,15 +254,31 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		(topReco ? ('text' in topReco ? topReco.text : (topReco as DecisionOutput).reasoning) : null) ??
 		`Pond ${aiRecoPond} shows declining dissolved oxygen levels and elevated ammonia. Historical data indicates immediate water exchange will improve conditions within 8 hours. Temperature also trending above optimal range.`
 
-	// Generate 24h trend data for charts (simulated from current values, deterministic)
+	// Analytics & Trends: prefer MongoDB readings (/api/charts/analytics); else simulated from KPIs
 	const hours24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
+	const useDbDo =
+		analyticsCharts?.source === 'mongodb' && Boolean(analyticsCharts.series_sources?.dissolved_oxygen)
+	const useDbNh3 =
+		analyticsCharts?.source === 'mongodb' && Boolean(analyticsCharts.series_sources?.ammonia)
+	const useDbFeed =
+		analyticsCharts?.source === 'mongodb' &&
+		Boolean(analyticsCharts.series_sources?.feed) &&
+		(analyticsCharts.feed_7d?.values_kg?.length ?? 0) > 0
+	const useDbEnergy =
+		analyticsCharts?.source === 'mongodb' &&
+		Boolean(analyticsCharts.series_sources?.energy) &&
+		analyticsCharts.energy_kwh_24h?.length === 24
+
 	const doTrendData = pondIds.map((pid, idx) => {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.dissolved_oxygen ?? 5.5
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		const fallback = (i: number) =>
+			base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16
+		const dbSeries = useDbDo ? analyticsCharts?.dissolved_oxygen_by_pond[String(pid)] : undefined
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => base + Math.sin((i / 24) * Math.PI * 2) * 1.2 + ((pid * 7 + i) % 5) * 0.08 - 0.16),
+			data: mergeHourlySeries(dbSeries, fallback),
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}20`,
 			fill: true,
@@ -235,22 +289,44 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 		const w = water.find((x) => x.pond_id === pid)
 		const base = w?.ammonia ?? 0.1
 		const colors = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444']
+		// Pond-specific offsets so lines never perfectly overlap (DO chart already varies by pid; ammonia did not).
+		const fallback = (i: number) =>
+			Math.min(
+				0.24,
+				Math.max(
+					0.02,
+					base +
+						Math.sin((i / 24) * Math.PI) * 0.08 +
+						(pid - 2.5) * 0.015 +
+						((pid * 7 + i) % 5) * 0.006
+				)
+			)
+		const dbSeries = useDbNh3 ? analyticsCharts?.ammonia_by_pond[String(pid)] : undefined
 		return {
 			label: `Pond ${pid}`,
-			data: hours24.map((_, i) => Math.max(0.02, base + Math.sin((i / 24) * Math.PI) * 0.08)),
+			data: mergeHourlySeries(dbSeries, fallback),
 			borderColor: colors[idx % colors.length],
 			backgroundColor: `${colors[idx % colors.length]}15`,
-			fill: true,
+			fill: false,
 			tension: 0.35
 		}
 	})
 	const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-	const feedUsage7Days = historyTotalFeedKg.length >= 7 ? historyTotalFeedKg.slice(-7) : Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
-	const feedLabels7 = historyLabels.length >= 7 ? historyLabels.slice(-7) : dayNames
-	const energy24hData = hours24.map((_, i) => {
+	const feedUsage7Days = useDbFeed
+		? analyticsCharts!.feed_7d.values_kg
+		: historyTotalFeedKg.length >= 7
+			? historyTotalFeedKg.slice(-7)
+			: Array.from({ length: 7 }, (_, i) => totalFeedKg * (0.92 + (i % 5) * 0.02))
+	const feedLabels7 = useDbFeed
+		? analyticsCharts!.feed_7d.labels
+		: historyLabels.length >= 7
+			? historyLabels.slice(-7)
+			: dayNames
+	const syntheticEnergy24 = hours24.map((_, i) => {
 		const peak = i >= 8 && i <= 18 ? 1.25 : 0.75
 		return Math.round((totalEnergyKwhNum / 24) * peak * (0.95 + (i % 3) * 0.03))
 	})
+	const energy24hData = useDbEnergy ? [...analyticsCharts!.energy_kwh_24h] : syntheticEnergy24
 
 	return (
 		<div className="dashOverview">
@@ -312,6 +388,84 @@ export function DashboardView({ data, history, pondFilter }: Props) {
 					<KpiCard icon="🍽️" iconBg="rgba(245, 158, 11, 0.15)" label="Daily Feed Usage" value={formatNumber(totalFeedKg, { maximumFractionDigits: 0 }) + ' kg'} trend={feedTrend} />
 					<KpiCard icon="⚡" iconBg="rgba(234, 179, 8, 0.15)" label="Energy Consumption" value={formatNumber(totalEnergyKwhNum, { maximumFractionDigits: 0 }) + ' kWh'} trend={energyTrend} trendUp />
 					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'$' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
+				</div>
+			</div>
+
+			{/* Forecast outlook (summary + link to full Forecasting view) */}
+			<div>
+				<div className="dashSectionTitle">
+					Forecast outlook
+					<span className="dashSectionSubtitle">AI /api/forecasts · 90-day horizon</span>
+				</div>
+				<div className="panel" style={{ padding: 16 }}>
+					<div
+						style={{
+							display: 'flex',
+							flexWrap: 'wrap',
+							alignItems: 'flex-start',
+							justifyContent: 'space-between',
+							gap: 12
+						}}
+					>
+						<div className="panelTitle" style={{ marginBottom: 4 }}>
+							Harvest timing & yield
+						</div>
+						{onOpenForecasting ? (
+							<button type="button" onClick={onOpenForecasting}>
+								Open full forecasting
+							</button>
+						) : null}
+					</div>
+					{forecastsLoading ? (
+						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8 }}>
+							Loading forecast summary…
+						</div>
+					) : null}
+					{forecastsError ? (
+						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8, color: 'var(--bad)' }}>
+							{forecastsError} (charts on the Forecasting page still use calculated fallbacks)
+						</div>
+					) : null}
+					{!forecastsLoading && !forecastsError ? (
+						<div
+							style={{
+								display: 'grid',
+								gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+								gap: 16,
+								marginTop: 12
+							}}
+						>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Optimal harvest window
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{harvestWindowShort}</div>
+							</div>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Projected yield (model)
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+									{yieldTonsStr === '—' ? '—' : `${yieldTonsStr} tons`}
+								</div>
+							</div>
+							<div>
+								<div className="muted" style={{ fontSize: '0.75rem', marginBottom: 4 }}>
+									Forecast weight (day 90)
+								</div>
+								<div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+									{lastForecastWeight != null
+										? `${formatNumber(lastForecastWeight, { maximumFractionDigits: 1 })} g`
+										: '—'}
+								</div>
+							</div>
+						</div>
+					) : null}
+					{forecastsData?.timestamp ? (
+						<div className="muted" style={{ fontSize: '0.75rem', marginTop: 12 }}>
+							Updated {formatDateTime(forecastsData.timestamp)}
+						</div>
+					) : null}
 				</div>
 			</div>
 
