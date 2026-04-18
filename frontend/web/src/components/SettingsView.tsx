@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { BudgetSettings, EconomicSettings } from '../lib/types'
 import { useFeedingSystemStatus } from '../lib/useFeedingSystemStatus'
 
 type Props = {
@@ -6,9 +7,22 @@ type Props = {
 	onPondsChange: (ponds: number) => void
 	autoRefresh: boolean
 	onAutoRefreshChange: (enabled: boolean) => void
+	economicSettings: EconomicSettings
+	budgetSettings: BudgetSettings
+	onEconomicSettingsChange: (settings: EconomicSettings) => void
+	onBudgetSettingsChange: (settings: BudgetSettings) => void
 }
 
-export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshChange }: Props) {
+export function SettingsView({
+	ponds,
+	onPondsChange,
+	autoRefresh,
+	onAutoRefreshChange,
+	economicSettings,
+	budgetSettings,
+	onEconomicSettingsChange,
+	onBudgetSettingsChange
+}: Props) {
 	const { gatewayOk, feedingSystemOk, loading, error, lastCheckedAt, check } = useFeedingSystemStatus()
 	const [notifications, setNotifications] = useState({
 		alerts: true,
@@ -19,6 +33,12 @@ export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshC
 
 	const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
 	const [theme, setTheme] = useState<'light' | 'dark'>('light')
+	const updateEconomic = <K extends keyof EconomicSettings>(key: K, value: number) => {
+		onEconomicSettingsChange({ ...economicSettings, [key]: value })
+	}
+	const updateBudget = <K extends keyof BudgetSettings>(key: K, value: number) => {
+		onBudgetSettingsChange({ ...budgetSettings, [key]: value })
+	}
 
 	return (
 		<div className="dashGrid">
@@ -51,6 +71,68 @@ export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshC
 								<input type="checkbox" checked={autoRefresh} onChange={(e) => onAutoRefreshChange(e.target.checked)} />
 								<span>Enable (15 second interval)</span>
 							</label>
+						</div>
+					</div>
+
+					<div style={{ marginBottom: 32 }}>
+						<h3 style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Economics</h3>
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+							<NumberField
+								label="Energy cost (LKR/kWh)"
+								value={economicSettings.energy_cost_per_kwh_lkr}
+								onChange={(value) => updateEconomic('energy_cost_per_kwh_lkr', value)}
+							/>
+							<NumberField
+								label="Feed cost (LKR/kg)"
+								value={economicSettings.feed_cost_per_kg_lkr}
+								onChange={(value) => updateEconomic('feed_cost_per_kg_lkr', value)}
+							/>
+							<NumberField
+								label="Labor cost (LKR/hour)"
+								value={economicSettings.labor_cost_per_hour_lkr}
+								onChange={(value) => updateEconomic('labor_cost_per_hour_lkr', value)}
+							/>
+							<NumberField
+								label="Shrimp selling price (LKR/kg)"
+								value={economicSettings.shrimp_price_per_kg_lkr}
+								onChange={(value) => updateEconomic('shrimp_price_per_kg_lkr', value)}
+							/>
+							<NumberField
+								label="Medicine reserve (LKR/pond)"
+								value={economicSettings.medicine_cost_per_pond_lkr}
+								onChange={(value) => updateEconomic('medicine_cost_per_pond_lkr', value)}
+							/>
+							<NumberField
+								label="Maintenance reserve (LKR/pond)"
+								value={economicSettings.maintenance_cost_per_pond_lkr}
+								onChange={(value) => updateEconomic('maintenance_cost_per_pond_lkr', value)}
+							/>
+						</div>
+					</div>
+
+					<div style={{ marginBottom: 32 }}>
+						<h3 style={{ marginBottom: 16, fontSize: '1.1rem', fontWeight: 600 }}>Budgets</h3>
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+							<NumberField
+								label="Weekly feed budget (LKR)"
+								value={budgetSettings.weekly_feed_budget_lkr}
+								onChange={(value) => updateBudget('weekly_feed_budget_lkr', value)}
+							/>
+							<NumberField
+								label="Weekly energy budget (LKR)"
+								value={budgetSettings.weekly_energy_budget_lkr}
+								onChange={(value) => updateBudget('weekly_energy_budget_lkr', value)}
+							/>
+							<NumberField
+								label="Weekly labor budget (LKR)"
+								value={budgetSettings.weekly_labor_budget_lkr}
+								onChange={(value) => updateBudget('weekly_labor_budget_lkr', value)}
+							/>
+							<NumberField
+								label="Cycle budget (LKR)"
+								value={budgetSettings.cycle_budget_lkr}
+								onChange={(value) => updateBudget('cycle_budget_lkr', value)}
+							/>
 						</div>
 					</div>
 
@@ -178,6 +260,36 @@ export function SettingsView({ ponds, onPondsChange, autoRefresh, onAutoRefreshC
 				</div>
 			</div>
 		</div>
+	)
+}
+
+function NumberField({
+	label,
+	value,
+	onChange
+}: {
+	label: string
+	value: number
+	onChange: (value: number) => void
+}) {
+	return (
+		<label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+			<span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>{label}</span>
+			<input
+				type="number"
+				value={value}
+				min={0}
+				onChange={(e) => onChange(Number(e.target.value) || 0)}
+				style={{
+					minHeight: 38,
+					padding: '8px 10px',
+					border: '1px solid rgba(17, 24, 39, 0.12)',
+					borderRadius: 10,
+					background: 'rgba(255, 255, 255, 0.92)',
+					color: 'rgba(17, 24, 39, 0.88)'
+				}}
+			/>
+		</label>
 	)
 }
 

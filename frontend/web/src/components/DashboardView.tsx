@@ -13,27 +13,74 @@ import {
 } from 'chart.js'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { formatDateTime, formatNumber, formatPercent01 } from '../lib/format'
+import { formatCurrencyLkr, formatDateTime, formatNumber, formatPercent01 } from '../lib/format'
 import { useForecastsData } from '../lib/useForecastsData'
+import { useWeatherForecastData } from '../lib/useWeatherForecastData'
 import type {
 	DashboardApiResponse,
 	DecisionOutput,
 	DecisionRecommendation,
 	SavedFarmSnapshot,
+	SavingsOpportunity,
 	WaterQualityStatus
 } from '../lib/types'
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Filler, Tooltip, Legend)
+
+function wmoWeatherEmoji(code: number): string {
+	const c = code ?? 0
+	if (c === 0) return '☀️'
+	if (c <= 3) return c === 1 ? '🌤️' : c === 2 ? '⛅' : '☁️'
+	if (c <= 48) return '🌫️'
+	if (c <= 57) return '🌦️'
+	if (c <= 67) return '🌧️'
+	if (c <= 77) return '🌨️'
+	if (c <= 82) return '🌧️'
+	if (c <= 86) return '🌨️'
+	if (c <= 99) return '⛈️'
+	return '☁️'
+}
+
+function formatWeatherHourLabel(isoTime: string): string {
+	const d = new Date(isoTime)
+	if (Number.isNaN(d.getTime())) return '—'
+	return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function formatDailyShortLabel(dateStr: string): string {
+	const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`)
+	if (Number.isNaN(d.getTime())) return '—'
+	return d.toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+function formatFarmLocationLabel(lat: number, lon: number): string {
+	const ns = lat >= 0 ? 'N' : 'S'
+	const ew = lon >= 0 ? 'E' : 'W'
+	return `${Math.abs(lat).toFixed(2)}° ${ns}, ${Math.abs(lon).toFixed(2)}° ${ew}`
+}
+
+function WeatherPaginationDots({ active }: { active: 0 | 1 | 2 }) {
+	return (
+		<div className="weatherPagination" aria-hidden>
+			<span className={active === 0 ? 'isActive' : undefined} />
+			<span className={active === 1 ? 'isActive' : undefined} />
+			<span className={active === 2 ? 'isActive' : undefined} />
+		</div>
+	)
+}
+
+type WeatherForecastBundle = ReturnType<typeof useWeatherForecastData>
 
 type Props = {
 	data: DashboardApiResponse
 	history: SavedFarmSnapshot[]
 	hourlyHistory?: SavedFarmSnapshot[]
 	pondFilter: number | null
+	weatherForecast?: WeatherForecastBundle
 	/** Jump to the full Forecasting view (charts, ML harvest). */
 	onOpenForecasting?: () => void
 }
 
-export function DashboardView({ data, history, hourlyHistory = [], pondFilter, onOpenForecasting }: Props) {
+export function DashboardView({ data, history, hourlyHistory = [], pondFilter, weatherForecast, onOpenForecasting }: Props) {
 	const { dashboard } = data
 	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
 		ponds: Math.max(1, data.water_quality.length),
@@ -56,6 +103,34 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 		hw?.projected_yield_tons != null
 			? formatNumber(hw.projected_yield_tons, { maximumFractionDigits: 2 })
 			: '—'
+	const weatherData = weatherForecast?.data
+	const weatherDaily = weatherData?.daily ?? []
+	const weatherHourly = weatherData?.hourly ?? []
+	const todayWx = weatherDaily[0]
+	const next24h = weatherHourly.slice(0, 24)
+	const maxRain24 = next24h.length
+		? Math.max(...next24h.map((h) => h.precipitation_probability || 0))
+		: 0
+	const maxWind24 = next24h.length
+		? Math.max(...next24h.map((h) => h.wind_speed_kmh || 0))
+		: 0
+	const hourlyPreview = weatherData ? weatherHourly.slice(0, 5) : []
+	const dailyPreview = weatherData ? weatherDaily.slice(0, 5) : []
+	const currentTempC =
+		weatherHourly.length > 0 && weatherHourly[0]?.temp_c != null
+			? weatherHourly[0].temp_c
+			: todayWx?.temp_max_c != null && todayWx?.temp_min_c != null
+				? (todayWx.temp_max_c + todayWx.temp_min_c) / 2
+				: (todayWx?.temp_max_c ?? todayWx?.temp_min_c ?? null)
+	const heroWmo = weatherHourly[0]?.weather_code ?? todayWx?.weather_code ?? 0
+	const farmLocationLabel =
+		weatherData != null
+			? `${formatFarmLocationLabel(weatherData.latitude, weatherData.longitude)} · ${weatherData.timezone}`
+			: '—'
+	const todayRangeStr =
+		todayWx?.temp_max_c != null && todayWx?.temp_min_c != null
+			? `High ${formatNumber(todayWx.temp_max_c, { maximumFractionDigits: 0 })}° / low ${formatNumber(todayWx.temp_min_c, { maximumFractionDigits: 0 })}°`
+			: null
 
 	const water = pondFilter ? data.water_quality.filter((w) => w.pond_id === pondFilter) : data.water_quality
 	const feed = pondFilter ? data.feed.filter((f) => f.pond_id === pondFilter) : data.feed
@@ -120,17 +195,28 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 	const historyAvgWeight = historyFiltered.map((h) => avg(h.feed.map((f) => f.average_weight)))
 	const historyTotalFeedKg = historyFiltered.map((h) => sum(h.feed.map((f) => f.feed_amount * (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 1))) / 1000)
 
-	const latestBiomassKg = sum(feed.map((f) => (f.shrimp_count * f.average_weight) / 1000)) // g -> kg
+	const costSummary = data.cost_summary
+	const farmCost = costSummary?.farm
+	const visiblePondCosts = costSummary?.ponds?.filter((pond) => (pondFilter ? pond.pond_id === pondFilter : true)) ?? []
+	const budgetSummary = data.budget_summary
+	const economicSettings = data.economic_settings
+	const savingsOpportunities = (data.savings_opportunities ?? []).filter((item) =>
+		pondFilter ? item.pond_id == null || item.pond_id === pondFilter : true
+	)
+	const pondCost = pondFilter ? visiblePondCosts[0] ?? null : farmCost
+	const latestBiomassKg = pondCost?.biomass_kg ?? sum(feed.map((f) => (f.shrimp_count * f.average_weight) / 1000))
 	const projectedHarvestTons = latestBiomassKg / 1000
-	const shrimpPricePerKg = 2000 // LKR per kg
-	const feedCostPerKg = 400 // LKR per kg
-	const estimatedRevenue = latestBiomassKg * shrimpPricePerKg
-	const estimatedCosts = totalEnergyCost + (totalFeedG / 1000) * feedCostPerKg
+	const shrimpPricePerKg = economicSettings?.shrimp_price_per_kg_lkr ?? 2000
+	const feedCostPerKg = economicSettings?.feed_cost_per_kg_lkr ?? 400
+	const estimatedRevenue = pondCost?.revenue_lkr ?? latestBiomassKg * shrimpPricePerKg
+	const estimatedCosts =
+		pondCost?.total_cost_lkr ?? totalEnergyCost + (totalFeedG / 1000) * feedCostPerKg
 	const profitMargin = estimatedRevenue > 0 ? (estimatedRevenue - estimatedCosts) / estimatedRevenue : 0
 	const fcr = inferFcr(historyFiltered)
 	const decisionSourceLabel = data.decision_agent_type ? String(data.decision_agent_type) : 'No decision model'
 	const topActions = decisionsSorted.slice(0, 4)
 	const recosByPond = groupBy(decisionRecos, (r) => String(r.pond_id))
+	const highestCostLabel = costSummary?.highest_cost_pond_label ?? 'N/A'
 
 	const alerts = buildAlerts({ dashboardAlerts: dashboard.alerts ?? [], water })
 	const alertCounts = countAlerts(alerts)
@@ -223,7 +309,7 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 	const totalBiomassTons = totalBiomassKg / 1000
 	const totalFeedKg = totalFeedG / 1000
 	const totalEnergyKwhNum = totalEnergyKwh
-	const operationalCostPerDay = totalEnergyCost + (totalFeedKg * 400)
+	const operationalCostPerDay = pondCost?.total_cost_lkr ?? totalEnergyCost + totalFeedKg * feedCostPerKg
 
 	// Simulated week-over-week trends (use history if available)
 	const histFeed = historyFiltered.length >= 2 ? historyTotalFeedKg[historyTotalFeedKg.length - 2] ?? 0 : totalFeedKg
@@ -232,7 +318,15 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 	const biomassTrend = totalBiomassTons > 0 ? -2.8 : 0
 	const feedTrend = histFeed > 0 ? ((totalFeedKg - histFeed) / histFeed) * 100 : -1.5
 	const energyTrend = 0.8
-	const costTrend = 2.3
+	const costTrend = budgetSummary?.cycle?.variance_pct ?? 2.3
+	const budgetCards = budgetSummary
+		? [
+				{ label: 'Feed', value: budgetSummary.feed },
+				{ label: 'Energy', value: budgetSummary.energy },
+				{ label: 'Labor', value: budgetSummary.labor },
+				{ label: 'Cycle total', value: budgetSummary.cycle }
+			]
+		: []
 
 	const topReco = decisionRecos[0] ?? decisionsSorted[0]
 	const aiRecoAction = topReco?.primary_action ? actionLabel(topReco.primary_action) : 'WATER_EXCHANGE'
@@ -404,9 +498,125 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 					<KpiCard icon="🌿" iconBg="rgba(34, 197, 94, 0.15)" label="Total Biomass" value={formatNumber(totalBiomassTons, { maximumFractionDigits: 1 }) + ' tons'} trend={biomassTrend} />
 					<KpiCard icon="🍽️" iconBg="rgba(245, 158, 11, 0.15)" label="Daily Feed Usage" value={formatNumber(totalFeedKg, { maximumFractionDigits: 0 }) + ' kg'} trend={feedTrend} />
 					<KpiCard icon="⚡" iconBg="rgba(234, 179, 8, 0.15)" label="Energy Consumption" value={formatNumber(totalEnergyKwhNum, { maximumFractionDigits: 0 }) + ' kWh'} trend={energyTrend} trendUp />
-					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'Rs. ' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
+					<KpiCard
+						icon="💰"
+						iconBg="rgba(139, 92, 246, 0.15)"
+						label="Operational Cost"
+						value={`${formatCurrencyLkr(operationalCostPerDay)}/day`}
+						trend={costTrend}
+						trendUp={false}
+					/>
 				</div>
 			</div>
+
+			{farmCost ? (
+				<div>
+					<div className="dashSectionTitle">
+						Cost management
+						<span className="dashSectionSubtitle">Backend-calculated economics and budget tracking</span>
+					</div>
+					<div className="costKpiGrid">
+						<KpiCard
+							icon="📦"
+							iconBg="rgba(99, 102, 241, 0.15)"
+							label="Daily operating cost"
+							value={formatCurrencyLkr(pondCost?.total_cost_lkr ?? farmCost.total_cost_lkr)}
+							trend={costTrend}
+							trendUp={false}
+						/>
+						<KpiCard
+							icon="⚖️"
+							iconBg="rgba(14, 165, 233, 0.15)"
+							label="Cost per kg biomass"
+							value={formatCurrencyLkr(pondCost?.cost_per_kg_biomass_lkr ?? farmCost.cost_per_kg_biomass_lkr)}
+							trend={0}
+						/>
+						<KpiCard
+							icon="🚩"
+							iconBg="rgba(245, 158, 11, 0.15)"
+							label="Highest cost pond"
+							value={highestCostLabel}
+							trend={0}
+						/>
+						<KpiCard
+							icon="📈"
+							iconBg="rgba(34, 197, 94, 0.15)"
+							label="Expected gross margin"
+							value={formatPercent01((pondCost?.gross_margin_pct ?? farmCost.gross_margin_pct) / 100)}
+							trend={0}
+						/>
+					</div>
+					<div className="costGrid">
+						<div className="panel">
+							<div className="panelHeader">
+								<div className="panelTitle">Farm cost breakdown</div>
+							</div>
+							<div className="costBreakdownList">
+								<CostBreakdownRow label="Feed" value={farmCost.feed_cost_lkr} />
+								<CostBreakdownRow label="Energy" value={farmCost.energy_cost_lkr} />
+								<CostBreakdownRow label="Labor" value={farmCost.labor_cost_lkr} />
+								<CostBreakdownRow label="Medicine reserve" value={farmCost.medicine_cost_lkr} />
+								<CostBreakdownRow label="Maintenance reserve" value={farmCost.maintenance_cost_lkr} />
+								<CostBreakdownRow label="Total cost" value={farmCost.total_cost_lkr} strong />
+								<CostBreakdownRow label="Revenue" value={farmCost.revenue_lkr} />
+								<CostBreakdownRow label="Gross profit" value={farmCost.gross_profit_lkr} strong positive />
+							</div>
+						</div>
+						<div className="panel">
+							<div className="panelHeader">
+								<div className="panelTitle">Per-pond comparison</div>
+							</div>
+							<div className="costComparisonTable">
+								<div className="costComparisonHead">
+									<span>Pond</span>
+									<span>Total cost</span>
+									<span>Cost/kg biomass</span>
+								</div>
+								{visiblePondCosts.map((pond) => (
+									<div className="costComparisonRow" key={pond.pond_label}>
+										<span>{pond.pond_label}</span>
+										<span>{formatCurrencyLkr(pond.total_cost_lkr)}</span>
+										<span>{formatCurrencyLkr(pond.cost_per_kg_biomass_lkr)}</span>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+					{budgetCards.length ? (
+						<div className="panel" style={{ marginTop: 16 }}>
+							<div className="panelHeader">
+								<div className="panelTitle">Budget vs actual</div>
+								<div className="panelRight">{budgetSummary.period_label}</div>
+							</div>
+							<div className="budgetGrid">
+								{budgetCards.map((card) => (
+									<div className="budgetCard" key={card.label}>
+										<div className="budgetCardTitle">{card.label}</div>
+										<div className="budgetCardValue">{formatCurrencyLkr(card.value.actual_lkr)}</div>
+										<div className="muted">Budget {formatCurrencyLkr(card.value.budget_lkr)}</div>
+										<div className="muted">Projected {formatCurrencyLkr(card.value.projected_lkr)}</div>
+										<div className={`budgetVariance ${card.value.variance_lkr > 0 ? 'bad' : 'good'}`}>
+											Variance {formatSignedCurrency(card.value.variance_lkr)}
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					) : null}
+					{savingsOpportunities.length ? (
+						<div className="panel" style={{ marginTop: 16 }}>
+							<div className="panelHeader">
+								<div className="panelTitle">Savings opportunities</div>
+							</div>
+							<div className="savingsGrid">
+								{savingsOpportunities.map((item) => (
+									<SavingsCard key={item.id} item={item} />
+								))}
+							</div>
+						</div>
+					) : null}
+				</div>
+			) : null}
 
 			{/* Forecast outlook (summary + link to full Forecasting view) */}
 			<div>
@@ -482,6 +692,99 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter, o
 						<div className="muted" style={{ fontSize: '0.75rem', marginTop: 12 }}>
 							Updated {formatDateTime(forecastsData.timestamp)}
 						</div>
+					) : null}
+				</div>
+			</div>
+
+			{/* Weather outlook */}
+			<div className="weatherOutlookSection">
+				<div className="dashSectionTitle">
+					Weather outlook
+					<span className="dashSectionSubtitle">Open-Meteo · next 3 days</span>
+				</div>
+				<div className="weatherOutlookWrap">
+					{weatherForecast?.loading ? (
+						<div className="muted" style={{ fontSize: '0.875rem', textAlign: 'center', padding: '8px 0' }}>
+							Loading weather forecast…
+						</div>
+					) : null}
+					{weatherForecast?.error ? (
+						<div className="muted" style={{ fontSize: '0.875rem', color: 'var(--bad)', textAlign: 'center', padding: '8px 0' }}>
+							{weatherForecast.error}
+						</div>
+					) : null}
+					{!weatherForecast?.loading && !weatherForecast?.error && weatherData ? (
+						<>
+							<div className="weatherCardGrid">
+							<div className="weatherCard weatherCardCurrent">
+								<div className="weatherCardCurrentInner">
+									<div>
+										<div className="weatherHeroTemp">
+											{currentTempC != null
+												? `${formatNumber(currentTempC, { maximumFractionDigits: 0 })}°C`
+												: '—'}
+										</div>
+										<div className="weatherLocation">{farmLocationLabel}</div>
+									</div>
+									<div className="weatherHeroIcon" aria-hidden>
+										{wmoWeatherEmoji(heroWmo)}
+									</div>
+								</div>
+								<WeatherPaginationDots active={0} />
+							</div>
+
+							<div className="weatherCard">
+								<div className="weatherStripRow">
+									{hourlyPreview.map((h) => (
+										<div key={h.time} className="weatherStripCol">
+											<div className="weatherStripTemp">
+												{h.temp_c != null ? `${formatNumber(h.temp_c, { maximumFractionDigits: 0 })}°C` : '—'}
+											</div>
+											<div className="weatherStripIcon" aria-hidden>
+												{wmoWeatherEmoji(h.weather_code)}
+											</div>
+											<div className="weatherStripMeta">{formatWeatherHourLabel(h.time)}</div>
+										</div>
+									))}
+								</div>
+								<WeatherPaginationDots active={1} />
+							</div>
+
+							<div className="weatherCard">
+								<div className="weatherStripRow">
+									{dailyPreview.map((d) => (
+										<div key={d.date} className="weatherStripCol">
+											<div className="weatherStripTemp">
+												{d.temp_max_c != null ? `${formatNumber(d.temp_max_c, { maximumFractionDigits: 0 })}°C` : '—'}
+											</div>
+											<div className="weatherStripIcon" aria-hidden>
+												{wmoWeatherEmoji(d.weather_code)}
+											</div>
+											<div className="weatherStripDay">{formatDailyShortLabel(d.date)}</div>
+										</div>
+									))}
+								</div>
+								<WeatherPaginationDots active={2} />
+							</div>
+							</div>
+
+							<div className="weatherNotesCompact">
+								<strong style={{ color: 'rgba(17,24,39,0.82)' }}>Today</strong>
+								{todayWx?.condition_label ? ` · ${todayWx.condition_label}` : ''}
+								{todayRangeStr ? ` · ${todayRangeStr}` : ''}
+								{` · Next 24h: max rain ${formatNumber(maxRain24, { maximumFractionDigits: 0 })}% · max wind ${formatNumber(maxWind24, { maximumFractionDigits: 0 })} km/h`}
+							</div>
+							{weatherData.notes.length > 0 ? (
+								<ul className="weatherNotesList">
+									{weatherData.notes.map((note, idx) => (
+										<li key={idx}>{note}</li>
+									))}
+								</ul>
+							) : null}
+							<div className="weatherMetaFooter">
+								Updated {formatDateTime(weatherData.timestamp)}
+							</div>
+						</>
 					) : null}
 				</div>
 			</div>
@@ -837,6 +1140,45 @@ function KpiCard({
 	)
 }
 
+function CostBreakdownRow({
+	label,
+	value,
+	strong,
+	positive
+}: {
+	label: string
+	value: number
+	strong?: boolean
+	positive?: boolean
+}) {
+	return (
+		<div className="costBreakdownRow">
+			<span className={strong ? 'costBreakdownLabelStrong' : undefined}>{label}</span>
+			<span className={positive ? 'costBreakdownPositive' : strong ? 'costBreakdownValueStrong' : undefined}>
+				{formatCurrencyLkr(value)}
+			</span>
+		</div>
+	)
+}
+
+function SavingsCard({ item }: { item: SavingsOpportunity }) {
+	return (
+		<div className="savingsCard">
+			<div className="savingsCardHeader">
+				<span className="chip info">{item.category.toUpperCase()}</span>
+				<span className="muted">{item.pond_id ? `Pond ${item.pond_id}` : 'Farm-wide'}</span>
+			</div>
+			<div className="savingsCardTitle">{item.title}</div>
+			<div className="muted" style={{ fontSize: '0.875rem', lineHeight: 1.5 }}>
+				{item.description}
+			</div>
+			<div className="savingsCardValue">
+				{formatCurrencyLkr(item.savings_lkr)} / {item.period}
+			</div>
+		</div>
+	)
+}
+
 function PondStatusCard({
 	pondId,
 	water,
@@ -1175,6 +1517,11 @@ function fmtMaybeNumber(v: number | null, unit: string) {
 		return `${formatNumber(pct, { maximumFractionDigits: 0 })}${unit}`
 	}
 	return `${formatNumber(v, { maximumFractionDigits: 0 })} ${unit}`
+}
+
+function formatSignedCurrency(value: number) {
+	const sign = value > 0 ? '+' : value < 0 ? '-' : ''
+	return `${sign}${formatCurrencyLkr(Math.abs(value))}`
 }
 
 function formatSettings(d: DecisionOutput) {

@@ -11,21 +11,65 @@ import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
 import { BenchmarkingView } from './components/BenchmarkingView'
 import { formatDateTime } from './lib/format'
-import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
+import type { BudgetSettings, DashboardApiResponse, EconomicSettings, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
 import { useHourlyHistoryData } from './lib/useHourlyHistoryData'
 import { useHarvestMlData } from './lib/useHarvestMlData'
+import { useWeatherForecastData } from './lib/useWeatherForecastData'
+
+const DEFAULT_ECONOMIC_SETTINGS: EconomicSettings = {
+	energy_cost_per_kwh_lkr: 65,
+	feed_cost_per_kg_lkr: 400,
+	labor_cost_per_hour_lkr: 500,
+	shrimp_price_per_kg_lkr: 2000,
+	medicine_cost_per_pond_lkr: 0,
+	maintenance_cost_per_pond_lkr: 0
+}
+
+const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
+	weekly_feed_budget_lkr: 75000,
+	weekly_energy_budget_lkr: 50000,
+	weekly_labor_budget_lkr: 60000,
+	cycle_budget_lkr: 750000
+}
+
+function loadStoredJson<T>(key: string, fallback: T): T {
+	if (typeof window === 'undefined') return fallback
+	try {
+		const raw = window.localStorage.getItem(key)
+		if (!raw) return fallback
+		return { ...fallback, ...(JSON.parse(raw) as Partial<T>) }
+	} catch {
+		return fallback
+	}
+}
 
 export default function App() {
 	const [ponds, setPonds] = useState(4)
 	const [selectedPond, setSelectedPond] = useState<'all' | number>('all')
 	const [autoRefresh, setAutoRefresh] = useState(false)
 	const [activeView, setActiveView] = useState('dashboard')
+	const [economicSettings, setEconomicSettings] = useState<EconomicSettings>(() =>
+		loadStoredJson('frontend-dashboard-economic-settings', DEFAULT_ECONOMIC_SETTINGS)
+	)
+	const [budgetSettings, setBudgetSettings] = useState<BudgetSettings>(() =>
+		loadStoredJson('frontend-dashboard-budget-settings', DEFAULT_BUDGET_SETTINGS)
+	)
+
+	useEffect(() => {
+		window.localStorage.setItem('frontend-dashboard-economic-settings', JSON.stringify(economicSettings))
+	}, [economicSettings])
+
+	useEffect(() => {
+		window.localStorage.setItem('frontend-dashboard-budget-settings', JSON.stringify(budgetSettings))
+	}, [budgetSettings])
 
 	const { data, loading, error, lastUpdatedAt, refresh } = useDashboardData({
 		ponds,
-		autoRefreshMs: autoRefresh ? 15_000 : null
+		autoRefreshMs: autoRefresh ? 15_000 : null,
+		economicSettings,
+		budgetSettings
 	})
 	const { data: historyData, loading: historyLoading, error: historyError, refresh: refreshHistory } = useHistoryData({
 		days: 7
@@ -38,6 +82,11 @@ export default function App() {
 		ponds: data?.water_quality?.length ?? ponds,
 		horizonDays: 90,
 		enabled: Boolean(data)
+	})
+	const weatherForecast = useWeatherForecastData({
+		enabled: Boolean(data),
+		hours: 48,
+		days: 3
 	})
 
 	const pondIds = useMemo(() => {
@@ -94,7 +143,7 @@ export default function App() {
 		switch (activeView) {
 			case 'dashboard':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-				return <DashboardView {...viewProps} onOpenForecasting={() => setActiveView('forecasting')} />
+				return <DashboardView {...viewProps} weatherForecast={weatherForecast} onOpenForecasting={() => setActiveView('forecasting')} />
 			case 'forecasting':
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
 				return <ForecastingView {...viewProps} harvestMl={harvestMl} />
@@ -126,11 +175,15 @@ export default function App() {
 						onPondsChange={setPonds}
 						autoRefresh={autoRefresh}
 						onAutoRefreshChange={setAutoRefresh}
+						economicSettings={economicSettings}
+						budgetSettings={budgetSettings}
+						onEconomicSettingsChange={setEconomicSettings}
+						onBudgetSettingsChange={setBudgetSettings}
 					/>
 				)
 			default:
 				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
-				return <DashboardView {...viewProps} onOpenForecasting={() => setActiveView('forecasting')} />
+				return <DashboardView {...viewProps} weatherForecast={weatherForecast} onOpenForecasting={() => setActiveView('forecasting')} />
 		}
 	}
 
@@ -207,6 +260,7 @@ export default function App() {
 									void refreshHistory()
 									void refreshHourlyHistory()
 									void harvestMl.refresh()
+									void weatherForecast.refresh()
 								}}
 								disabled={loading || historyLoading || hourlyHistoryLoading}
 							>

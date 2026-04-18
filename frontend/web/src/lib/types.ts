@@ -142,6 +142,77 @@ export type LaborOptimizationResult = {
 	}
 }
 
+export type EconomicSettings = {
+	energy_cost_per_kwh_lkr: number
+	feed_cost_per_kg_lkr: number
+	labor_cost_per_hour_lkr: number
+	shrimp_price_per_kg_lkr: number
+	medicine_cost_per_pond_lkr: number
+	maintenance_cost_per_pond_lkr: number
+}
+
+export type BudgetSettings = {
+	weekly_feed_budget_lkr: number
+	weekly_energy_budget_lkr: number
+	weekly_labor_budget_lkr: number
+	cycle_budget_lkr: number
+}
+
+export type CostBreakdown = {
+	pond_id: number | null
+	pond_label: string
+	shrimp_count: number
+	biomass_kg: number
+	feed_cost_lkr: number
+	energy_cost_lkr: number
+	labor_cost_lkr: number
+	medicine_cost_lkr: number
+	maintenance_cost_lkr: number
+	other_cost_lkr: number
+	total_cost_lkr: number
+	revenue_lkr: number
+	gross_profit_lkr: number
+	gross_margin_pct: number
+	cost_per_kg_biomass_lkr: number
+}
+
+export type CostSummary = {
+	farm: CostBreakdown
+	ponds: CostBreakdown[]
+	highest_cost_pond_id: number | null
+	highest_cost_pond_label: string | null
+}
+
+export type BudgetCategorySummary = {
+	budget_lkr: number
+	actual_lkr: number
+	variance_lkr: number
+	variance_pct: number
+	projected_lkr: number
+	projected_variance_lkr: number
+}
+
+export type BudgetSummary = {
+	period_label: string
+	projected_cycle_days: number
+	feed: BudgetCategorySummary
+	energy: BudgetCategorySummary
+	labor: BudgetCategorySummary
+	cycle: BudgetCategorySummary
+}
+
+export type SavingsOpportunity = {
+	id: string
+	category: 'feed' | 'energy' | 'labor'
+	title: string
+	description: string
+	pond_id: number | null
+	priority: 'low' | 'medium' | 'high'
+	savings_lkr: number
+	period: 'day' | 'week' | 'month'
+	source: string
+}
+
 export type DashboardApiResponse = {
 	dashboard: ShrimpFarmDashboard
 	water_quality: WaterQualityData[]
@@ -149,6 +220,11 @@ export type DashboardApiResponse = {
 	energy: EnergyData[]
 	labor: LaborData[]
 	labor_optimization?: LaborOptimizationResult[]
+	economic_settings: EconomicSettings
+	budget_settings: BudgetSettings
+	cost_summary: CostSummary
+	budget_summary: BudgetSummary
+	savings_opportunities: SavingsOpportunity[]
 	decision_agent_type?: string | null
 	decisions?: MultiPondDecision | null
 	decision_recommendations?: DecisionRecommendation[]
@@ -240,6 +316,34 @@ export type ForecastsResponse = {
 	}
 	timestamp: string
 	forecast_days: number
+}
+
+export type WeatherForecastHourlyPoint = {
+	time: string
+	temp_c: number | null
+	precipitation_probability: number
+	wind_speed_kmh: number
+	weather_code: number
+}
+
+export type WeatherForecastDailyPoint = {
+	date: string
+	temp_max_c: number | null
+	temp_min_c: number | null
+	precipitation_probability_max: number
+	weather_code: number
+	condition_label: string
+}
+
+export type WeatherForecastResponse = {
+	source: 'open-meteo'
+	timestamp: string
+	latitude: number
+	longitude: number
+	timezone: string
+	hourly: WeatherForecastHourlyPoint[]
+	daily: WeatherForecastDailyPoint[]
+	notes: string[]
 }
 
 export type HarvestMlEarlyHarvest = {

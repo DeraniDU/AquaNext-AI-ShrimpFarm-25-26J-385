@@ -306,9 +306,11 @@ class ForecastingAgent:
         disease_risk_forecast = []
         profit_forecast = []
         
+        from config import SHRIMP_PRICE_PER_KG_LKR, FEED_COST_PER_KG_LKR
+
         target_weight = 22
-        shrimp_price_per_kg = 2000
-        feed_cost_per_kg = 400
+        shrimp_price_per_kg = SHRIMP_PRICE_PER_KG_LKR
+        feed_cost_per_kg = FEED_COST_PER_KG_LKR
         
         for day in range(1, forecast_days + 1):
             # Growth forecast
@@ -359,7 +361,15 @@ class ForecastingAgent:
             
             # Profit forecast
             revenue = total_biomass * shrimp_price_per_kg
-            feed_cost = sum(f.feed_amount / 1000 * feed_cost_per_kg for f in feed_data) if feed_data else 0
+            feed_cost = (
+                sum(
+                    (f.feed_amount * (f.feeding_frequency if getattr(f, "feeding_frequency", 0) > 0 else 1)) / 1000
+                    * feed_cost_per_kg
+                    for f in feed_data
+                )
+                if feed_data
+                else 0
+            )
             energy_cost = sum(e.cost for e in energy_data) if energy_data else 0
             costs = feed_cost * 1.1 + energy_cost * 1.05  # Slight increase over time
             profit = revenue - costs

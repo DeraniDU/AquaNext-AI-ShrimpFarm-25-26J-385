@@ -9,7 +9,14 @@ try:
 except Exception:  # pragma: no cover
     from langchain.chat_models import ChatOpenAI  # type: ignore
 from models import LaborData, WaterQualityData, EnergyData
-from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TEMPERATURE, USE_MONGODB, USE_READINGS_ONLY
+from config import (
+    OPENAI_API_KEY,
+    OPENAI_MODEL_NAME,
+    OPENAI_TEMPERATURE,
+    USE_MONGODB,
+    USE_READINGS_ONLY,
+    LABOR_COST_PER_HOUR_LKR,
+)
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 
@@ -576,8 +583,7 @@ Example: [{{"recommendation": "Add aeration check to morning shift given current
         workers = max(1, labor_data.worker_count)
         tasks_per_hour = round(n_tasks / hours, 1)
         tasks_per_worker = round(n_tasks / workers, 1)
-        # Placeholder cost: assume $15/hour per worker
-        cost_per_hour = 15.0
+        cost_per_hour = LABOR_COST_PER_HOUR_LKR
         total_labor_cost = round(workers * hours * cost_per_hour, 2)
         cost_per_task = round(total_labor_cost / n_tasks, 2) if n_tasks else 0
         return {
