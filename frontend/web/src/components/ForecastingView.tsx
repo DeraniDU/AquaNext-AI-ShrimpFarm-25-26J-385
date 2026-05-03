@@ -1,6 +1,6 @@
 import { Line } from 'react-chartjs-2'
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
-import { formatNumber, formatDateTime } from '../lib/format'
+import { formatCurrencyLkr, formatNumber, formatDateTime } from '../lib/format'
 import { useForecastsData } from '../lib/useForecastsData'
 import { useHarvestMlData } from '../lib/useHarvestMlData'
 
@@ -30,9 +30,9 @@ export function ForecastingView({ data, history, pondFilter, harvestMl }: Props)
 	const totalBiomassKg = feed.reduce((sum, f) => sum + (f.shrimp_count * f.average_weight) / 1000, 0)
 	const estimatedHarvestYieldTons = totalBiomassKg / 1000
 
-	// Price constants (LKR)
-	const shrimpPricePerKg = 2000
-	const feedCostPerKg = 400
+	const economicSettings = data.economic_settings
+	const shrimpPricePerKg = economicSettings?.shrimp_price_per_kg_lkr ?? 2000
+	const feedCostPerKg = economicSettings?.feed_cost_per_kg_lkr ?? 400
 	const totalEnergyCost = energy.reduce((sum, e) => sum + e.cost, 0)
 	const totalFeedKg = feed.reduce((sum, f) => f.feed_amount, 0) / 1000
 	const totalFeedCost = totalFeedKg * feedCostPerKg
@@ -592,7 +592,7 @@ export function ForecastingView({ data, history, pondFilter, harvestMl }: Props)
 					<div style={{ marginBottom: 20 }}>
 						<div className="muted" style={{ fontSize: '0.875rem', marginBottom: 4 }}>Projected Profit</div>
 						<div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--good)' }}>
-							Rs. {formatNumber(projectedProfit, { maximumFractionDigits: 0 })}
+							{formatCurrencyLkr(projectedProfit)}
 						</div>
 					</div>
 					<div>
@@ -639,11 +639,11 @@ export function ForecastingView({ data, history, pondFilter, harvestMl }: Props)
 				<div style={{ padding: 12, backgroundColor: 'rgba(34, 197, 94, 0.05)', borderRadius: 8, marginTop: 12 }}>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Projected Profit</div>
 					<div className="muted" style={{ fontSize: '0.875rem', marginBottom: 8 }}>
-						Rs. {formatNumber(projectedProfit, { maximumFractionDigits: 0 })}
+						{formatCurrencyLkr(projectedProfit)}
 					</div>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Market Price</div>
 					<div className="muted" style={{ fontSize: '0.875rem', marginBottom: 8 }}>
-						Rs. {formatNumber(shrimpPricePerKg, { maximumFractionDigits: 1 })}/kg
+						{formatCurrencyLkr(shrimpPricePerKg, { maximumFractionDigits: 1 })}/kg
 					</div>
 					<div style={{ fontWeight: 600, marginBottom: 4 }}>Recommendation</div>
 					<div className="muted" style={{ fontSize: '0.875rem' }}>
@@ -786,7 +786,7 @@ export function ForecastingView({ data, history, pondFilter, harvestMl }: Props)
 					</div>
 					<div className="summaryItem">
 						<div className="muted">Projected Profit</div>
-						<div className="summaryValue mono">Rs. {formatNumber(projectedProfit, { maximumFractionDigits: 0 })}</div>
+						<div className="summaryValue mono">{formatCurrencyLkr(projectedProfit)}</div>
 					</div>
 					<div className="summaryItem">
 						<div className="muted">Harvest Window</div>

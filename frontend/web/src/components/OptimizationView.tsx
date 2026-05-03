@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import { useState, useMemo } from 'react'
 import type { DashboardApiResponse, SavedFarmSnapshot, FeedingPlan } from '../lib/types'
-import { formatNumber, formatDateTime } from '../lib/format'
+import { formatCurrencyLkr, formatNumber, formatDateTime } from '../lib/format'
 import { useFeedingOptimization } from '../lib/useFeedingOptimization'
 import { LaborOptimizationView } from './LaborOptimizationView'
 import { FeedOptimizationView } from './FeedOptimizationView'
@@ -175,6 +175,7 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const primaryPlan = feedingPlans.length > 0
 		? feedingPlans.reduce((a, b) => a.adjustment_factor < b.adjustment_factor ? a : b)
 		: null
+	const economicSettings = data.economic_settings
 
 	// State for interactive elements
 	const [costWeight, setCostWeight] = useState(40)
@@ -188,15 +189,16 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const totalEnergyCost = energy.reduce((sum, e) => sum + e.cost, 0)
 	// `feed_amount` is per-feeding; daily feed = amount * frequency
 	const totalFeedKg = feed.reduce((sum, f) => sum + f.feed_amount * (Number.isFinite(f.feeding_frequency) ? f.feeding_frequency : 1), 0) / 1000
-	const feedCostPerKg = 400 // LKR per kg
+	const feedCostPerKg = economicSettings?.feed_cost_per_kg_lkr ?? 400
 	const totalFeedCost = totalFeedKg * feedCostPerKg
-	const totalLaborCost = labor.reduce((sum, l) => sum + l.time_spent * 500, 0) // Rs. 500/hour estimate
+	const laborCostPerHour = economicSettings?.labor_cost_per_hour_lkr ?? 500
+	const totalLaborCost = labor.reduce((sum, l) => sum + l.time_spent * laborCostPerHour, 0)
 
 	// Calculate metrics
 	const avgWeight = feed.reduce((sum, f) => sum + f.average_weight, 0) / feed.length || 0
 	const totalBiomass = feed.reduce((sum, f) => sum + (f.shrimp_count * f.average_weight) / 1000, 0) // kg
 	const projectedYieldTons = totalBiomass / 1000
-	const shrimpPricePerKg = 2000 // LKR per kg
+	const shrimpPricePerKg = economicSettings?.shrimp_price_per_kg_lkr ?? 2000
 	const projectedProfit = projectedYieldTons * 1000 * shrimpPricePerKg - (totalFeedCost + totalEnergyCost + totalLaborCost) * 30
 
 	const fcr = totalFeedKg > 0 && totalBiomass > 0 ? totalFeedKg / totalBiomass : 1.2
@@ -295,7 +297,7 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 	const avgTasksPerHour = totalLaborHours > 0 ? totalTasksCompleted / totalLaborHours : 0
 	const avgTasksPerWorker = totalWorkers > 0 ? totalTasksCompleted / totalWorkers : 0
 	const laborEfficiencyPercent = laborEfficiency * 100
-	const hourlyWage = 500 // LKR per hour
+	const hourlyWage = laborCostPerHour
 	const laborCostPerTask = totalTasksCompleted > 0 ? totalLaborCost / totalTasksCompleted : 0
 	const avgEfficiencyScore = labor.length > 0 ? labor.reduce((sum, l) => sum + l.efficiency_score, 0) / labor.length : 0.85
 	
@@ -530,7 +532,7 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 							<div style={{ fontSize: 18, lineHeight: 1.6, color: 'var(--text)' }}>
 								<strong>Shift aerator usage to night hours</strong> (10 PM - 6 AM) to save energy
 								<br />
-								<span style={{ color: 'var(--good)', fontSize: 18 }}>Potential savings: Rs. {formatNumber(potentialSavings, { maximumFractionDigits: 0 })}/day</span>
+								<span style={{ color: 'var(--good)', fontSize: 18 }}>Potential savings: {formatCurrencyLkr(potentialSavings)}/day</span>
 								<br />
 								<span style={{ color: 'var(--muted)', fontSize: 18 }}>Reduce pump speed by 15% during off-peak hours</span>
 							</div>
@@ -691,13 +693,13 @@ export function OptimizationView({ data, history, pondFilter, ponds = 4 }: Props
 										<tr key={idx} style={{ borderBottom: '1px solid rgba(17, 24, 39, 0.05)' }}>
 											<td style={{ padding: '6px 10px', fontSize: 20, color: 'var(--text)' }}>{row.kpi}</td>
 											<td style={{ padding: '6px 10px', fontSize: 20, fontWeight: 600, textAlign: 'right', color: 'var(--text)' }}>
-												{row.format === 'currency' ? `Rs. ${formatNumber(row.your, { maximumFractionDigits: 0 })}` :
+												{row.format === 'currency' ? formatCurrencyLkr(row.your) :
 												 row.format === 'energy' ? `${formatNumber(row.your, { maximumFractionDigits: 1 })} kWh` :
 												 row.format === 'percentage' ? `${formatNumber(row.your, { maximumFractionDigits: 0 })}%` :
 												 formatNumber(row.your, { maximumFractionDigits: row.kpi.includes('%') ? 0 : 2 })}
 											</td>
 											<td style={{ padding: '6px 10px', fontSize: 20, textAlign: 'right', color: 'var(--muted)' }}>
-												{row.format === 'currency' ? `Rs. ${formatNumber(row.benchmark, { maximumFractionDigits: 0 })}` :
+												{row.format === 'currency' ? formatCurrencyLkr(row.benchmark) :
 												 row.format === 'energy' ? `${formatNumber(row.benchmark, { maximumFractionDigits: 1 })} kWh` :
 												 row.format === 'percentage' ? `${formatNumber(row.benchmark, { maximumFractionDigits: 0 })}%` :
 												 formatNumber(row.benchmark, { maximumFractionDigits: row.kpi.includes('%') ? 0 : 2 })}

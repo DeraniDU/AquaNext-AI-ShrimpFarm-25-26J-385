@@ -25,6 +25,16 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.2"))
 
+# API settings
+API_CORS_ORIGINS = [
+	origin.strip()
+	for origin in os.getenv(
+		"API_CORS_ORIGINS",
+		"http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
+	).split(",")
+	if origin.strip()
+]
+
 # Farm configuration
 FARM_CONFIG = {
     # Number of ponds to simulate/monitor
@@ -36,9 +46,25 @@ FARM_CONFIG = {
     "optimal_salinity_range": (15, 25),  # ppt
 }
 
-# Energy cost in Sri Lankan Rupees per kWh (used for EnergyData.cost and DB persistence).
-# Override with env ENERGY_COST_PER_KWH_LKR e.g. 65–90 depending on tariff tier.
+# Farm economics (Sri Lankan Rupees, LKR).
+# These defaults can be overridden per environment and are also exposed to the UI
+# so farmer-facing dashboards, forecasts, and optimizers use the same inputs.
 ENERGY_COST_PER_KWH_LKR = float(os.getenv("ENERGY_COST_PER_KWH_LKR", "65"))
+FEED_COST_PER_KG_LKR = float(os.getenv("FEED_COST_PER_KG_LKR", "400"))
+LABOR_COST_PER_HOUR_LKR = float(os.getenv("LABOR_COST_PER_HOUR_LKR", "500"))
+SHRIMP_PRICE_PER_KG_LKR = float(os.getenv("SHRIMP_PRICE_PER_KG_LKR", "2000"))
+MEDICINE_COST_PER_POND_LKR = float(os.getenv("MEDICINE_COST_PER_POND_LKR", "0"))
+MAINTENANCE_COST_PER_POND_LKR = float(os.getenv("MAINTENANCE_COST_PER_POND_LKR", "0"))
+
+# Budget defaults (used when the frontend does not provide farmer-specific targets).
+WEEKLY_FEED_BUDGET_LKR = float(os.getenv("WEEKLY_FEED_BUDGET_LKR", "75000"))
+WEEKLY_ENERGY_BUDGET_LKR = float(os.getenv("WEEKLY_ENERGY_BUDGET_LKR", "50000"))
+WEEKLY_LABOR_BUDGET_LKR = float(os.getenv("WEEKLY_LABOR_BUDGET_LKR", "60000"))
+CYCLE_BUDGET_LKR = float(os.getenv("CYCLE_BUDGET_LKR", "750000"))
+
+# Farm geolocation (default: Colombo region). Used by weather forecast integrations.
+FARM_LATITUDE = float(os.getenv("FARM_LATITUDE", "6.9271"))
+FARM_LONGITUDE = float(os.getenv("FARM_LONGITUDE", "79.8612"))
 
 # Agent scheduling configuration (minutes)
 AGENT_CONFIG = {
@@ -74,6 +100,14 @@ USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
 # water/feed/energy/labor data if a pond has no row. Requires USE_MONGODB=true and
 # populated water_quality_readings, feed_readings, energy_readings, labor_readings.
 USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
+
+# When USE_MONGODB is true, /api/dashboard loads latest per-pond readings from MongoDB
+# via DataRepository (water_quality_readings, feed_readings, energy_readings, labor_readings)
+# instead of calling WaterQualityAgent / FeedPredictionAgent / EnergyOptimizationAgent for
+# those snapshots. Set to false to restore agent-driven collection (agents may still read
+# Mongo first internally when USE_MONGODB is on).
+_DASHBOARD_MONGO_DIRECT_DEFAULT = "true" if os.getenv("USE_MONGODB", "false").lower() == "true" else "false"
+DASHBOARD_MONGO_DIRECT = os.getenv("DASHBOARD_MONGO_DIRECT", _DASHBOARD_MONGO_DIRECT_DEFAULT).lower() == "true"
 
 # Orchestration: parallel data collection and optional LLM steps
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default

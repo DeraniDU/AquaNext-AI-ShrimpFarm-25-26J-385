@@ -5,6 +5,10 @@ export function formatNumber(value: number, options?: Intl.NumberFormatOptions) 
 	}).format(value)
 }
 
+export function formatCurrencyLkr(value: number, options?: Intl.NumberFormatOptions) {
+	return `LKR ${formatNumber(value, { maximumFractionDigits: 0, ...options })}`
+}
+
 export function formatPercent01(value: number) {
 	const v = Number.isFinite(value) ? value : 0
 	return `${formatNumber(v * 100, { maximumFractionDigits: 0 })}%`

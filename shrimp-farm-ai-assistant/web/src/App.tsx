@@ -9,6 +9,7 @@ import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
 import { BenchmarkingView } from './components/BenchmarkingView'
+import { CostManagementView } from './components/CostManagementView'
 import { formatDateTime } from './lib/format'
 import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
@@ -78,6 +79,14 @@ export default function App() {
 			return <OptimizationView {...viewProps} ponds={ponds} />
 			case 'benchmarking':
 			return <BenchmarkingView ponds={ponds} />
+			case 'cost-management':
+				return (
+					<CostManagementView
+						data={viewProps.data}
+						pondFilter={viewProps.pondFilter}
+						onOpenSettings={() => setActiveView('settings')}
+					/>
+				)
 			case 'water-quality':
 				return <WaterQualityView {...viewProps} />
 			case 'feeding':
