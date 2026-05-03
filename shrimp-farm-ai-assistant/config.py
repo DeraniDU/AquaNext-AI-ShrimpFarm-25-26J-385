@@ -25,6 +25,16 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.2"))
 
+# API settings
+API_CORS_ORIGINS = [
+	origin.strip()
+	for origin in os.getenv(
+		"API_CORS_ORIGINS",
+		"http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
+	).split(",")
+	if origin.strip()
+]
+
 # Farm configuration
 FARM_CONFIG = {
     # Number of ponds to simulate/monitor
@@ -90,6 +100,14 @@ USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
 # water/feed/energy/labor data if a pond has no row. Requires USE_MONGODB=true and
 # populated water_quality_readings, feed_readings, energy_readings, labor_readings.
 USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
+
+# When USE_MONGODB is true, /api/dashboard loads latest per-pond readings from MongoDB
+# via DataRepository (water_quality_readings, feed_readings, energy_readings, labor_readings)
+# instead of calling WaterQualityAgent / FeedPredictionAgent / EnergyOptimizationAgent for
+# those snapshots. Set to false to restore agent-driven collection (agents may still read
+# Mongo first internally when USE_MONGODB is on).
+_DASHBOARD_MONGO_DIRECT_DEFAULT = "true" if os.getenv("USE_MONGODB", "false").lower() == "true" else "false"
+DASHBOARD_MONGO_DIRECT = os.getenv("DASHBOARD_MONGO_DIRECT", _DASHBOARD_MONGO_DIRECT_DEFAULT).lower() == "true"
 
 # Orchestration: parallel data collection and optional LLM steps
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default

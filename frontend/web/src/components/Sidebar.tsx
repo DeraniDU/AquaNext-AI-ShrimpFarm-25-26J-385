@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
 	{ id: 'forecasting', label: 'Forecasting', icon: '🔮' },
 	{ id: 'harvest-prediction', label: 'Harvest prediction', icon: '🦐' },
 	{ id: 'optimization', label: 'Optimization', icon: '⚡' },
+	{ id: 'cost-management', label: 'Cost management', icon: '💰' },
 	{ id: 'labor-optimization', label: 'Labor Optimization', icon: '👨‍🌾' },
 	{ id: 'benchmarking', label: 'Benchmarking', icon: '📈' },
 	{ id: 'water-quality', label: 'Water Quality', icon: '💧' },

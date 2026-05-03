@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Dict, Any, List, Optional, Tuple
@@ -18,7 +18,9 @@ import numpy as np
 from config import (
 	PARALLEL_DATA_COLLECTION,
 	DASHBOARD_CACHE_TTL_S,
+	DASHBOARD_MONGO_DIRECT,
 	DECISION_RECO_ENABLE_LLM,
+	API_CORS_ORIGINS,
 	USE_MONGODB,
 	FARM_LATITUDE,
 	FARM_LONGITUDE,
@@ -96,6 +98,77 @@ def _dashboard_fetch_feed(feed_agent: Any, water_quality_data: List) -> List:
 def _dashboard_fetch_energy(energy_agent: Any, water_quality_data: List) -> List:
 	"""Sync: fetch energy data for all ponds (for ThreadPoolExecutor)."""
 	return [energy_agent.get_energy_data(i + 1, wq) for i, wq in enumerate(water_quality_data)]
+
+
+def _load_dashboard_readings_from_mongodb(ponds: int) -> Tuple[List[Any], List[Any], List[Any], List[Any]]:
+	"""
+	Latest per-pond rows from MongoDB *_readings collections only.
+
+	Bypasses WaterQualityAgent / FeedPredictionAgent / EnergyOptimizationAgent for snapshot
+	data so /api/dashboard reflects stored readings, not simulated agent output.
+	"""
+	if not USE_MONGODB:
+		raise HTTPException(
+			status_code=503,
+			detail={
+				"error": "mongo_direct_disabled",
+				"hint": "Set USE_MONGODB=true or set DASHBOARD_MONGO_DIRECT=false to use agent collection.",
+			},
+		)
+	from database.repository import DataRepository
+
+	repo = DataRepository()
+	if not getattr(repo, "is_available", False):
+		raise HTTPException(
+			status_code=503,
+			detail={
+				"error": "mongodb_unavailable",
+				"hint": "Check MONGO_URI / MONGO_DB_NAME and that MongoDB is reachable, or set DASHBOARD_MONGO_DIRECT=false.",
+			},
+		)
+
+	missing: List[str] = []
+	water_quality_data: List[Any] = []
+	feed_data: List[Any] = []
+	energy_data: List[Any] = []
+	labor_data: List[Any] = []
+
+	for pond_id in range(1, max(1, int(ponds)) + 1):
+		wq = repo.get_latest_water_quality(pond_id)
+		if wq is None:
+			missing.append(f"pond {pond_id}: water_quality_readings")
+		else:
+			water_quality_data.append(wq)
+
+		fd = repo.get_latest_feed_data(pond_id)
+		if fd is None:
+			missing.append(f"pond {pond_id}: feed_readings")
+		else:
+			feed_data.append(fd)
+
+		en = repo.get_latest_energy_data(pond_id)
+		if en is None:
+			missing.append(f"pond {pond_id}: energy_readings")
+		else:
+			energy_data.append(en)
+
+		lb = repo.get_latest_labor_data(pond_id)
+		if lb is None:
+			missing.append(f"pond {pond_id}: labor_readings")
+		else:
+			labor_data.append(lb)
+
+	if missing:
+		raise HTTPException(
+			status_code=503,
+			detail={
+				"error": "incomplete_mongodb_readings",
+				"missing": missing,
+				"hint": "Insert latest rows into *_readings for each pond, or set DASHBOARD_MONGO_DIRECT=false.",
+			},
+		)
+
+	return water_quality_data, feed_data, energy_data, labor_data
 
 
 def _num_or_default(value: Optional[float], default: float) -> float:
@@ -334,10 +407,10 @@ def _build_savings_opportunities(
 	out.sort(key=lambda item: item["savings_lkr"], reverse=True)
 	return out[:6]
 
-# Allow local dev origins (Vite default: http://localhost:5173)
+# Allow local/dev/prod origins. Override with API_CORS_ORIGINS as a comma-separated list.
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+	allow_origins=API_CORS_ORIGINS,
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],
@@ -867,7 +940,14 @@ def get_dashboard(
 	cycle_budget_lkr: Optional[float] = None,
 ) -> Dict[str, Any]:
 	"""
-	Generate dashboard data using simulation (no API key needed).
+	Build the dashboard snapshot for the UI.
+
+	When USE_MONGODB=true and DASHBOARD_MONGO_DIRECT=true (default), water/feed/energy/labor
+	are loaded directly from MongoDB *_readings via DataRepository — not from the
+	water/feed/energy collection agents (no simulated snapshots on that path).
+
+	Otherwise, agents generate or fetch data (simulation when Mongo has no row and
+	USE_READINGS_ONLY is false).
 
 	Default cache TTL comes from env DASHBOARD_CACHE_TTL_S (0 = no cache). Use cache_ttl_s on the
 	request to override. Set DECISION_RECO_ENABLE_LLM=false to skip OpenAI on recommendation text.
@@ -901,6 +981,7 @@ def get_dashboard(
 	cache_key = (
 		int(ponds),
 		int(seed) if seed is not None else None,
+		bool(DASHBOARD_MONGO_DIRECT),
 		tuple(sorted(economic_settings.items())),
 		tuple(sorted(budget_settings.items())),
 	)
@@ -921,63 +1002,82 @@ def get_dashboard(
 
 		water_quality_agent, feed_agent, energy_agent, labor_agent, manager_agent = _get_dashboard_agents()
 
-		if PARALLEL_DATA_COLLECTION and ponds >= 1:
-			max_workers = min(8, max(2, ponds * 2))
-			with ThreadPoolExecutor(max_workers=max_workers) as executor:
-				# Phase 1: water quality for all ponds in parallel
-				water_quality_data = list(
-					executor.map(
-						lambda pid: water_quality_agent.get_water_quality_data(pid),
-						range(1, ponds + 1),
-					)
+		# True only when latest readings were loaded from Mongo *_readings (not agent fallback).
+		used_mongo_direct = False
+		if DASHBOARD_MONGO_DIRECT and USE_MONGODB:
+			try:
+				water_quality_data, feed_data, energy_data, labor_data = _load_dashboard_readings_from_mongodb(ponds)
+				used_mongo_direct = True
+				labor_optimization = labor_agent.optimize_all_labor(
+					water_quality_data, energy_data, labor_data
 				)
-				# Phase 2: feed and energy in parallel (each over all ponds)
-				feed_fut = executor.submit(_dashboard_fetch_feed, feed_agent, water_quality_data)
-				energy_fut = executor.submit(_dashboard_fetch_energy, energy_agent, water_quality_data)
-				feed_data = feed_fut.result()
-				energy_data = energy_fut.result()
-				# Phase 3: labor for all ponds in parallel
-				labor_data = list(
-					executor.map(
-						lambda i: labor_agent.get_or_generate_labor_data(
-							i + 1, water_quality_data[i], energy_data[i]
-						),
-						range(ponds),
-					)
+			except HTTPException as ex:
+				# Unreachable DB, DNS failure, or incomplete readings — do not fail the whole dashboard.
+				if getattr(ex, "status_code", None) != 503:
+					raise
+				print(
+					"[WARN] /api/dashboard: MongoDB direct read failed; falling back to collection agents. "
+					f"detail={ex.detail!r}"
 				)
-			labor_optimization = labor_agent.optimize_all_labor(
-				water_quality_data, energy_data, labor_data
-			)
-		else:
-			water_quality_data = []
-			feed_data = []
-			energy_data = []
-			labor_data = []
-			for pond_id in range(1, ponds + 1):
-				wq = water_quality_agent.get_water_quality_data(pond_id)
-				water_quality_data.append(wq)
-				feed_data.append(feed_agent.get_feed_data(pond_id, wq))
-				energy_data.append(energy_agent.get_energy_data(pond_id, wq))
-				labor_data.append(
-					labor_agent.get_or_generate_labor_data(
-						pond_id, wq, energy_data[-1]
-					)
-				)
-			labor_optimization = labor_agent.optimize_all_labor(
-				water_quality_data, energy_data, labor_data
-			)
 
-		# Persist only energy readings to MongoDB (includes cost). Do not save feed/water/labor here.
-		try:
-			from config import USE_MONGODB
-			if USE_MONGODB:
-				from database.repository import DataRepository
-				_repo = DataRepository()
-				if _repo.is_available:
-					for _e in energy_data:
-						_repo.save_energy_data(_e)
-		except Exception as _save_ex:
-			print(f"[WARN] Could not save energy data to DB: {_save_ex}")
+		if not used_mongo_direct:
+			if PARALLEL_DATA_COLLECTION and ponds >= 1:
+				max_workers = min(8, max(2, ponds * 2))
+				with ThreadPoolExecutor(max_workers=max_workers) as executor:
+					# Phase 1: water quality for all ponds in parallel
+					water_quality_data = list(
+						executor.map(
+							lambda pid: water_quality_agent.get_water_quality_data(pid),
+							range(1, ponds + 1),
+						)
+					)
+					# Phase 2: feed and energy in parallel (each over all ponds)
+					feed_fut = executor.submit(_dashboard_fetch_feed, feed_agent, water_quality_data)
+					energy_fut = executor.submit(_dashboard_fetch_energy, energy_agent, water_quality_data)
+					feed_data = feed_fut.result()
+					energy_data = energy_fut.result()
+					# Phase 3: labor for all ponds in parallel
+					labor_data = list(
+						executor.map(
+							lambda i: labor_agent.get_or_generate_labor_data(
+								i + 1, water_quality_data[i], energy_data[i]
+							),
+							range(ponds),
+						)
+					)
+				labor_optimization = labor_agent.optimize_all_labor(
+					water_quality_data, energy_data, labor_data
+				)
+			else:
+				water_quality_data = []
+				feed_data = []
+				energy_data = []
+				labor_data = []
+				for pond_id in range(1, ponds + 1):
+					wq = water_quality_agent.get_water_quality_data(pond_id)
+					water_quality_data.append(wq)
+					feed_data.append(feed_agent.get_feed_data(pond_id, wq))
+					energy_data.append(energy_agent.get_energy_data(pond_id, wq))
+					labor_data.append(
+						labor_agent.get_or_generate_labor_data(
+							pond_id, wq, energy_data[-1]
+						)
+					)
+				labor_optimization = labor_agent.optimize_all_labor(
+					water_quality_data, energy_data, labor_data
+				)
+
+		# Persist only energy readings to MongoDB when snapshots came from agents (not already stored).
+		if not used_mongo_direct:
+			try:
+				if USE_MONGODB:
+					from database.repository import DataRepository
+					_repo = DataRepository()
+					if _repo.is_available:
+						for _e in energy_data:
+							_repo.save_energy_data(_e)
+			except Exception as _save_ex:
+				print(f"[WARN] Could not save energy data to DB: {_save_ex}")
 
 		dashboard = manager_agent.create_dashboard(water_quality_data, feed_data, energy_data, labor_data)
 
@@ -1045,6 +1145,8 @@ def get_dashboard(
 			_DASHBOARD_CACHE_TS[cache_key] = now
 
 		return JSONResponse(content=payload, headers=_dashboard_headers)
+	except HTTPException:
+		raise
 	except AttributeError as e:
 		# Stale cached agents after ManagerAgent API change — drop cache and retry once.
 		global _dashboard_agents

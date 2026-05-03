@@ -10,6 +10,7 @@ import { FeedingView } from './components/FeedingView'
 import { DiseaseDetectionView } from './components/DiseaseDetectionView'
 import { SettingsView } from './components/SettingsView'
 import { BenchmarkingView } from './components/BenchmarkingView'
+import { CostManagementView } from './components/CostManagementView'
 import { formatDateTime } from './lib/format'
 import type { BudgetSettings, DashboardApiResponse, EconomicSettings, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
@@ -159,6 +160,15 @@ export default function App() {
 				return <LaborOptimizationView data={viewProps.data} history={viewProps.history} pondFilter={viewProps.pondFilter} ponds={ponds} />
 			case 'benchmarking':
 				return <BenchmarkingView ponds={ponds} />
+			case 'cost-management':
+				if (!viewProps) return <div className="emptyState">{loading ? 'Loading dashboard…' : 'Click Refresh to load data.'}</div>
+				return (
+					<CostManagementView
+						data={viewProps.data}
+						pondFilter={viewProps.pondFilter}
+						onOpenSettings={() => setActiveView('settings')}
+					/>
+				)
 			case 'water-quality':
 				// Rendered via iframe above when water-quality is selected
 				return null
