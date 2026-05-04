@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DashboardView } from './components/DashboardView'
 import { Sidebar } from './components/Sidebar'
-import { ForecastingView } from './components/ForecastingView'
 import { HarvestPredictionView } from './components/HarvestPredictionView'
 import { OptimizationView } from './components/OptimizationView'
 import { WaterQualityView } from './components/WaterQualityView'
@@ -68,11 +67,8 @@ export default function App() {
 					<DashboardView
 						{...viewProps}
 						analyticsCharts={analyticsCharts}
-						onOpenForecasting={() => setActiveView('forecasting')}
 					/>
 				)
-			case 'forecasting':
-				return <ForecastingView {...viewProps} harvestMl={harvestMl} />
 			case 'harvest-prediction':
 				return <HarvestPredictionView data={viewProps.data} harvestMl={harvestMl} />
 		case 'optimization':
@@ -105,7 +101,6 @@ export default function App() {
 					<DashboardView
 						{...viewProps}
 						analyticsCharts={analyticsCharts}
-						onOpenForecasting={() => setActiveView('forecasting')}
 					/>
 				)
 		}

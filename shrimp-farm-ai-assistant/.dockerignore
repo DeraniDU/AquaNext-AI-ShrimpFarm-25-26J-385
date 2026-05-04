@@ -11,6 +11,7 @@ venv/
 .venv/
 env/
 ENV/
+venv__delete_me/
 
 .env
 .env.*
@@ -28,6 +29,10 @@ node_modules/
 dist/
 build/
 
+docs/
+*.md
+!README.md
+
 *.log
 logs/
 *.tmp
@@ -38,3 +43,14 @@ logs/
 
 farm_operations.log
 AutogluonModels/
+
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+demo_farm_data_*.json
+forecasting_training_data_*.json
+models/**/eval_*.json
+models/**/*confusion_matrix*
+models/training/*.csv

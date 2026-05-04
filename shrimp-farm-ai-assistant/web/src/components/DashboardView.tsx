@@ -88,8 +88,6 @@ type Props = {
 	/** When MongoDB has readings, these series replace simulated Analytics & Trends data. */
 	analyticsCharts?: AnalyticsChartsFromDb | null
 	weatherForecast?: WeatherForecastBundle
-	/** Jump to the full Forecasting view (charts, ML harvest). */
-	onOpenForecasting?: () => void
 }
 
 export function DashboardView({
@@ -97,8 +95,7 @@ export function DashboardView({
 	history,
 	pondFilter,
 	analyticsCharts = null,
-	weatherForecast,
-	onOpenForecasting
+	weatherForecast
 }: Props) {
 	const { dashboard } = data
 	const { data: forecastsData, loading: forecastsLoading, error: forecastsError } = useForecastsData({
@@ -496,7 +493,7 @@ export function DashboardView({
 				</div>
 			</div>
 
-			{/* Forecast outlook (summary + link to full Forecasting view) */}
+			{/* Forecast outlook summary */}
 			<div>
 				<div className="dashSectionTitle">
 					Forecast outlook
@@ -515,11 +512,6 @@ export function DashboardView({
 						<div className="panelTitle" style={{ marginBottom: 4 }}>
 							Harvest timing & yield
 						</div>
-						{onOpenForecasting ? (
-							<button type="button" onClick={onOpenForecasting}>
-								Open full forecasting
-							</button>
-						) : null}
 					</div>
 					{forecastsLoading ? (
 						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8 }}>
@@ -528,7 +520,7 @@ export function DashboardView({
 					) : null}
 					{forecastsError ? (
 						<div className="muted" style={{ fontSize: '0.875rem', marginTop: 8, color: 'var(--bad)' }}>
-							{forecastsError} (charts on the Forecasting page still use calculated fallbacks)
+							{forecastsError} (summary values use calculated fallbacks)
 						</div>
 					) : null}
 					{!forecastsLoading && !forecastsError ? (

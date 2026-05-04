@@ -136,11 +136,24 @@ class ManagerAgent:
         for data in labor_data:
             summary.append(f"Pond {data.pond_id}: {len(data.tasks_completed)} tasks, {data.time_spent:.1f}h, {data.worker_count} workers, {data.efficiency_score:.2f} efficiency")
         return "\n".join(summary)
+
+    def _water_rows_with_derived_alerts(self, water_quality_data: List[WaterQualityData]) -> List[WaterQualityData]:
+        """Drop Mongo `alerts` strings; always attach thresholds computed from numeric readings."""
+        out: List[WaterQualityData] = []
+        for wq in water_quality_data:
+            msgs = self._derive_water_quality_alerts_from_readings(wq)
+            if not msgs and wq.status.value == "critical":
+                msgs = [
+                    "STATUS: Water quality critical (pond status) — review all sensors immediately.",
+                ]
+            out.append(wq.model_copy(update={"alerts": msgs}))
+        return out
     
     def create_dashboard(self, water_quality_data: List[WaterQualityData], 
                         feed_data: List[FeedData], energy_data: List[EnergyData], 
                         labor_data: List[LaborData]) -> ShrimpFarmDashboard:
         """Create comprehensive farm dashboard"""
+        water_quality_data = self._water_rows_with_derived_alerts(water_quality_data)
         
         # Calculate overall health score
         overall_health_score = self._calculate_overall_health_score(
@@ -290,6 +303,129 @@ class ManagerAgent:
             ))
         
         return insights
+
+    @staticmethod
+    def _derive_water_quality_alerts_from_readings(wq: WaterQualityData) -> List[str]:
+        """
+        Build human-readable alerts from live water chemistry (Mongo readings).
+
+        Stored `wq.alerts` from Mongo is intentionally ignored — thresholds apply to numeric fields only.
+        """
+        messages: List[str] = []
+        ph_lo, ph_hi = FARM_CONFIG["optimal_ph_range"]
+        t_lo, t_hi = FARM_CONFIG["optimal_temperature_range"]
+        sal_lo, sal_hi = FARM_CONFIG["optimal_salinity_range"]
+        # Prefer a biologically sensible DO floor; config may be overridden to a bad value.
+        do_floor = max(float(FARM_CONFIG.get("optimal_dissolved_oxygen", 5.0)), 5.0)
+
+        if wq.ph < ph_lo:
+            messages.append(f"CRITICAL: pH too low ({wq.ph:.2f}) - immediate action required")
+        elif wq.ph > ph_hi:
+            messages.append(f"WARNING: pH too high ({wq.ph:.2f}) - monitor closely")
+
+        if wq.temperature < t_lo:
+            messages.append(f"WARNING: Temperature too low ({wq.temperature:.1f}°C) - consider heating")
+        elif wq.temperature > t_hi:
+            messages.append(f"WARNING: Temperature too high ({wq.temperature:.1f}°C) - consider cooling")
+
+        if wq.dissolved_oxygen < do_floor:
+            messages.append(f"CRITICAL: Low dissolved oxygen ({wq.dissolved_oxygen:.1f} mg/L) - increase aeration")
+        elif wq.dissolved_oxygen > 8.5:
+            messages.append(f"INFO: Dissolved oxygen very high ({wq.dissolved_oxygen:.1f} mg/L) - verify sensor / aeration setpoint")
+
+        if wq.salinity < sal_lo:
+            messages.append(f"WARNING: Salinity too low ({wq.salinity:.1f} ppt) - add salt")
+        elif wq.salinity > sal_hi:
+            messages.append(f"WARNING: Salinity too high ({wq.salinity:.1f} ppt) - dilute water")
+
+        if wq.ammonia > 0.2:
+            messages.append(f"CRITICAL: High ammonia levels ({wq.ammonia:.2f} mg/L) - water change needed")
+        if wq.nitrite > 0.1:
+            messages.append(f"WARNING: Elevated nitrite ({wq.nitrite:.2f} mg/L) - monitor biofilter / water exchange")
+        elif wq.nitrite > 0.05:
+            messages.append(f"INFO: Nitrite creeping up ({wq.nitrite:.2f} mg/L) - watch feeding / biofilter maturity")
+
+        if wq.nitrate > 20:
+            messages.append(f"WARNING: High nitrate ({wq.nitrate:.1f} mg/L) - review stocking, feeding, and water exchange")
+        elif wq.nitrate > 10:
+            messages.append(f"INFO: Elevated nitrate ({wq.nitrate:.1f} mg/L) - trend monitoring")
+
+        if wq.turbidity > 3:
+            messages.append(f"WARNING: Elevated turbidity ({wq.turbidity:.1f}) - check solids / filtration")
+
+        return messages
+
+    @staticmethod
+    def _derive_feed_alerts_from_readings(f: FeedData) -> List[str]:
+        """Threshold alerts from feed_readings-style rows (Mongo-backed)."""
+        out: List[str] = []
+        freq = int(f.feeding_frequency) if f.feeding_frequency and f.feeding_frequency > 0 else 1
+        daily_feed_kg = (float(f.feed_amount) * float(freq)) / 1000.0
+        biomass_kg = (float(f.shrimp_count) * float(f.average_weight)) / 1000.0
+
+        if f.shrimp_count <= 0:
+            out.append("CRITICAL: Shrimp count is zero or missing — biomass and feed KPIs are unreliable")
+        if f.average_weight <= 0:
+            out.append("WARNING: Average weight is zero or missing — growth tracking may be wrong")
+
+        if f.feeding_frequency <= 0:
+            out.append("WARNING: Feeding frequency is zero — assuming 1x/day for daily feed math; verify schedule")
+
+        if biomass_kg > 1e-6:
+            rate = daily_feed_kg / biomass_kg
+            if rate > 0.06:
+                out.append(
+                    f"WARNING: High daily feed vs biomass (~{rate * 100:.1f}% of biomass/day) — check FCR / overfeeding"
+                )
+            elif rate < 0.015 and f.average_weight > 3:
+                out.append(
+                    f"INFO: Low daily feed vs biomass (~{rate * 100:.1f}% of biomass/day) — verify intake / sampling"
+                )
+
+        if daily_feed_kg > 250:
+            out.append(f"WARNING: Very high daily feed total ({daily_feed_kg:.1f} kg/day) — confirm pond scale / units")
+
+        return out
+
+    @staticmethod
+    def _derive_energy_alerts_from_readings(e: EnergyData) -> List[str]:
+        """Threshold alerts from energy_readings-style rows (Mongo-backed)."""
+        out: List[str] = []
+        if e.efficiency_score < 0.5:
+            out.append(f"WARNING: Energy efficiency critically low ({e.efficiency_score:.2f})")
+        elif e.efficiency_score < 0.7:
+            out.append(f"WARNING: Energy efficiency below target ({e.efficiency_score:.2f})")
+
+        if e.total_energy > 55:
+            out.append(f"WARNING: High total energy use ({e.total_energy:.1f} kWh) - review aeration / pump schedule")
+        if e.aerator_usage > 22:
+            out.append(f"WARNING: Aerator draw high ({e.aerator_usage:.1f} kWh) - check runtime / VFD / diffuser fouling")
+        if e.pump_usage > 14:
+            out.append(f"WARNING: Pump draw high ({e.pump_usage:.1f} kWh) - review exchange / head loss")
+        if e.heater_usage > 12:
+            out.append(f"WARNING: Heater draw high ({e.heater_usage:.1f} kWh) - check setpoints and heat loss")
+
+        return out
+
+    @staticmethod
+    def _derive_labor_alerts_from_readings(l: LaborData) -> List[str]:
+        """Simple labor alerts from labor_readings-style rows (Mongo-backed)."""
+        out: List[str] = []
+        if l.efficiency_score < 0.5:
+            out.append(f"WARNING: Labor efficiency critically low ({l.efficiency_score:.2f})")
+        elif l.efficiency_score < 0.7:
+            out.append(f"WARNING: Labor efficiency below target ({l.efficiency_score:.2f})")
+
+        if not l.tasks_completed:
+            out.append("WARNING: No completed tasks recorded for this interval")
+        if l.worker_count <= 0:
+            out.append("CRITICAL: Worker count is zero — staffing data may be missing")
+        if l.time_spent > 10:
+            out.append(f"WARNING: High labor hours logged ({l.time_spent:.1f} h) - check overtime / task batching")
+        if len(l.next_tasks) >= 5:
+            out.append(f"INFO: Large pending backlog ({len(l.next_tasks)} next tasks) - prioritize critical path work")
+
+        return out
     
     def _generate_alerts(self, water_quality_data: List[WaterQualityData], 
                         feed_data: List[FeedData], energy_data: List[EnergyData], 
@@ -299,20 +435,26 @@ class ManagerAgent:
         
         # Water quality alerts
         for data in water_quality_data:
-            if data.status.value == "critical":
-                alerts.append(f"CRITICAL: Pond {data.pond_id} water quality critical - immediate action required")
-            elif data.alerts:
+            if data.alerts:
                 alerts.extend([f"Pond {data.pond_id}: {alert}" for alert in data.alerts])
+
+        # Feed alerts (Mongo feed_readings)
+        for data in feed_data:
+            derived_f = self._derive_feed_alerts_from_readings(data)
+            if derived_f:
+                alerts.extend([f"Pond {data.pond_id}: {msg}" for msg in derived_f])
         
         # Energy alerts
         for data in energy_data:
-            if data.efficiency_score < 0.5:
-                alerts.append(f"WARNING: Pond {data.pond_id} energy efficiency critically low")
+            derived_e = self._derive_energy_alerts_from_readings(data)
+            if derived_e:
+                alerts.extend([f"Pond {data.pond_id}: {msg}" for msg in derived_e])
         
         # Labor alerts
         for data in labor_data:
-            if data.efficiency_score < 0.5:
-                alerts.append(f"WARNING: Pond {data.pond_id} labor efficiency critically low")
+            derived_l = self._derive_labor_alerts_from_readings(data)
+            if derived_l:
+                alerts.extend([f"Pond {data.pond_id}: {msg}" for msg in derived_l])
         
         return alerts
     

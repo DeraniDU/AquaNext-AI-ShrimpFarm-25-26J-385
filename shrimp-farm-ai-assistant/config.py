@@ -25,16 +25,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0.2"))
 
-# API settings
-API_CORS_ORIGINS = [
-	origin.strip()
-	for origin in os.getenv(
-		"API_CORS_ORIGINS",
-		"http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080",
-	).split(",")
-	if origin.strip()
-]
-
 # Farm configuration
 FARM_CONFIG = {
     # Number of ponds to simulate/monitor

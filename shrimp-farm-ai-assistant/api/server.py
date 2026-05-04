@@ -20,7 +20,6 @@ from config import (
 	DASHBOARD_CACHE_TTL_S,
 	DASHBOARD_MONGO_DIRECT,
 	DECISION_RECO_ENABLE_LLM,
-	API_CORS_ORIGINS,
 	USE_MONGODB,
 	FARM_LATITUDE,
 	FARM_LONGITUDE,
@@ -407,10 +406,10 @@ def _build_savings_opportunities(
 	out.sort(key=lambda item: item["savings_lkr"], reverse=True)
 	return out[:6]
 
-# Allow local/dev/prod origins. Override with API_CORS_ORIGINS as a comma-separated list.
+# Allow local dev origins (Vite default: http://localhost:5173)
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=API_CORS_ORIGINS,
+	allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],
