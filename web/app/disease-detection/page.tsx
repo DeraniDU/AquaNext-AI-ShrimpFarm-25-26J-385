@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { 
   AlertCircle, Shield, TrendingUp, Clock, Eye, Zap, 
@@ -9,8 +9,31 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+type RiskApiResponse = {
+  risk_level?: string
+  risk_score?: number
+  class_label?: string
+  anomaly_score?: number
+  anomaly_flag?: boolean
+  saved_to_db?: boolean
+  record_id?: string
+  [k: string]: unknown
+}
+
 export default function DiseaseDetection() {
   const [expandedDisease, setExpandedDisease] = useState(0);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [risk, setRisk] = useState<RiskApiResponse | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const apiBase = useMemo(() => {
+    return (process.env.NEXT_PUBLIC_DISEASE_API_BASE || 'http://localhost:8001').replace(/\/+$/, '');
+  }, []);
 
   const diseases = [
     {
@@ -68,6 +91,117 @@ export default function DiseaseDetection() {
     'Designed specifically for shrimp farms',
   ];
 
+  function stopCamera() {
+    const s = streamRef.current;
+    if (s) {
+      for (const t of s.getTracks()) t.stop();
+    }
+    streamRef.current = null;
+    setCameraOn(false);
+  }
+
+  async function startCamera() {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraOn(true);
+    } catch (e: unknown) {
+      stopCamera();
+      setCameraError(e instanceof Error ? e.message : 'Failed to access camera');
+    }
+  }
+
+  function buildDummyFeaturesFromFrame() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return null;
+    const w = 160;
+    const h = 120;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, w, h);
+    const img = ctx.getImageData(0, 0, w, h).data;
+
+    // Cheap luminance mean/std as "activity" proxies.
+    let sum = 0;
+    let sumSq = 0;
+    const n = w * h;
+    for (let i = 0; i < img.length; i += 4) {
+      const r = img[i]!;
+      const g = img[i + 1]!;
+      const b = img[i + 2]!;
+      const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      sum += y;
+      sumSq += y * y;
+    }
+    const mean = sum / n;
+    const variance = Math.max(0, sumSq / n - mean * mean);
+    const std = Math.sqrt(variance);
+    const normMean = Math.min(1, Math.max(0, mean / 255));
+    const normStd = Math.min(1, Math.max(0, std / 128));
+
+    // Map into the model’s expected feature names (dummy but stable).
+    const now = new Date().toISOString();
+    return {
+      activity_mean: 0.05 + 0.4 * normMean,
+      activity_std: 0.01 + 0.15 * normStd,
+      drop_ratio_min: 0.4 + 0.6 * (1 - normStd),
+      abnormal_rate: 0.05 + 0.6 * normStd,
+      feed_amount: 80 + 120 * normMean,
+      feed_response: 0.2 + 0.7 * (1 - normStd),
+      DO: 4.5 + 2.0 * (1 - normStd),
+      temp: 27 + 5 * normMean,
+      pH: 7.2 + 1.2 * (1 - normStd),
+      salinity: 10 + 12 * normMean,
+      pond_id: 'live-cam',
+      timestamp: now,
+    };
+  }
+
+  async function sendRiskOnce() {
+    const payload = buildDummyFeaturesFromFrame();
+    if (!payload) return;
+    setRiskLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/predict-risk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as RiskApiResponse;
+      if (!res.ok) throw new Error((data as any)?.detail || `Request failed (${res.status})`);
+      setRisk(data);
+    } catch (e: unknown) {
+      setCameraError(e instanceof Error ? e.message : 'Failed to fetch risk result');
+    } finally {
+      setRiskLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!cameraOn) return;
+    const id = window.setInterval(() => {
+      void sendRiskOnce();
+    }, 1200);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOn]);
+
+  useEffect(() => {
+    return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Hero Section */}
@@ -106,6 +240,80 @@ export default function DiseaseDetection() {
               Our AI-powered Shrimp Disease Detection System provides early, real-time disease identification, 
               helping farmers take action before outbreaks spread and destroy entire ponds.
             </p>
+          </div>
+
+          {/* Live Camera Risk Demo */}
+          <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl p-5 sm:p-6 max-w-4xl mx-auto shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <div className="text-white font-bold text-lg">Live Camera → Risk Model Output</div>
+                <div className="text-cyan-100 text-sm">
+                  Uses dummy features from the live frame and calls <span className="font-semibold">`/predict-risk`</span>.
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {!cameraOn ? (
+                  <button
+                    onClick={() => void startCamera()}
+                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg font-semibold hover:bg-cyan-400 transition-colors"
+                  >
+                    Start camera
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => stopCamera()}
+                    className="px-4 py-2 bg-white/20 text-white border border-white/30 rounded-lg font-semibold hover:bg-white/30 transition-colors"
+                  >
+                    Stop
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-xl overflow-hidden bg-slate-900/40 border border-white/15">
+                <video ref={videoRef} className="w-full h-[260px] object-cover" playsInline muted />
+                <canvas ref={canvasRef} className="hidden" />
+              </div>
+              <div className="rounded-xl bg-white/10 border border-white/15 p-4">
+                {cameraError && (
+                  <div className="text-red-100 bg-red-500/20 border border-red-200/30 rounded-lg p-3 mb-3 text-sm">
+                    {cameraError}
+                  </div>
+                )}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-white font-semibold">Latest prediction</div>
+                  <div className="text-cyan-100 text-sm">{riskLoading ? 'Updating…' : cameraOn ? 'Live' : 'Idle'}</div>
+                </div>
+                {!risk ? (
+                  <div className="text-cyan-100 text-sm">
+                    {cameraOn ? 'Waiting for first result…' : 'Click “Start camera” to begin.'}
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-white">
+                      <span className="text-cyan-100">Risk level</span>
+                      <span className="font-bold">{String(risk.risk_level ?? risk.class_label ?? 'unknown').toUpperCase()}</span>
+                    </div>
+                    <div className="flex justify-between text-white">
+                      <span className="text-cyan-100">Risk score</span>
+                      <span className="font-bold">{typeof risk.risk_score === 'number' ? `${Math.round(risk.risk_score)}%` : '—'}</span>
+                    </div>
+                    <div className="flex justify-between text-white">
+                      <span className="text-cyan-100">Anomaly</span>
+                      <span className="font-semibold">{risk.anomaly_flag ? 'YES' : 'NO'}</span>
+                    </div>
+                    <div className="flex justify-between text-white">
+                      <span className="text-cyan-100">Saved to DB</span>
+                      <span className="font-semibold">{risk.saved_to_db ? 'YES' : 'NO (dummy mode)'}</span>
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-cyan-100/90">
+                  API base: <span className="font-mono text-cyan-50">{apiBase}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* CTA Buttons */}

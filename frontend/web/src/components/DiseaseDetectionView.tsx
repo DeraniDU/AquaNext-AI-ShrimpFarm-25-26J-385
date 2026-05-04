@@ -1,6 +1,7 @@
 import type { DashboardApiResponse, SavedFarmSnapshot } from '../lib/types'
 import { formatDateTime } from '../lib/format'
 import { DiseaseUploader } from './DiseaseUploader'
+import BehaviorMonitoringChart from './BehaviorMonitoringChart'
 
 type Props = {
 	data: DashboardApiResponse
@@ -89,6 +90,10 @@ export function DiseaseDetectionView({ data, history, pondFilter }: Props) {
 
 	return (
 		<div className="dashGrid">
+			<div className="panel spanAll">
+				<BehaviorMonitoringChart />
+			</div>
+			
 			<div className="panel spanAll">
 				<div className="panelHeader">
 					<div className="panelTitle">Disease Detection & Risk Assessment</div>

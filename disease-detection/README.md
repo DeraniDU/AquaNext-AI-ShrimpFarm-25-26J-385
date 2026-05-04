@@ -1,21 +1,27 @@
 # Disease Detection Backend
 
 This service exposes a FastAPI application that performs risk predictions and stores
-results in MongoDB.
+results in MongoDB (optional).
 
 ## MongoDB Configuration
 
-The code reads `MONGODB_URI` and `MONGODB_DB` from the environment via
-`config.Settings`. By default it will point at a local MongoDB instance
-(`mongodb://localhost:27017`) and the database name `shrimp_ai_db`.
+The service can run **with or without MongoDB**:
+
+- If you provide credentials, it will connect and persist predictions.
+- If you do **not** provide credentials, it will run in **dummy/in-memory mode** (no DB writes).
+
+Environment variables:
+
+- `MONGO_URI`: Mongo connection string
+- `DB_NAME`: database name
+- `DB_ENABLED` (optional): set to `true`/`1` to force-enable DB (if connection fails it will still fall back to no-DB mode)
 
 To connect to an Atlas cluster, set the environment variable before starting the
 server. For example (PowerShell):
 
 ```powershell
-$env:MONGODB_URI = \
-"mongodb+srv://piyumalipalihawadana_db_user:palihe1234@cluster0.ni5ykui.mongodb.net/?appName=Cluster0"
-$env:MONGODB_DB  = "your_db_name"   # optional, defaults to shrimp_ai_db
+$env:MONGO_URI = "mongodb+srv://<user>:<pass>@<cluster>/<params>"
+$env:DB_NAME  = "shrimp_farm_iot"
 uvicorn api.server:app --reload
 ```
 
