@@ -14,7 +14,7 @@ import type { DashboardApiResponse, SavedFarmSnapshot } from './lib/types'
 import { useDashboardData } from './lib/useDashboardData'
 import { useHistoryData } from './lib/useHistoryData'
 import { useHourlyHistoryData } from './lib/useHourlyHistoryData'
-
+import {BehaviorMonitoringChart} from "@/components/BehaviorMonitoringChart";
 export default function App() {
 	const [ponds, setPonds] = useState(4)
 	const [selectedPond, setSelectedPond] = useState<'all' | number>('all')

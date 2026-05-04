@@ -2,6 +2,7 @@ from typing import Optional
 import logging
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agents.risk_prediction_agent import RiskPredictionAgent
@@ -21,10 +22,29 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title=settings.APP_NAME)
 
-# Initialize DB
-MongoDB.connect()
-repository = Repository()
-prediction_repository = PredictionRepository()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize DB (optional)
+repository: Optional[Repository] = None
+prediction_repository: Optional[PredictionRepository] = None
+if settings.DB_ENABLED:
+    try:
+        MongoDB.connect()
+        repository = Repository()
+        prediction_repository = PredictionRepository()
+        logger.info("MongoDB enabled and connected.")
+    except Exception as e:
+        logger.warning(f"MongoDB enabled but connection failed; running without DB. Error: {str(e)}")
+        repository = None
+        prediction_repository = None
+else:
+    logger.info("MongoDB disabled; running with in-memory dummy data.")
 
 # Load models
 model_service = RiskModelService(
@@ -37,8 +57,8 @@ prediction_agent = RiskPredictionAgent(model_service)
 behavior_agent = BehaviorAgent()
 
 # services
-fusion_service = DataFusionService(repository)
-risk_scheduler = RiskSchedulerService(repository, fusion_service, prediction_agent)
+fusion_service = DataFusionService(repository) if repository else None
+risk_scheduler = RiskSchedulerService(repository, fusion_service, prediction_agent) if (repository and fusion_service) else None
 
 
 class RiskInput(BaseModel):
@@ -87,10 +107,12 @@ def predict_risk(inp: RiskInput):
             "input_features": feature_payload,
             "prediction_result": result,
         }
-        inserted_id = prediction_repository.save_prediction(db_record)
-
-        result["saved_to_db"] = True
-        result["record_id"] = inserted_id
+        if prediction_repository:
+            inserted_id = prediction_repository.save_prediction(db_record)
+            result["saved_to_db"] = True
+            result["record_id"] = inserted_id
+        else:
+            result["saved_to_db"] = False
         return result
 
     except Exception as e:
@@ -105,6 +127,8 @@ def predict_risk(inp: RiskInput):
 
 @app.get("/predictions")
 def get_predictions(limit: int = 50):
+    if not prediction_repository:
+        return {"ok": True, "data": [], "note": "DB disabled - returning empty list"}
     return {
         "ok": True,
         "data": prediction_repository.get_all_predictions(limit=limit)
@@ -113,6 +137,8 @@ def get_predictions(limit: int = 50):
 
 @app.get("/predictions/{pond_id}")
 def get_predictions_by_pond(pond_id: str, limit: int = 50):
+    if not prediction_repository:
+        return {"ok": True, "pond_id": pond_id, "data": [], "note": "DB disabled - returning empty list"}
     return {
         "ok": True,
         "pond_id": pond_id,
@@ -142,7 +168,7 @@ def push_behavior_live(inp: BehaviorInput):
 
         # persist to repository
         try:
-            inserted_id = repository.save_behavior_point(record)
+            inserted_id = repository.save_behavior_point(record) if repository else None
         except Exception as db_error:
             logger.warning(f"Failed to persist behavior to DB: {str(db_error)}")
             inserted_id = None
@@ -186,6 +212,8 @@ def get_all_behavior():
 
 @app.post("/recalculate-risk/{pond_id}")
 def recalculate_risk(pond_id: str):
+    if not risk_scheduler:
+        raise HTTPException(status_code=503, detail="DB disabled - risk scheduler unavailable")
     result = risk_scheduler.recalculate_for_pond(pond_id)
     if not result:
         raise HTTPException(
@@ -197,6 +225,17 @@ def recalculate_risk(pond_id: str):
 
 @app.get("/pond-status/{pond_id}")
 def get_pond_status(pond_id: str):
+    if not repository:
+        return {
+            "ok": True,
+            "pond_id": pond_id,
+            "latest_behavior": None,
+            "latest_feeding": None,
+            "latest_environment": None,
+            "latest_prediction": None,
+            "recent_behavior_points": list(pond_behavior_store[pond_id]),
+            "note": "DB disabled - returning in-memory behavior only",
+        }
     latest_behavior = repository.get_latest_behavior(pond_id)
     latest_feed = repository.get_latest_feed(pond_id)
     latest_env = repository.get_latest_environment(pond_id)

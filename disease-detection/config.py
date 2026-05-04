@@ -29,17 +29,16 @@ class Settings(BaseModel):
     # MongoDB - Connected to shared water quality database (read-only for environmental data)
     # URI: MongoDB Atlas cluster for water quality of shrimp ponds
     # DB: shrimp_farm_iot - contains environment_data collection
-    # NOTE: Credentials must be provided via environment variables - NO DEFAULTS
+    # NOTE: Credentials can be omitted in local/dev; service will run without DB.
     MONGODB_URI: str = os.getenv("MONGO_URI", "")
     MONGODB_DB: str = os.getenv("DB_NAME", "")
+    DB_ENABLED: bool = os.getenv("DB_ENABLED", "").strip().lower() in {"1", "true", "yes", "y"}
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Validate required credentials are set at runtime
-        if not self.MONGODB_URI:
-            raise ValueError("MONGO_URI environment variable is required")
-        if not self.MONGODB_DB:
-            raise ValueError("DB_NAME environment variable is required")
+        # Default behavior: enable DB only when credentials are provided.
+        if not self.DB_ENABLED:
+            self.DB_ENABLED = bool(self.MONGODB_URI and self.MONGODB_DB)
 
 
 settings = Settings()

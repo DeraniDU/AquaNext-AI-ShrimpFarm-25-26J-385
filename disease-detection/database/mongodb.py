@@ -19,6 +19,8 @@ class MongoDB:
         Establish connection to MongoDB Atlas.
         Uses MONGO_URI and DB_NAME environment variables or defaults.
         """
+        if not settings.DB_ENABLED:
+            raise RuntimeError("MongoDB is disabled (missing MONGO_URI/DB_NAME or DB_ENABLED=false).")
         if cls._client is None:
             cls._client = MongoClient(settings.MONGODB_URI)
             cls._db = cls._client[settings.MONGODB_DB]
