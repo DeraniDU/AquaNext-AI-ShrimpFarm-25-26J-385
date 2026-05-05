@@ -7,4 +7,5 @@ Werkzeug==3.0.0
 joblib
 numpy
 scikit-learn
+paho-mqtt==1.6.1
 

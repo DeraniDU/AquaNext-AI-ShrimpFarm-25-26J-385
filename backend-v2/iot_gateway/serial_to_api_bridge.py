@@ -2,11 +2,16 @@ import serial
 import requests
 import json
 import time
+import urllib3
+import warnings
 
+# Suppress urllib3 OpenSSL warning
+urllib3.disable_warnings()
+warnings.filterwarnings('ignore', category=urllib3.exceptions.NotOpenSSLWarning)
 # --- CONFIGURATION ---
 # Change this to match your ESP32/Arduino COM port (e.g., 'COM3' on Windows, '/dev/ttyUSB0' or '/dev/cu.usbserial-xxx' on Mac/Linux)
-SERIAL_PORT = '/dev/cu.usbserial-0001' 
-BAUD_RATE = 115200
+SERIAL_PORT = '/dev/cu.usbmodem14101' 
+BAUD_RATE = 9600
 
 # Your Python Flask API endpoint
 API_URL = "http://localhost:8000/api/sensor/reading"
@@ -30,13 +35,39 @@ while True:
     try:
         if ser.in_waiting > 0:
             # Read a line from the serial port
-            line = ser.readline().decode('utf-8').strip()
+            raw_line = ser.readline()
             
-            # Print the raw line we got from Arduino
-            print(f"[{time.strftime('%H:%M:%S')}] RAW SERIAL: {line}")
+            try:
+                line = raw_line.decode('utf-8').strip()
+            except UnicodeDecodeError:
+                print(f"[{time.strftime('%H:%M:%S')}] ⚠️ BAUD RATE MISMATCH? Got non-text bytes: {raw_line}")
+                continue
+                
+            # Ignore empty lines or just single dashes (which often come from noise or sensor errors)
+            if line and line != "-":
+                print(f"[{time.strftime('%H:%M:%S')}] RAW SERIAL: {line}")
+            else:
+                continue
             
-            # Because the Arduino is sending plain text lines instead of JSON,
-            # we need to accumulate them until we see a separator.
+            # Try to parse as JSON first (used by new ESP32 serial firmware)
+            if line.startswith('{') and line.endswith('}'):
+                try:
+                    payload = json.loads(line)
+                    print(f"   ➡ Parsed JSON data successfully. Sending to API: {payload}")
+                    try:
+                        response = requests.post(API_URL, json=payload, timeout=5)
+                        if response.status_code in [200, 201]:
+                            print("   ✅ Successfully saved to Database!")
+                            print(f"   API Response: {response.json().get('status', 'OK')}")
+                        else:
+                            print(f"   ⚠️ API returned status code: {response.status_code}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"   ❌ Network error sending to API: {e}")
+                except Exception as e:
+                    print(f"   ❌ Error handling JSON payload: {e}")
+                continue
+                
+            # If not JSON, try legacy format (Arduino text lines accumulated until a separator)
             if "Salinity:" in line:
                 try:
                     current_reading["salinity_ppt"] = float(line.split(":")[1].replace("ppt", "").strip())
@@ -50,7 +81,9 @@ while True:
             # Add other known fields here as needed:
             elif "Temperature:" in line:
                 try:
-                    current_reading["temperature"] = float(line.split(":")[1].replace("C", "").strip())
+                    # Clean out degrees symbol and 'C' before converting
+                    raw_temp = line.split(":")[1].replace("\u00b0", "").replace("°", "").replace("C", "").strip()
+                    current_reading["temperature"] = float(raw_temp)
                 except ValueError:
                     pass
             elif "TDS:" in line:
