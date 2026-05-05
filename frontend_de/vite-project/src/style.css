@@ -201,3 +201,36 @@ body {
   }
 }
 
+/* Disease Risk Chart */
+.risk-card {
+  background: #111827;
+  color: white;
+  padding: 24px;
+  border-radius: 18px;
+  margin-top: 24px;
+}
+
+.risk-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.risk-summary div {
+  background: #1f2937;
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.risk-low {
+  color: #22c55e;
+}
+
+.risk-medium {
+  color: #f59e0b;
+}
+
+.risk-high {
+  color: #ef4444;
+}

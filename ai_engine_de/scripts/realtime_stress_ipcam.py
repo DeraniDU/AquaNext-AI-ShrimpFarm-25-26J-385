@@ -6,8 +6,11 @@ from collections import deque
 import requests
 import threading
 from datetime import datetime
+import os
 
-IP_CAM_URL = "http://10.36.178.240:8080/videofeed"
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+IP_CAM_URL = "http://10.185.46.228:8080/videofeed"
 MODEL_PATH = "../models/shrimp_anomaly_model.pkl"
 BACKEND_URL = "http://localhost:5000/api/behavior-monitoring"
 
@@ -105,13 +108,21 @@ stress = "WAITING"
 score = 0.0
 
 while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to read frame")
-        break
+    try:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to read frame, retrying...")
+            continue
+    except Exception as e:
+        print(f"Error reading frame: {e}")
+        continue
 
-    frame = cv2.resize(frame, (320, 240))
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    try:
+        frame = cv2.resize(frame, (320, 240))
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    except Exception as e:
+        print(f"Error processing frame: {e}")
+        continue
 
     # Skip some frames for stability/performance
     frame_count += 1
