@@ -39,11 +39,11 @@ class BenchmarkingAgent:
     industry best practices, producing scores and actionable insights.
     """
 
-    def __init__(self):
+    def __init__(self, enable_ai: bool = True):
         self.llm = None
         self.agent = None
 
-        if OPENAI_API_KEY:
+        if enable_ai and OPENAI_API_KEY:
             self.llm = ChatOpenAI(
                 openai_api_key=OPENAI_API_KEY,
                 model_name=OPENAI_MODEL_NAME,
@@ -68,6 +68,7 @@ class BenchmarkingAgent:
         energy_data: List[EnergyData],
         labor_data: List[LaborData],
         historical_snapshots: Optional[List[Dict[str, Any]]] = None,
+        include_ai: bool = True,
     ) -> Dict[str, Any]:
         """
         Run benchmark using AI only. Builds comparisons (current vs target) from data;
@@ -93,7 +94,7 @@ class BenchmarkingAgent:
             "ai_recommendations": [],
         }
 
-        if self.agent and OPENAI_API_KEY:
+        if include_ai and self.agent and OPENAI_API_KEY:
             try:
                 task = self._create_benchmark_task(
                     dashboard,

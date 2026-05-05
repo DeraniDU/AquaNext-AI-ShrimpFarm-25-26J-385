@@ -237,6 +237,9 @@ export function HarvestPredictionView({ data, harvestMl }: Props) {
 		}
 	}
 	const uniqueRecs = recs.slice(0, 6)
+	const apiRecommendations =
+		harvestMl.data?.ai_recommendations?.filter((rec) => rec.text && ['good', 'warn', 'info'].includes(rec.tone)) ?? []
+	const displayedRecommendations = apiRecommendations.length > 0 ? apiRecommendations : uniqueRecs
 
 	const risks: { label: string; pond: string; status: string; bad?: boolean }[] = []
 	for (const pid of pondIds) {
@@ -393,7 +396,7 @@ export function HarvestPredictionView({ data, harvestMl }: Props) {
 
 			<div className="harvestSectionTitle">AI recommendations</div>
 			<div className="harvestRecs panel">
-				{uniqueRecs.map((rec, i) => (
+				{displayedRecommendations.map((rec, i) => (
 					<div
 						key={i}
 						className={`harvestRecRow harvestRec-${rec.tone}`}

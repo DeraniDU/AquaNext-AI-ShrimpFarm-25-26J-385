@@ -641,6 +641,13 @@ export function HarvestPredictionView({ data, harvestMl }: Props) {
 	const scopeLabel = scenario.pondScope === 'all' ? 'All ponds' : `Pond ${scenario.pondScope}`
 	const scenarioAverageRisk = averageRiskProbability(displayRows)
 	const baselineAverageRisk = averageRiskProbability(baseRows)
+	const apiRecommendations =
+		harvestMl.data?.ai_recommendations?.filter((rec) => rec.text && ['good', 'warn', 'info'].includes(rec.tone)) ?? []
+	const displayedRecommendations = scenarioEnabled
+		? displaySummary.recs
+		: apiRecommendations.length > 0
+			? apiRecommendations
+			: displaySummary.recs
 
 	const updateScenario = <K extends keyof ScenarioState>(key: K, value: ScenarioState[K]) => {
 		setScenario((prev) => ({ ...prev, [key]: value }))
@@ -976,7 +983,7 @@ export function HarvestPredictionView({ data, harvestMl }: Props) {
 
 			<div className="harvestSectionTitle">{scenarioEnabled ? 'Scenario recommendations' : 'AI recommendations'}</div>
 			<div className="harvestRecs panel">
-				{displaySummary.recs.map((rec, i) => (
+				{displayedRecommendations.map((rec, i) => (
 					<div key={i} className={`harvestRecRow harvestRec-${rec.tone}`}>
 						<strong>Pond {rec.pond}</strong>
 						<span>{rec.text}</span>

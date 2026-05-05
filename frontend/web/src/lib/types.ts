@@ -371,6 +371,13 @@ export type HarvestMlPondResult = {
 	growth_forecast?: HarvestMlGrowthPoint[]
 }
 
+export type HarvestMlRecommendation = {
+	pond: number
+	tone: 'good' | 'warn' | 'info'
+	text: string
+	source?: 'llm' | 'fallback'
+}
+
 export type HarvestMlInputSource = 'mongodb' | 'mixed' | 'agents' | 'n/a'
 
 export type HarvestMlResponse = {
@@ -378,6 +385,7 @@ export type HarvestMlResponse = {
 	input_source?: HarvestMlInputSource
 	detail?: string
 	ponds: HarvestMlPondResult[]
+	ai_recommendations?: HarvestMlRecommendation[]
 	timestamp: string
 	target_weight_g: number
 	horizon_days: number

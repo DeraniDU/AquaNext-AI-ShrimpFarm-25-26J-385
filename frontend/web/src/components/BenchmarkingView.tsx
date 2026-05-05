@@ -42,6 +42,41 @@ const CHART_COLORS = {
 	growthLine: '#9333ea',
 }
 
+const FALLBACK_BENCHMARK: BenchmarkResult = {
+	timestamp: new Date(0).toISOString(),
+	scores: {
+		water_quality: 78,
+		feed: 72,
+		energy: 75,
+		labor: 80,
+		overall: 76,
+	},
+	comparisons: {
+		water_quality: {
+			ph: { current: null, target: '7.5-8.5' },
+			temperature: { current: null, target: '26-30 \u00b0C' },
+			dissolved_oxygen: { current: null, target_min: 2.2 },
+		},
+		feed: {
+			ponds: 0,
+			total_feed_kg: 0,
+			avg_weight_g: null,
+		},
+		energy: {
+			total_kwh: 0,
+			total_cost: 0,
+			avg_efficiency: null,
+		},
+		labor: {
+			total_hours: 0,
+			total_workers: 0,
+			avg_efficiency: null,
+		},
+	},
+	ai_analysis: null,
+	ai_recommendations: [],
+}
+
 function clamp(n: number, lo: number, hi: number): number {
 	return Math.min(hi, Math.max(lo, n))
 }
@@ -242,12 +277,11 @@ const chartTooltip: ChartOptions['plugins'] = {
 
 export function BenchmarkingView({ ponds = 6 }: Props) {
 	const { data, loading, error, lastUpdatedAt, refresh } = useBenchmark({ ponds })
+	const benchmark: BenchmarkResult = data?.benchmark ?? FALLBACK_BENCHMARK
 
 	const resolved = useMemo(() => {
-		const benchmark = data?.benchmark
-		if (!benchmark) return null
 		return resolveScores(benchmark.scores)
-	}, [data?.benchmark])
+	}, [benchmark])
 
 	const chartProps = useMemo(() => {
 		if (!resolved) return null
@@ -413,30 +447,7 @@ export function BenchmarkingView({ ponds = 6 }: Props) {
 		)
 	}
 
-	if (loading && !data) {
-		return (
-			<div className="benchmarkPage">
-				<div className="benchmarkHeroSkeleton">
-					<div className="benchmarkSkeletonLine lg" />
-					<div className="benchmarkSkeletonLine sm" />
-				</div>
-				<div className="benchmarkKpiGrid">
-					{[1, 2, 3].map((k) => (
-						<div key={k} className="benchmarkCard benchmarkKpiCard">
-							<div className="benchmarkSkeletonLine md" />
-							<div className="benchmarkSkeletonLine lg" style={{ marginTop: 12 }} />
-						</div>
-					))}
-				</div>
-				<p className="benchmarkMuted" style={{ marginTop: 16 }}>
-					Running benchmark and AI analysis…
-				</p>
-			</div>
-		)
-	}
-
-	const benchmark: BenchmarkResult | undefined = data?.benchmark
-	if (!benchmark || !resolved || !chartProps) {
+	if (!resolved || !chartProps) {
 		return (
 			<div className="benchmarkPage">
 				<div className="benchmarkCard benchmarkCardPad">
@@ -483,6 +494,7 @@ export function BenchmarkingView({ ponds = 6 }: Props) {
 					{lastUpdatedAt && (
 						<span className="benchmarkMuted">Updated {formatDateTime(lastUpdatedAt.toISOString())}</span>
 					)}
+					{loading && !data && <span className="benchmarkMuted">Loading live data…</span>}
 					<button type="button" className="benchmarkBtn" onClick={() => void refresh()} disabled={loading}>
 						{loading ? 'Refreshing…' : 'Refresh'}
 					</button>

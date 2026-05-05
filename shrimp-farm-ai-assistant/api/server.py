@@ -33,6 +33,9 @@ from config import (
 	WEEKLY_ENERGY_BUDGET_LKR,
 	WEEKLY_LABOR_BUDGET_LKR,
 	CYCLE_BUDGET_LKR,
+	OPENAI_API_KEY,
+	OPENAI_MODEL_NAME,
+	OPENAI_TEMPERATURE,
 )
 from agents.water_quality_agent import WaterQualityAgent
 from agents.feed_prediction_agent import FeedPredictionAgent
@@ -66,6 +69,182 @@ def _get_harvest_ml_predictor():
 
 		_harvest_ml_predictor = HarvestMLPredictor()
 	return _harvest_ml_predictor
+
+
+def _harvest_model_dump(item: Any) -> Optional[Dict[str, Any]]:
+	if item is None:
+		return None
+	if hasattr(item, "model_dump"):
+		return item.model_dump(mode="json")
+	if isinstance(item, dict):
+		return item
+	return None
+
+
+def _fallback_harvest_recommendations(
+	pond_ids: List[int],
+	pond_results: List[Dict[str, Any]],
+	feed_by_pond: Optional[Dict[int, Any]] = None,
+	water_by_pond: Optional[Dict[int, Any]] = None,
+	target_weight_g: float = 22.0,
+) -> List[Dict[str, Any]]:
+	by_pond = {int(row.get("pond_id", 0)): row for row in pond_results if row.get("pond_id") is not None}
+	feed_by_pond = feed_by_pond or {}
+	water_by_pond = water_by_pond or {}
+	recs: List[Dict[str, Any]] = []
+
+	for pond_id in pond_ids:
+		row = by_pond.get(pond_id)
+		water = water_by_pond.get(pond_id)
+		if row and row.get("available"):
+			days = row.get("days_to_harvest")
+			early = row.get("early_harvest") or {}
+			if days is not None and float(days) <= 5:
+				tone = "good"
+				text = f"Prepare harvest equipment for Pond {pond_id}; the model window starts in about {int(days)} days."
+			elif early.get("risk"):
+				prob = float(early.get("probability") or 0.0) * 100
+				reasons = ", ".join(early.get("reason_codes") or []) or "current pond conditions"
+				tone = "warn"
+				text = f"Review Pond {pond_id} for early harvest risk ({prob:.0f}%); focus on {reasons}."
+			elif days is not None and float(days) > 14:
+				tone = "info"
+				text = f"Pond {pond_id} still has growth runway; tune feed and water quality toward the {target_weight_g:.1f} g target."
+			else:
+				tone = "good"
+				text = f"Pond {pond_id} trajectory is stable; continue monitoring until the harvest window."
+		else:
+			tone = "info"
+			text = f"No Mongo-backed ML row is available for Pond {pond_id}; ingest latest water and feed readings for predictions."
+
+		if water is not None and getattr(water, "dissolved_oxygen", None) is not None and float(water.dissolved_oxygen) < 5:
+			tone = "warn"
+			text = f"Pond {pond_id} dissolved oxygen is low ({float(water.dissolved_oxygen):.1f} mg/L); check aeration before harvest planning."
+
+		recs.append({"pond": pond_id, "tone": tone, "text": text, "source": "fallback"})
+
+	return recs[:6]
+
+
+def _parse_harvest_recommendation_json(content: str) -> List[Dict[str, Any]]:
+	raw = content.strip()
+	if raw.startswith("```"):
+		raw = raw.strip("`").strip()
+		if raw.lower().startswith("json"):
+			raw = raw[4:].strip()
+	start = raw.find("[")
+	end = raw.rfind("]")
+	if start >= 0 and end > start:
+		raw = raw[start : end + 1]
+	data = json.loads(raw)
+	if not isinstance(data, list):
+		raise ValueError("LLM recommendation response must be a JSON array")
+	out: List[Dict[str, Any]] = []
+	for item in data:
+		if not isinstance(item, dict):
+			continue
+		try:
+			pond = int(item.get("pond"))
+		except (TypeError, ValueError):
+			continue
+		tone = str(item.get("tone") or "info").lower()
+		if tone not in {"good", "warn", "info"}:
+			tone = "info"
+		text = str(item.get("text") or "").strip()
+		if not text:
+			continue
+		out.append({"pond": pond, "tone": tone, "text": text[:240], "source": "llm"})
+	return out
+
+
+def _compact_harvest_ml_row(row: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+	if not row:
+		return None
+	early = row.get("early_harvest") or {}
+	growth = row.get("growth_forecast") or []
+	latest_growth = growth[-1] if isinstance(growth, list) and growth else None
+	return {
+		"pond_id": row.get("pond_id"),
+		"available": row.get("available"),
+		"detail": row.get("detail"),
+		"days_to_harvest": row.get("days_to_harvest"),
+		"predicted_harvest_start": row.get("predicted_harvest_start"),
+		"predicted_harvest_end": row.get("predicted_harvest_end"),
+		"expected_biomass_kg": row.get("expected_biomass_kg"),
+		"early_harvest": early,
+		"latest_growth_forecast": latest_growth,
+	}
+
+
+def _build_harvest_ai_recommendations(
+	pond_ids: List[int],
+	pond_results: List[Dict[str, Any]],
+	feed_by_pond: Optional[Dict[int, Any]] = None,
+	water_by_pond: Optional[Dict[int, Any]] = None,
+	target_weight_g: float = 22.0,
+) -> List[Dict[str, Any]]:
+	fallback = _fallback_harvest_recommendations(
+		pond_ids,
+		pond_results,
+		feed_by_pond=feed_by_pond,
+		water_by_pond=water_by_pond,
+		target_weight_g=target_weight_g,
+	)
+	if not OPENAI_API_KEY:
+		return fallback
+
+	try:
+		try:
+			from langchain_openai import ChatOpenAI  # type: ignore
+		except Exception:  # pragma: no cover
+			from langchain.chat_models import ChatOpenAI  # type: ignore
+		try:
+			from langchain_core.messages import HumanMessage  # type: ignore
+		except Exception:  # pragma: no cover
+			HumanMessage = None  # type: ignore
+
+		context = {
+			"target_weight_g": target_weight_g,
+			"ponds": [
+				{
+					"pond_id": pond_id,
+					"ml": _compact_harvest_ml_row(
+						next((row for row in pond_results if int(row.get("pond_id", 0)) == pond_id), None)
+					),
+					"feed": _harvest_model_dump((feed_by_pond or {}).get(pond_id)),
+					"water_quality": _harvest_model_dump((water_by_pond or {}).get(pond_id)),
+				}
+				for pond_id in pond_ids
+			],
+		}
+		prompt = f"""You are an aquaculture harvest planning assistant.
+Create concise pond-specific harvest recommendations from the provided JSON only.
+
+Rules:
+- Return ONLY a JSON array.
+- Return at most 6 objects.
+- Each object must have: pond (number), tone ("good", "warn", or "info"), text (one short actionable sentence).
+- Do not invent readings, dates, model confidence, prices, or weather.
+- Mention exact pond numbers and the most important action.
+
+Input JSON:
+{json.dumps(context, default=str)}
+"""
+		llm = ChatOpenAI(
+			openai_api_key=OPENAI_API_KEY,
+			model_name=OPENAI_MODEL_NAME,
+			temperature=OPENAI_TEMPERATURE,
+		)
+		if HumanMessage is not None:
+			resp = llm.invoke([HumanMessage(content=prompt)])
+		else:
+			resp = llm.invoke(prompt)
+		content = getattr(resp, "content", resp)
+		recs = _parse_harvest_recommendation_json(str(content))
+		return recs[:6] or fallback
+	except Exception as e:
+		print(f"[harvest-ml] LLM recommendations failed: {e}")
+		return fallback
 
 
 def _get_dashboard_agents():
@@ -821,19 +1000,25 @@ def get_harvest_ml(
 		random.seed(int(seed))
 		np.random.seed(int(seed))
 
+	pond_ids = list(range(1, max(1, int(ponds)) + 1))
 	predictor = _get_harvest_ml_predictor()
 	if not predictor.available:
+		pond_results: List[Dict[str, Any]] = []
 		return {
 			"source": "unavailable",
 			"input_source": "n/a",
 			"detail": getattr(predictor, "_load_error", None) or "models not loaded",
-			"ponds": [],
+			"ponds": pond_results,
+			"ai_recommendations": _build_harvest_ai_recommendations(
+				pond_ids,
+				pond_results,
+				target_weight_g=target_weight_g,
+			),
 			"timestamp": ts,
 			"target_weight_g": target_weight_g,
 			"horizon_days": horizon_days,
 		}
 
-	pond_ids = list(range(1, max(1, int(ponds)) + 1))
 	extras: Dict[int, Dict[str, float]] = {}
 	repo = None
 	if USE_MONGODB:
@@ -869,15 +1054,26 @@ def get_harvest_ml(
 			"input_source": "n/a",
 			"detail": block_detail,
 			"ponds": pond_results,
+			"ai_recommendations": _build_harvest_ai_recommendations(
+				pond_ids,
+				pond_results,
+				target_weight_g=target_weight_g,
+			),
 			"timestamp": ts,
 			"target_weight_g": target_weight_g,
 			"horizon_days": horizon_days,
 		}
 
 	any_available = False
+	feed_by_pond: Dict[int, Any] = {}
+	water_by_pond: Dict[int, Any] = {}
 	for pond_id in pond_ids:
 		db_wq = repo.get_latest_water_quality(pond_id)
 		db_feed = repo.get_latest_feed_data(pond_id)
+		if db_wq is not None:
+			water_by_pond[pond_id] = db_wq
+		if db_feed is not None:
+			feed_by_pond[pond_id] = db_feed
 		if db_wq is None or db_feed is None:
 			missing: List[str] = []
 			if db_wq is None:
@@ -915,6 +1111,13 @@ def get_harvest_ml(
 		"input_source": "mongodb" if any_available else "n/a",
 		**({"detail": top_detail} if top_detail else {}),
 		"ponds": pond_results,
+		"ai_recommendations": _build_harvest_ai_recommendations(
+			pond_ids,
+			pond_results,
+			feed_by_pond=feed_by_pond,
+			water_by_pond=water_by_pond,
+			target_weight_g=target_weight_g,
+		),
 		"timestamp": ts,
 		"target_weight_g": target_weight_g,
 		"horizon_days": horizon_days,
@@ -1430,6 +1633,7 @@ def get_labor_optimization(
 def get_benchmark(
 	ponds: int = FARM_CONFIG.get("pond_count", 4),
 	seed: Optional[int] = None,
+	include_ai: bool = False,
 ) -> Dict[str, Any]:
 	"""
 	Run AI-powered benchmarking: compare farm performance against targets and best practices.
@@ -1440,16 +1644,14 @@ def get_benchmark(
 	Query params:
 	- ponds: Number of ponds to benchmark
 	- seed: Optional RNG seed for reproducible simulation
+	- include_ai: Set true to run the slower LLM benchmark analysis
 	"""
 	if seed is not None:
 		random.seed(int(seed))
 		np.random.seed(int(seed))
 
-	water_quality_agent = WaterQualityAgent()
-	feed_agent = FeedPredictionAgent()
-	energy_agent = EnergyOptimizationAgent()
-	labor_agent = LaborOptimizationAgent()
-	manager_agent = ManagerAgent()
+	# Reuse shared dashboard agents so benchmark requests stay responsive.
+	water_quality_agent, feed_agent, energy_agent, labor_agent, manager_agent = _get_dashboard_agents()
 
 	water_quality_data = []
 	feed_data = []
@@ -1469,9 +1671,10 @@ def get_benchmark(
 	dashboard = manager_agent.create_dashboard(
 		water_quality_data, feed_data, energy_data, labor_data
 	)
-	historical_snapshots = _load_saved_snapshots(limit=14)
+	# Snapshot loading can be expensive and is only needed when generating AI analysis.
+	historical_snapshots = _load_saved_snapshots(limit=14) if include_ai else []
 
-	benchmarking_agent = BenchmarkingAgent()
+	benchmarking_agent = BenchmarkingAgent(enable_ai=include_ai)
 	benchmark_result = benchmarking_agent.run_benchmark(
 		dashboard=dashboard,
 		water_quality_data=water_quality_data,
@@ -1479,6 +1682,7 @@ def get_benchmark(
 		energy_data=energy_data,
 		labor_data=labor_data,
 		historical_snapshots=historical_snapshots,
+		include_ai=include_ai,
 	)
 
 	return {
