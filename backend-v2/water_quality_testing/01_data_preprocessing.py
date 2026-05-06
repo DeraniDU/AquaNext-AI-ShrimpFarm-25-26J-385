@@ -1,16 +1,3 @@
-"""
-SCRIPT 1: Data Preprocessing
-==============================
-This script:
-- Loads your CSV dataset
-- Shows basic statistics
-- Handles missing values
-- Detects outliers
-- Saves a cleaned version ready for modeling
-
-Run this FIRST before any other script.
-"""
-
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -34,7 +21,7 @@ print("STEP 1: Loading Dataset")
 print("=" * 60)
 
 df = pd.read_csv(DATA_PATH, parse_dates=["timestamp"])
-print(f"✅ Loaded {df.shape[0]} rows × {df.shape[1]} columns")
+print(f"Loaded {df.shape[0]} rows × {df.shape[1]} columns")
 print(f"\nColumns: {list(df.columns)}")
 
 # ─────────────────────────────────────────────
@@ -58,7 +45,7 @@ missing_df = pd.DataFrame({"Missing Count": missing, "Missing %": missing_pct})
 missing_df = missing_df[missing_df["Missing Count"] > 0]
 
 if missing_df.empty:
-    print("✅ No missing values found!")
+    print("No missing values found!")
 else:
     print(missing_df)
 
@@ -81,7 +68,7 @@ df[numeric_cols] = df[numeric_cols].interpolate(method="linear", limit_direction
 df[numeric_cols] = df[numeric_cols].ffill().bfill()
 
 remaining_missing = df.isnull().sum().sum()
-print(f"✅ Missing values after filling: {remaining_missing}")
+print(f"Missing values after filling: {remaining_missing}")
 
 # ─────────────────────────────────────────────
 # 5. OUTLIER DETECTION (IQR method)
@@ -102,7 +89,7 @@ for col in numeric_cols:
         # Cap outliers instead of removing (preserves time series integrity)
         df[col] = df[col].clip(lower=lower, upper=upper)
 
-print("✅ Outliers capped using 3×IQR method")
+print("Outliers capped using 3×IQR method")
 
 # ─────────────────────────────────────────────
 # 6. ADD USEFUL TIME FEATURES
@@ -120,7 +107,7 @@ df["month"]       = df["timestamp"].dt.month
 df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
 df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
 
-print("✅ Added: hour, day_of_week, day_of_year, month, hour_sin, hour_cos")
+print("Added: hour, day_of_week, day_of_year, month, hour_sin, hour_cos")
 
 # ─────────────────────────────────────────────
 # 7. CREATE WATER QUALITY LABEL (for classification)
@@ -225,6 +212,6 @@ print(f"  Saved: {OUTPUT_DIR}/01_time_series.png")
 # ─────────────────────────────────────────────
 CLEANED_PATH = "data/cleaned_data.csv"
 df.to_csv(CLEANED_PATH, index=False)
-print(f"\n✅ Cleaned data saved to: {CLEANED_PATH}")
+print(f"\nCleaned data saved to: {CLEANED_PATH}")
 print(f"   Final shape: {df.shape[0]} rows × {df.shape[1]} columns")
 print("\n🎉 Preprocessing complete! Now run: python 02_regression_models.py")

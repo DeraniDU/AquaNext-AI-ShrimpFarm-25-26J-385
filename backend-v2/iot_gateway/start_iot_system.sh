@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# 🚀 Smart Shrimp Farm - IoT System Quick Start
+# Smart Shrimp Farm - IoT System Quick Start
 # ==========================================
 # This script sets up and starts the entire IoT ecosystem
 
 set -e  # Exit on error
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║     🦐 Smart Shrimp Farm - IoT System Quick Start         ║"
+echo "║     Smart Shrimp Farm - IoT System Quick Start         ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -24,7 +24,7 @@ NC='\033[0m' # No Color
 
 # Check if virtual environment exists
 if [ ! -d "$VENV" ]; then
-    echo -e "${YELLOW}⚠️  Virtual environment not found. Creating...${NC}"
+    echo -e "${YELLOW} Virtual environment not found. Creating...${NC}"
     python3 -m venv "$VENV"
 fi
 
@@ -47,7 +47,7 @@ EOF
 fi
 
 pip install -q -r requirements.txt
-echo -e "${GREEN}✅ Dependencies installed${NC}"
+echo -e "${GREEN}Dependencies installed${NC}"
 
 # Check MongoDB
 echo ""
@@ -57,13 +57,13 @@ echo -e "${BLUE}🍃 Step 2: Checking MongoDB...${NC}"
 if command -v mongosh &> /dev/null; then
     echo "   MongoDB CLI found"
     if mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
-        echo -e "${GREEN}✅ MongoDB is running locally${NC}"
+        echo -e "${GREEN}MongoDB is running locally${NC}"
     else
-        echo -e "${YELLOW}⚠️  MongoDB is not running${NC}"
+        echo -e "${YELLOW} MongoDB is not running${NC}"
         echo "   Start MongoDB with: brew services start mongodb-community"
     fi
 else
-    echo -e "${YELLOW}⚠️  MongoDB CLI not found (mongosh)${NC}"
+    echo -e "${YELLOW} MongoDB CLI not found (mongosh)${NC}"
     echo "   Check if MongoDB is running on your system"
 fi
 
@@ -72,17 +72,17 @@ echo ""
 echo -e "${BLUE}⚙️  Step 3: Checking environment configuration...${NC}"
 
 if [ ! -f ".env" ]; then
-    echo -e "${YELLOW}⚠️  .env file not found. Creating from .env.example...${NC}"
+    echo -e "${YELLOW} .env file not found. Creating from .env.example...${NC}"
     if [ -f ".env.example" ]; then
         cp .env.example .env
-        echo -e "${GREEN}✅ Created .env file${NC}"
-        echo "   ⚠️  Edit .env with your MongoDB connection details:"
+        echo -e "${GREEN}Created .env file${NC}"
+        echo "    Edit .env with your MongoDB connection details:"
         cat .env
     else
-        echo -e "${RED}❌ .env.example not found!${NC}"
+        echo -e "${RED}.env.example not found!${NC}"
     fi
 else
-    echo -e "${GREEN}✅ .env file exists${NC}"
+    echo -e "${GREEN}.env file exists${NC}"
 fi
 
 # Display configuration
@@ -92,7 +92,7 @@ grep "^[^#]" "$IOT_GATEWAY_DIR/.env" 2>/dev/null || echo "   (No .env found)"
 
 # Start the services
 echo ""
-echo -e "${BLUE}🚀 Step 4: Starting IoT Gateway API...${NC}"
+echo -e "${BLUE}Step 4: Starting IoT Gateway API...${NC}"
 echo "   Port: 5000"
 echo "   Location: $IOT_GATEWAY_DIR"
 echo ""
@@ -106,14 +106,14 @@ python app.py
 # echo "   IoT Gateway PID: $API_PID"
 # 
 # echo ""
-# echo -e "${BLUE}📊 Step 5: Starting Main Prediction API...${NC}"
+# echo -e "${BLUE}Step 5: Starting Main Prediction API...${NC}"
 # echo "   Port: 5001"
 # python "$PROJECT_ROOT/backend-v2/api.py" &
 # MAIN_API_PID=$!
 # echo "   Main API PID: $MAIN_API_PID"
 # 
 # echo ""
-# echo -e "${GREEN}✅ All systems running!${NC}"
+# echo -e "${GREEN}All systems running!${NC}"
 # echo ""
 # echo "📡 Endpoints:"
 # echo "   IoT Gateway:     http://localhost:5000"

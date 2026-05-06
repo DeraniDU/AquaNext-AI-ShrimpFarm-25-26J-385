@@ -68,7 +68,7 @@ EOF
 
 ---
 
-## 🚀 Step 2: Flask API Setup
+## Step 2: Flask API Setup
 
 ### 1. Navigate to IoT Gateway directory
 
@@ -113,8 +113,8 @@ python app.py
 
 **Expected output:**
 ```
-✅ Connected to MongoDB successfully
-🚀 Starting IoT Gateway API on port 5000
+Connected to MongoDB successfully
+Starting IoT Gateway API on port 5000
  * Running on http://0.0.0.0:5000
  * WARNING: This is a development server...
 ```
@@ -194,7 +194,7 @@ const char* SERVER_ADDRESS = "http://192.168.1.100:5000";  // Change to your PC/
 const char* DEVICE_ID = "esp32_shrimp_farm_001";
 ```
 
-**⚠️ How to find your server IP:**
+**How to find your server IP:**
 
 ```bash
 # macOS/Linux
@@ -224,7 +224,7 @@ ipconfig     # Windows
    [2/3] Connecting to WiFi...
    🔗 Connecting to WiFi: YOUR_WIFI_SSID
    ...
-   ✅ WiFi connected!
+   WiFi connected!
    60s | Reading sensors...
      ├─ TDS: 1200.5 ppm
      ├─ Conductivity: 2400.0 µS/cm
@@ -232,12 +232,12 @@ ipconfig     # Windows
      └─ Battery: 100%
    
    📤 Sending to server...
-   ✅ Success! (HTTP 201)
+   Success! (HTTP 201)
    ```
 
 ---
 
-## 📊 API Endpoints Reference
+## API Endpoints Reference
 
 ### 1. **Health Check**
 ```bash
@@ -292,7 +292,7 @@ curl -X DELETE "http://localhost:5000/api/sensor/delete?days=30"
 
 ---
 
-## 🔍 MongoDB Data Structure
+## MongoDB Data Structure
 
 Data is stored in the `shrimp_farm_iot.sensor_readings` collection:
 
@@ -342,18 +342,18 @@ db.sensor_readings.deleteMany({
 ## 🐛 Troubleshooting
 
 ### ESP32 Won't Connect to WiFi
-- ✅ Verify WiFi SSID and password in firmware
-- ✅ Check if WiFi is 2.4GHz (ESP32 doesn't support 5GHz)
-- ✅ Ensure firewall isn't blocking TCP port 5000
-- ✅ Check `Serial Monitor` for error messages
+- Verify WiFi SSID and password in firmware
+- Check if WiFi is 2.4GHz (ESP32 doesn't support 5GHz)
+- Ensure firewall isn't blocking TCP port 5000
+- Check `Serial Monitor` for error messages
 
 ### "connection refused" or "ERR_CONNECTION_REFUSED"
-- ✅ Verify Flask API is running: `ps aux | grep "python app.py"`
-- ✅ Check if port 5000 is in use: `lsof -i :5000`
-- ✅ Change `SERVER_ADDRESS` to correct IP (not `localhost` or `127.0.0.1`)
+- Verify Flask API is running: `ps aux | grep "python app.py"`
+- Check if port 5000 is in use: `lsof -i :5000`
+- Change `SERVER_ADDRESS` to correct IP (not `localhost` or `127.0.0.1`)
 
 ### MongoDB Connection Error
-- ✅ Verify MongoDB is running:
+- Verify MongoDB is running:
   ```bash
   # If installed via brew
   brew services list
@@ -361,21 +361,21 @@ db.sensor_readings.deleteMany({
   # If using Docker
   docker ps | grep mongodb
   ```
-- ✅ Check connection string matches MONGO_URI in `.env`
+- Check connection string matches MONGO_URI in `.env`
 
 ### Sensor Readings Are 0 or Unrealistic
-- ✅ Verify sensor is properly connected to GPIO 35
-- ✅ Calibrate TDS_COEFFICIENT (currently 0.5)
-- ✅ Increase NUM_SAMPLES in ESP32 code for noise filtering
+- Verify sensor is properly connected to GPIO 35
+- Calibrate TDS_COEFFICIENT (currently 0.5)
+- Increase NUM_SAMPLES in ESP32 code for noise filtering
 
 ### High Power Consumption
-- ✅ Increase SEND_INTERVAL (currently 60 seconds) to 300000 (5 minutes)
-- ✅ Enable ESP32 deep sleep between reads
-- ✅ Reduce number of ADC samples from 5 to 2
+- Increase SEND_INTERVAL (currently 60 seconds) to 300000 (5 minutes)
+- Enable ESP32 deep sleep between reads
+- Reduce number of ADC samples from 5 to 2
 
 ---
 
-## 📈 Next Steps
+## Next Steps
 
 1. **Add More Sensors:**
    - pH sensor (analog GPIO 34)
@@ -397,7 +397,7 @@ db.sensor_readings.deleteMany({
 
 ---
 
-## 📝 Important Notes
+## Important Notes
 
 - **Production Deployment:**
   - Use proper MQTT instead of HTTP for better efficiency

@@ -1,15 +1,3 @@
-"""
-SCRIPT 4: Classification Models
-=================================
-Classifies water quality into: 0=Critical, 1=Warning, 2=Good
-
-  1. Random Forest Classifier
-  2. XGBoost Classifier
-  3. MLP (Multi-Layer Perceptron — a neural network)
-
-Run AFTER: python 01_data_preprocessing.py
-"""
-
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -42,7 +30,7 @@ print("CLASSIFICATION MODELS — Water Quality (Good/Warning/Critical)")
 print("=" * 60)
 
 df = pd.read_csv("data/cleaned_data.csv", parse_dates=["timestamp"])
-print(f"✅ Loaded {df.shape[0]} rows")
+print(f"Loaded {df.shape[0]} rows")
 
 FEATURE_COLS = [
     "temp_c", "salinity_ppt", "ph", "do_mg_l",
@@ -76,7 +64,7 @@ joblib.dump(scaler, f"{MODEL_DIR}/classifier_scaler.pkl")
 # ─────────────────────────────────────────────
 def evaluate_classifier(name, y_true, y_pred, y_prob=None):
     acc = accuracy_score(y_true, y_pred)
-    print(f"\n  📊 {name}")
+    print(f"\n  {name}")
     print(f"     Accuracy: {acc:.4f} ({acc*100:.2f}%)")
     print("\n  Classification Report:")
     print(classification_report(y_true, y_pred,
@@ -237,5 +225,5 @@ ax.grid(axis="x", alpha=0.3)
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/04_classification_feature_importance.png", dpi=150)
 
-print(f"  ✅ Plots saved to {OUTPUT_DIR}/")
+print(f"  Plots saved to {OUTPUT_DIR}/")
 print("\n🎉 Classification models done! Now run: python 05_physics_models.py")

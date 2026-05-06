@@ -20,9 +20,9 @@ print(f"📡 Connecting to Serial Port: {SERIAL_PORT} at {BAUD_RATE} baud...")
 
 try:
     ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-    print("✅ Successfully connected to Serial Port!")
+    print("Successfully connected to Serial Port!")
 except Exception as e:
-    print(f"❌ Error opening serial port: {e}")
+    print(f"Error opening serial port: {e}")
     print("Please make sure the Serial Monitor in right Arduino IDE is CLOSED, as only one program can access the port at a time.")
     exit(1)
 
@@ -40,7 +40,7 @@ while True:
             try:
                 line = raw_line.decode('utf-8').strip()
             except UnicodeDecodeError:
-                print(f"[{time.strftime('%H:%M:%S')}] ⚠️ BAUD RATE MISMATCH? Got non-text bytes: {raw_line}")
+                print(f"[{time.strftime('%H:%M:%S')}] BAUD RATE MISMATCH? Got non-text bytes: {raw_line}")
                 continue
                 
             # Ignore empty lines or just single dashes (which often come from noise or sensor errors)
@@ -57,14 +57,14 @@ while True:
                     try:
                         response = requests.post(API_URL, json=payload, timeout=5)
                         if response.status_code in [200, 201]:
-                            print("   ✅ Successfully saved to Database!")
+                            print("   Successfully saved to Database!")
                             print(f"   API Response: {response.json().get('status', 'OK')}")
                         else:
-                            print(f"   ⚠️ API returned status code: {response.status_code}")
+                            print(f"   API returned status code: {response.status_code}")
                     except requests.exceptions.RequestException as e:
-                        print(f"   ❌ Network error sending to API: {e}")
+                        print(f"   Network error sending to API: {e}")
                 except Exception as e:
-                    print(f"   ❌ Error handling JSON payload: {e}")
+                    print(f"   Error handling JSON payload: {e}")
                 continue
                 
             # If not JSON, try legacy format (Arduino text lines accumulated until a separator)
@@ -104,13 +104,13 @@ while True:
                         response = requests.post(API_URL, json=current_reading, timeout=5)
                         
                         if response.status_code == 201:
-                            print("   ✅ Successfully saved to Database!")
+                            print("   Successfully saved to Database!")
                             print(f"   API Response: {response.json().get('status')}")
                         else:
-                            print(f"   ⚠️ API returned status code: {response.status_code}")
+                            print(f"   API returned status code: {response.status_code}")
                             print(f"   Response text: {response.text}")
                     except requests.exceptions.RequestException as e:
-                        print(f"   ❌ Network error sending to API: {e}")
+                        print(f"   Network error sending to API: {e}")
                         
                     # Reset the dictionary for the next batch
                     current_reading = {}

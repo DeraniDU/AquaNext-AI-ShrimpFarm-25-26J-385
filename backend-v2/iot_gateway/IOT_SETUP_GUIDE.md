@@ -88,7 +88,7 @@ API_PORT=5000
 
 ---
 
-## 🚀 Step 3: Set Up IoT Gateway
+## Step 3: Set Up IoT Gateway
 
 ### 3.1 Install Python Dependencies
 
@@ -118,7 +118,7 @@ python app.py
 
 Expected output:
 ```
-✅ Connected to MongoDB successfully
+Connected to MongoDB successfully
 API running on http://localhost:5000
 ```
 
@@ -303,7 +303,7 @@ The system automatically calculates:
 
 ---
 
-## 📊 Step 7: View Data on Dashboard
+## Step 7: View Data on Dashboard
 
 ### Access Dashboard
 ```
@@ -369,15 +369,15 @@ React Dashboard
 
 ---
 
-## 📈 Next Steps
+## Next Steps
 
-1. ✅ Set up MongoDB
-2. ✅ Configure environment variables
-3. ✅ Start IoT Gateway (port 5000)
-4. ✅ Upload ESP32 firmware
-5. ✅ Verify data flow
-6. ✅ Monitor on Dashboard (port 5173)
-7. ✅ Integrate with ML predictions (port 5001)
+1. Set up MongoDB
+2. Configure environment variables
+3. Start IoT Gateway (port 5000)
+4. Upload ESP32 firmware
+5. Verify data flow
+6. Monitor on Dashboard (port 5173)
+7. Integrate with ML predictions (port 5001)
 
 ---
 
@@ -389,5 +389,5 @@ For issues or questions:
 - Verify network connectivity
 - Check sensor wiring
 
-Happy farming! 🦐
+Happy farming! 
 

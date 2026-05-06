@@ -11,11 +11,6 @@ Implements three physics-based equations:
 
   3. TAN Accumulation Equation
      — Models how TAN builds up over time in a pond
-
-These models use NO machine learning — they are purely mathematical equations.
-They are compared against your measured sensor data.
-
-Run AFTER: python 01_data_preprocessing.py
 """
 
 import pandas as pd
@@ -33,7 +28,7 @@ df = df.sort_values("timestamp").reset_index(drop=True)
 print("=" * 60)
 print("PHYSICS / CHEMICAL MODELS")
 print("=" * 60)
-print(f"✅ Loaded {df.shape[0]} rows")
+print(f"Loaded {df.shape[0]} rows")
 
 
 # ═══════════════════════════════════════════════════
@@ -192,8 +187,8 @@ print(f"  Mean DO% saturation:  {df['do_saturation_pct'].mean():.1f}%")
 # Under/Over saturation
 undersaturated = (df["do_saturation_pct"] < 80).sum()
 oversaturated  = (df["do_saturation_pct"] > 120).sum()
-print(f"\n  ⚠️  Undersaturated (<80%):  {undersaturated} readings ({undersaturated/len(df)*100:.1f}%)")
-print(f"  ⚠️  Supersaturated (>120%): {oversaturated} readings ({oversaturated/len(df)*100:.1f}%)")
+print(f"\n   Undersaturated (<80%):  {undersaturated} readings ({undersaturated/len(df)*100:.1f}%)")
+print(f"   Supersaturated (>120%): {oversaturated} readings ({oversaturated/len(df)*100:.1f}%)")
 
 # DO at different temperatures (lookup table)
 print("\n  DO Saturation at Different Conditions:")
@@ -409,14 +404,14 @@ ax8.grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/05_physics_models.png", dpi=150)
-print(f"  ✅ Saved: {OUTPUT_DIR}/05_physics_models.png")
+print(f"  Saved: {OUTPUT_DIR}/05_physics_models.png")
 
 # Save physics results
 df[["timestamp", "tan_mg_l", "nh3_mg_l", "nh3_calculated", "nh3_fraction",
     "do_mg_l", "do_saturation_mgl", "do_saturation_pct"]].to_csv(
     f"{OUTPUT_DIR}/physics_model_results.csv", index=False
 )
-print(f"  ✅ Saved: {OUTPUT_DIR}/physics_model_results.csv")
+print(f"  Saved: {OUTPUT_DIR}/physics_model_results.csv")
 
 print("\n" + "=" * 60)
 print("🎉 ALL MODELS COMPLETE!")

@@ -1,6 +1,6 @@
 # IoT System Quick Reference Card
 
-## 🚀 Quick Start (After Setup)
+## Quick Start (After Setup)
 
 ### 1. Start IoT Gateway
 ```bash
@@ -35,7 +35,7 @@ POST http://localhost:5000/api/physics/calculate
 
 ---
 
-## 📊 Key Endpoints Cheat Sheet
+## Key Endpoints Cheat Sheet
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
@@ -110,7 +110,7 @@ GND:  Pin GND
 
 ---
 
-## 💾 MongoDB Collections
+## MongoDB Collections
 
 ```javascript
 // Collection: sensor_readings
@@ -155,7 +155,7 @@ Temperature_Correction = 1 + 0.02 × (T - 25)
 
 ---
 
-## 🚨 Alert Thresholds
+## Alert Thresholds
 
 ### Critical Alerts
 - DO < 3 mg/L
@@ -206,7 +206,7 @@ python example_usage.py
 
 ---
 
-## 📈 Data Schema Examples
+## Data Schema Examples
 
 ### Input: Raw Sensor Data (from ESP32)
 ```json
@@ -262,7 +262,7 @@ python example_usage.py
 
 ---
 
-## 💡 Tips & Tricks
+## Tips & Tricks
 
 1. **Batch Uploads:** Send multiple readings in one request when possible
 2. **Caching:** Store recent calculations to reduce API calls

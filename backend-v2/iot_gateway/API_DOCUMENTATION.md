@@ -24,7 +24,7 @@ GET /health
 
 ---
 
-## 📊 Sensor Data Endpoints
+## Sensor Data Endpoints
 
 ### Store Sensor Reading
 Save raw sensor readings from IoT devices to MongoDB.
@@ -55,11 +55,11 @@ Content-Type: application/json
 **Parameters:**
 | Field | Type | Required | Range | Notes |
 |-------|------|----------|-------|-------|
-| device_id | string | ✅ | - | Unique identifier for sensor/pond |
-| tds_value | float | ✅ | 0-50000 | Total Dissolved Solids (ppm) |
-| conductivity | float | ✅ | 0-200000 | Electrical conductivity (µS/cm) |
-| temperature | float | ❌ | -10 to 50 | Water temperature (°C) |
-| battery | float | ❌ | 0-100 | Battery percentage |
+| device_id | string | | - | Unique identifier for sensor/pond |
+| tds_value | float | | 0-50000 | Total Dissolved Solids (ppm) |
+| conductivity | float | | 0-200000 | Electrical conductivity (µS/cm) |
+| temperature | float | | -10 to 50 | Water temperature (°C) |
+| battery | float | | 0-100 | Battery percentage |
 
 ---
 
@@ -422,7 +422,7 @@ curl -X POST http://localhost:5000/api/physics/calculate \
 
 ---
 
-## ⚠️ Error Responses
+## Error Responses
 
 ### 400 Bad Request
 ```json
@@ -455,7 +455,7 @@ curl -X POST http://localhost:5000/api/physics/calculate \
 
 ---
 
-## 📈 Performance Recommendations
+## Performance Recommendations
 
 1. **Sensor Reading Frequency:** 1 reading per minute (60 seconds)
 2. **Batch Requests:** Group up to 10 readings per request

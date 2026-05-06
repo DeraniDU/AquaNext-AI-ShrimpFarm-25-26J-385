@@ -58,7 +58,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error sending sensor data: {e}")
+            print(f"Error sending sensor data: {e}")
             return None
     
     def get_recent_readings(self, device_id=None, limit=10, skip=0):
@@ -84,7 +84,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error getting readings: {e}")
+            print(f"Error getting readings: {e}")
             return None
     
     def get_latest_reading(self, device_id):
@@ -98,7 +98,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error getting latest reading: {e}")
+            print(f"Error getting latest reading: {e}")
             return None
     
     def get_statistics(self, device_id=None, hours=24):
@@ -120,7 +120,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error getting statistics: {e}")
+            print(f"Error getting statistics: {e}")
             return None
     
     # ═══════════════════════════════════════════════════
@@ -151,7 +151,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error calculating NH₃: {e}")
+            print(f"Error calculating NH₃: {e}")
             return None
     
     def calculate_do_saturation(self, temperature_c, dissolved_oxygen_mg_l, 
@@ -177,7 +177,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error calculating DO saturation: {e}")
+            print(f"Error calculating DO saturation: {e}")
             return None
     
     def calculate_comprehensive_report(self, temperature_c, ph, 
@@ -213,7 +213,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error calculating comprehensive report: {e}")
+            print(f"Error calculating comprehensive report: {e}")
             return None
     
     def health_check(self):
@@ -225,7 +225,7 @@ class ShrimpFarmClient:
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"❌ Health check failed: {e}")
+            print(f"Health check failed: {e}")
             return None
 
 
@@ -254,7 +254,7 @@ def example_1_send_sensor_data():
     response = client.send_sensor_reading(**sensor_data)
     
     if response:
-        print(f"✅ Response: {response['status']}")
+        print(f"Response: {response['status']}")
         print(f"   ID: {response['id']}")
         print(f"   Timestamp: {response['timestamp']}")
 
@@ -272,7 +272,7 @@ def example_2_retrieve_data():
     
     if response and response['status'] == 'success':
         data = response['data']
-        print(f"\n✅ Latest Reading:")
+        print(f"\nLatest Reading:")
         print(f"   Device: {data['device_id']}")
         print(f"   Temperature: {data['temperature']}°C")
         print(f"   TDS: {data['tds_value']} ppm")
@@ -298,7 +298,7 @@ def example_3_calculate_nh3():
     
     if response and response['status'] == 'success':
         data = response['data']
-        print(f"\n✅ Ammonia Calculation:")
+        print(f"\nAmmonia Calculation:")
         print(f"   Input TAN: 0.5 mg/L")
         print(f"   Calculated NH₃: {data['nh3_mg_l']} mg/L")
         print(f"   NH₃ Fraction: {data['nh3_fraction']*100:.2f}%")
@@ -323,7 +323,7 @@ def example_4_do_saturation():
     
     if response and response['status'] == 'success':
         data = response['data']
-        print(f"\n✅ DO Saturation:")
+        print(f"\nDO Saturation:")
         print(f"   Measured DO: {data['do_measured_mg_l']} mg/L")
         print(f"   DO Saturation: {data['do_sat_mg_l']:.2f} mg/L")
         print(f"   Saturation %: {data['saturation_pct']:.1f}%")
@@ -339,7 +339,7 @@ def example_5_comprehensive_report():
     
     client = ShrimpFarmClient()
     
-    print("\n📊 Generating comprehensive water quality report...")
+    print("\nGenerating comprehensive water quality report...")
     response = client.calculate_comprehensive_report(
         temperature_c=28.5,
         ph=8.0,
@@ -351,7 +351,7 @@ def example_5_comprehensive_report():
     
     if response and response['status'] == 'success':
         data = response['data']
-        print(f"\n✅ Overall Status: {data['overall_status']}")
+        print(f"\nOverall Status: {data['overall_status']}")
         print(f"\n   Parameters:")
         for param, value in data['parameters'].items():
             print(f"      {param}: {value}")
@@ -378,12 +378,12 @@ def example_6_statistics():
     
     client = ShrimpFarmClient()
     
-    print("\n📈 Getting 24-hour statistics for esp32_pond_001...")
+    print("\nGetting 24-hour statistics for esp32_pond_001...")
     response = client.get_statistics("esp32_pond_001", hours=24)
     
     if response and response['status'] == 'success':
         data = response['data']
-        print(f"\n✅ Statistics for {data['time_range_hours']} hours:")
+        print(f"\nStatistics for {data['time_range_hours']} hours:")
         print(f"   Total Readings: {data['total_readings']}")
         
         if 'tds' in data:
@@ -413,7 +413,7 @@ def example_7_health_check():
     response = client.health_check()
     
     if response:
-        print(f"\n✅ API Status: {response['status']}")
+        print(f"\nAPI Status: {response['status']}")
         print(f"   API: {response['api']}")
         print(f"   Database: {response['database']}")
         print(f"   Timestamp: {response['timestamp']}")
@@ -451,7 +451,7 @@ def example_8_continuous_monitoring():
                 
                 if calc_response:
                     overall = calc_response['data']['overall_status']
-                    print(f"   ✅ Status: {overall}")
+                    print(f"   Status: {overall}")
                     print(f"      Temperature: {data['temperature']}°C")
                     print(f"      TDS: {data['tds_value']} ppm")
             
@@ -459,7 +459,7 @@ def example_8_continuous_monitoring():
             time.sleep(10)
     
     except KeyboardInterrupt:
-        print("\n\n✅ Monitoring stopped")
+        print("\n\nMonitoring stopped")
 
 
 # ═══════════════════════════════════════════════════
@@ -469,7 +469,7 @@ def example_8_continuous_monitoring():
 if __name__ == "__main__":
     print("\n" + "╔" + "="*58 + "╗")
     print("║" + " "*58 + "║")
-    print("║" + "  🦐 IoT Gateway API Python Examples  ".center(58) + "║")
+    print("║" + "  IoT Gateway API Python Examples  ".center(58) + "║")
     print("║" + " "*58 + "║")
     print("╚" + "="*58 + "╝")
     
@@ -485,4 +485,4 @@ if __name__ == "__main__":
     # Uncomment to run continuous monitoring
     # example_8_continuous_monitoring()
     
-    print("\n✅ Examples completed!\n")
+    print("\nExamples completed!\n")

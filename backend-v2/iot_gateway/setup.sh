@@ -12,40 +12,40 @@ echo ""
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is not installed. Please install Python 3.8+"
+    echo "Python 3 is not installed. Please install Python 3.8+"
     exit 1
 fi
 
-echo "✅ Python 3 found: $(python3 --version)"
+echo "Python 3 found: $(python3 --version)"
 echo ""
 
 # Create virtual environment
 echo "[1/5] Creating virtual environment..."
 if [ ! -d "venv" ]; then
     python3 -m venv venv
-    echo "✅ Virtual environment created"
+    echo "Virtual environment created"
 else
-    echo "⚠️  Virtual environment already exists"
+    echo " Virtual environment already exists"
 fi
 
 # Activate virtual environment
 echo "[2/5] Activating virtual environment..."
 source venv/bin/activate
-echo "✅ Virtual environment activated"
+echo "Virtual environment activated"
 
 # Install dependencies
 echo "[3/5] Installing Python dependencies..."
 pip install --upgrade pip setuptools wheel > /dev/null 2>&1
 pip install -r requirements.txt
-echo "✅ Dependencies installed"
+echo "Dependencies installed"
 
 # Create .env file if it doesn't exist
 echo "[4/5] Checking environment configuration..."
 if [ ! -f ".env" ]; then
     cp .env.example .env
-    echo "✅ Created .env file (edit with your MongoDB URI if needed)"
+    echo "Created .env file (edit with your MongoDB URI if needed)"
 else
-    echo "⚠️  .env file already exists"
+    echo " .env file already exists"
 fi
 
 # Check MongoDB
@@ -61,9 +61,9 @@ try:
     
     client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
     client.admin.command('ping')
-    print(f"✅ MongoDB is running at {mongo_uri}")
+    print(f"MongoDB is running at {mongo_uri}")
 except Exception as e:
-    print(f"⚠️  MongoDB connection failed: {e}")
+    print(f" MongoDB connection failed: {e}")
     print("")
     print("   🔧 To fix, either:")
     print("   - Start MongoDB: brew services start mongodb-community")
@@ -78,7 +78,7 @@ echo "╔═══════════════════════�
 echo "║                    Setup Complete!                         ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
-echo "🚀 To start the API server:"
+echo "To start the API server:"
 echo "   python app.py"
 echo ""
 echo "📖 For complete instructions, see: README.md"

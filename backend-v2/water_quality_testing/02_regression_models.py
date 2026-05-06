@@ -1,14 +1,10 @@
 """
-SCRIPT 2: Regression Models
-==============================
 Trains and compares 4 regression models to predict Dissolved Oxygen (do_mg_l):
 
   1. Multiple Linear Regression (MLR)
   2. Support Vector Regression (SVR)
   3. Random Forest Regressor
   4. XGBoost Regressor
-
-Run AFTER: python 01_data_preprocessing.py
 """
 
 import pandas as pd
@@ -41,7 +37,7 @@ print("REGRESSION MODELS — Predicting Dissolved Oxygen (do_mg_l)")
 print("=" * 60)
 
 df = pd.read_csv("data/cleaned_data.csv", parse_dates=["timestamp"])
-print(f"✅ Loaded cleaned data: {df.shape}")
+print(f"Loaded cleaned data: {df.shape}")
 
 # Feature columns (inputs) and target (output)
 FEATURE_COLS = [
@@ -81,7 +77,7 @@ def evaluate(name, y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mae  = mean_absolute_error(y_true, y_pred)
     r2   = r2_score(y_true, y_pred)
-    print(f"\n  📊 {name}")
+    print(f"\n  {name}")
     print(f"     R²   = {r2:.4f}  (1.0 = perfect)")
     print(f"     RMSE = {rmse:.4f} mg/L")
     print(f"     MAE  = {mae:.4f} mg/L")
@@ -107,7 +103,7 @@ elapsed = time.time() - t0
 y_pred_mlr = mlr.predict(X_test_scaled)
 results.append(evaluate("Multiple Linear Regression", y_test, y_pred_mlr))
 predictions["MLR"] = y_pred_mlr
-print(f"  ⏱️  Training time: {elapsed:.2f}s")
+print(f"   Training time: {elapsed:.2f}s")
 joblib.dump(mlr, f"{MODEL_DIR}/mlr_model.pkl")
 
 # Feature importance (coefficients)
@@ -141,7 +137,7 @@ elapsed = time.time() - t0
 y_pred_svr = svr.predict(X_test_scaled)
 results.append(evaluate("Support Vector Regression", y_test, y_pred_svr))
 predictions["SVR"] = y_pred_svr
-print(f"  ⏱️  Training time: {elapsed:.2f}s")
+print(f"   Training time: {elapsed:.2f}s")
 joblib.dump(svr, f"{MODEL_DIR}/svr_model.pkl")
 
 # ─────────────────────────────────────────────
@@ -167,7 +163,7 @@ elapsed = time.time() - t0
 y_pred_rf = rf.predict(X_test)
 results.append(evaluate("Random Forest Regressor", y_test, y_pred_rf))
 predictions["RF"] = y_pred_rf
-print(f"  ⏱️  Training time: {elapsed:.2f}s")
+print(f"   Training time: {elapsed:.2f}s")
 joblib.dump(rf, f"{MODEL_DIR}/rf_regressor.pkl")
 
 # Feature importance
@@ -207,7 +203,7 @@ elapsed = time.time() - t0
 y_pred_xgb = xgb_reg.predict(X_test)
 results.append(evaluate("XGBoost Regressor", y_test, y_pred_xgb))
 predictions["XGBoost"] = y_pred_xgb
-print(f"  ⏱️  Training time: {elapsed:.2f}s")
+print(f"   Training time: {elapsed:.2f}s")
 xgb_reg.save_model(f"{MODEL_DIR}/xgb_regressor.json")
 
 # ─────────────────────────────────────────────
@@ -287,5 +283,5 @@ for i, v in enumerate(metrics["R2"]):
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/02_regression_feature_importance.png", dpi=150)
 
-print(f"  ✅ Plots saved to {OUTPUT_DIR}/")
+print(f"  Plots saved to {OUTPUT_DIR}/")
 print("\n🎉 Regression models done! Now run: python 03_lstm_model.py")

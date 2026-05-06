@@ -1,4 +1,4 @@
-# 🦐 ESP32 + MongoDB + Physics-Based Water Quality System
+# ESP32 + MongoDB + Physics-Based Water Quality System
 
 ## Overview
 
@@ -46,7 +46,7 @@ Pure Python implementation of:
 
 ---
 
-## 🚀 Quick Start (5 minutes)
+## Quick Start (5 minutes)
 
 ### Prerequisites
 - MongoDB running locally or in cloud
@@ -236,7 +236,7 @@ All grounds connected to ESP32 GND
 
 ---
 
-## 📊 API Endpoints Quick Reference
+## API Endpoints Quick Reference
 
 ### Sensor Data
 ```
@@ -262,7 +262,7 @@ GET    /api/sensor/delete             # Delete old data
 
 ---
 
-## 📈 Data Storage
+## Data Storage
 
 ### MongoDB Collections
 ```javascript
@@ -285,7 +285,7 @@ db.sensor_readings
 
 ---
 
-## 🧪 Testing & Examples
+## Testing & Examples
 
 ### Python Example Script
 ```bash
@@ -310,7 +310,7 @@ See `QUICK_REFERENCE.md` for curl command examples
 
 ---
 
-## 🚨 Environmental Alerts
+## Environmental Alerts
 
 ### Critical Conditions (Immediate Action)
 - DO < 3 mg/L (Turn on aerators)
@@ -447,7 +447,7 @@ db.sensor_readings.count()
 
 ---
 
-## 📝 License & Attribution
+## License & Attribution
 
 Physics formula sources:
 - Emerson, K., Russo, R. C., & Lund, R. E. (1975)
@@ -463,20 +463,20 @@ ESP32 Arduino Libraries:
 
 ## 🎯 Next Steps
 
-1. ✅ Complete hardware setup (See IOT_SETUP_GUIDE.md)
-2. ✅ Configure MongoDB connection
-3. ✅ Upload ESP32 firmware
-4. ✅ Start IoT Gateway API
-5. ✅ Verify data flow with test readings
-6. ✅ Run dashboard on port 5173
-7. ✅ Set up alerts and thresholds
-8. ✅ Monitor for 24 hours to validate
-9. ✅ Deploy to production with security measures
-10. ✅ Integrate with ML prediction API (Port 5001)
+1. Complete hardware setup (See IOT_SETUP_GUIDE.md)
+2. Configure MongoDB connection
+3. Upload ESP32 firmware
+4. Start IoT Gateway API
+5. Verify data flow with test readings
+6. Run dashboard on port 5173
+7. Set up alerts and thresholds
+8. Monitor for 24 hours to validate
+9. Deploy to production with security measures
+10. Integrate with ML prediction API (Port 5001)
 
 ---
 
-**Happy farming! 🦐**
+**Happy farming! **
 
 For questions or issues, refer to the documentation files or enable debug mode for detailed error messages.
 

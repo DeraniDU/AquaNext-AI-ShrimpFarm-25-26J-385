@@ -6,7 +6,6 @@ It learns patterns over TIME — e.g., "if DO dropped for 3 hours, it will drop 
 
 This script predicts the NEXT hour's DO from the past N hours of all features.
 
-Run AFTER: python 01_data_preprocessing.py
 """
 
 import pandas as pd
@@ -36,7 +35,7 @@ print("=" * 60)
 
 df = pd.read_csv("data/cleaned_data.csv", parse_dates=["timestamp"])
 df = df.sort_values("timestamp").reset_index(drop=True)
-print(f"✅ Loaded {df.shape[0]} rows")
+print(f"Loaded {df.shape[0]} rows")
 
 # Features used for LSTM
 FEATURE_COLS = [
@@ -103,7 +102,7 @@ try:
     from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
     print(f"  TensorFlow version: {tf.__version__}")
 except ImportError:
-    print("❌ TensorFlow not found!")
+    print("TensorFlow not found!")
     print("   Install with: pip install tensorflow")
     print("   Or on Mac: pip install tensorflow-macos")
     exit(1)
@@ -164,7 +163,7 @@ history = model.fit(
 
 print(f"\n  Stopped at epoch: {len(history.history['loss'])}")
 model.save(f"{MODEL_DIR}/lstm_model.keras")
-print(f"  ✅ Model saved to {MODEL_DIR}/lstm_model.keras")
+print(f"  Model saved to {MODEL_DIR}/lstm_model.keras")
 
 # ─────────────────────────────────────────────
 # 7. EVALUATE
@@ -234,5 +233,5 @@ axes[2].grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(f"{OUTPUT_DIR}/03_lstm_results.png", dpi=150)
-print(f"  ✅ Saved: {OUTPUT_DIR}/03_lstm_results.png")
+print(f"  Saved: {OUTPUT_DIR}/03_lstm_results.png")
 print("\n🎉 LSTM done! Now run: python 04_classification_models.py")

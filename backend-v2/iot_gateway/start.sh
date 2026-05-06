@@ -11,11 +11,11 @@ echo "════════════════════════�
 
 # Check if venv exists
 if [ ! -d "venv" ]; then
-    echo "❌ venv not found! Run: python3 -m venv venv && ./venv/bin/pip install -r requirements.txt"
+    echo "venv not found! Run: python3 -m venv venv && ./venv/bin/pip install -r requirements.txt"
     exit 1
 fi
 
-echo "✅ Starting IoT Gateway API..."
+echo "Starting IoT Gateway API..."
 echo "   Press Ctrl+C to stop."
 echo ""
 
