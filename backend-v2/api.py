@@ -1,18 +1,3 @@
-"""
-Water Quality Prediction API Server
-=====================================
-Comprehensive farmer-friendly water quality monitoring system with:
-- Real-time sensor data processing
-- Time-to-danger predictions
-- Sensor health and drift detection
-- Trend analysis and confidence scoring
-- Night-time safety monitoring
-- Recovery time predictions
-- Historical comparisons
-
-Author: AI Shrimp Farm System
-"""
-
 import json
 import os
 from pathlib import Path
@@ -422,9 +407,9 @@ def analyze_trends(sensor_data: Dict, pond_id: int = 1) -> Dict:
         "overall": overall_trend,
         "parameters": trends,
         "message": {
-            "improving": "Water quality is improving",
+            "improving": "✅ Water quality is improving",
             "stable": "➡️ Water quality is stable",
-            "deteriorating": "Water quality is deteriorating - monitor closely"
+            "deteriorating": "⚠️ Water quality is deteriorating - monitor closely"
         }.get(overall_trend, "Unknown trend")
     }
 
@@ -464,9 +449,9 @@ def calculate_night_safety(current: Dict, forecasts: Dict) -> Dict:
         "recommendation": {
             "aerator_setting": aerator_boost,
             "message": (
-                "HIGH RISK: DO will drop critically low tonight. Run aerators at maximum!" if not is_safe else
-                "Moderate risk: Increase aeration during night hours" if safety_margin < 1.5 else
-                "Night safety: DO levels should remain safe"
+                "⚠️ HIGH RISK: DO will drop critically low tonight. Run aerators at maximum!" if not is_safe else
+                "⚡ Moderate risk: Increase aeration during night hours" if safety_margin < 1.5 else
+                "✅ Night safety: DO levels should remain safe"
             )
         }
     }
@@ -536,7 +521,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "activate_aerator",
             "value": do_val,
             "threshold": do_ranges["critical_min"],
-            "farmer_message": "Turn on ALL aerators NOW! Shrimp are suffocating."
+            "farmer_message": "🚨 Turn on ALL aerators NOW! Shrimp are suffocating."
         })
     elif do_val < do_ranges["acceptable_min"]:
         alerts.append({
@@ -546,7 +531,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "increase_aeration",
             "value": do_val,
             "threshold": do_ranges["acceptable_min"],
-            "farmer_message": "Oxygen is low. Consider adding more aeration."
+            "farmer_message": "⚠️ Oxygen is low. Consider adding more aeration."
         })
 
     # pH alerts
@@ -560,7 +545,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "add_lime",
             "value": ph_val,
             "threshold": ph_ranges["critical_min"],
-            "farmer_message": "Water too acidic! Add agricultural lime."
+            "farmer_message": "🚨 Water too acidic! Add agricultural lime."
         })
     elif ph_val > ph_ranges["critical_max"]:
         alerts.append({
@@ -570,7 +555,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "water_exchange",
             "value": ph_val,
             "threshold": ph_ranges["critical_max"],
-            "farmer_message": "Water too alkaline! Perform water exchange."
+            "farmer_message": "🚨 Water too alkaline! Perform water exchange."
         })
     elif ph_val < ph_ranges["acceptable_min"] or ph_val > ph_ranges["acceptable_max"]:
         alerts.append({
@@ -579,7 +564,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "message": f"Warning: pH at {ph_val:.1f} outside optimal range",
             "action": "monitor",
             "value": ph_val,
-            "farmer_message": "pH needs attention. Monitor closely."
+            "farmer_message": "⚠️ pH needs attention. Monitor closely."
         })
 
     # Temperature alerts
@@ -593,7 +578,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "emergency_cooling",
             "value": temp_val,
             "threshold": temp_ranges["critical_max"],
-            "farmer_message": "Water too hot! Add fresh water or shade."
+            "farmer_message": "🚨 Water too hot! Add fresh water or shade."
         })
     elif temp_val > temp_ranges["acceptable_max"]:
         alerts.append({
@@ -602,7 +587,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "message": f"Warning: Elevated temperature at {temp_val:.1f}°C",
             "action": "monitor",
             "value": temp_val,
-            "farmer_message": "Temperature rising. Watch for stress signs."
+            "farmer_message": "⚠️ Temperature rising. Watch for stress signs."
         })
 
     # Ammonia alerts
@@ -616,7 +601,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "water_exchange",
             "value": ammonia_val,
             "threshold": ammonia_ranges["critical_max"],
-            "farmer_message": "Toxic ammonia level! Stop feeding, exchange water."
+            "farmer_message": "🚨 Toxic ammonia level! Stop feeding, exchange water."
         })
     elif ammonia_val > ammonia_ranges["acceptable_max"]:
         alerts.append({
@@ -625,7 +610,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "message": f"Warning: Elevated ammonia at {ammonia_val:.2f} mg/L",
             "action": "reduce_feeding",
             "value": ammonia_val,
-            "farmer_message": "Ammonia building up. Reduce feeding amount."
+            "farmer_message": "⚠️ Ammonia building up. Reduce feeding amount."
         })
 
     # Nitrite alerts
@@ -639,7 +624,7 @@ def generate_alerts(sensor_data: Dict) -> List[Dict]:
             "action": "add_salt",
             "value": nitrite_val,
             "threshold": nitrite_ranges["critical_max"],
-            "farmer_message": "Nitrite poisoning risk! Add salt to reduce toxicity."
+            "farmer_message": "🚨 Nitrite poisoning risk! Add salt to reduce toxicity."
         })
 
     return alerts
@@ -1084,10 +1069,10 @@ def predict():
                 "status": wqi_class,
                 "color": {"Good": "green", "Medium": "yellow", "Bad": "orange", "Very Bad": "red"}.get(wqi_class, "gray"),
                 "message": {
-                    "Good": "Water is healthy - shrimp are safe",
-                    "Medium": "Water is okay but needs attention",
-                    "Bad": "Water quality is poor - take action",
-                    "Very Bad": "CRITICAL - Immediate action required!"
+                    "Good": "✅ Water is healthy - shrimp are safe",
+                    "Medium": "⚡ Water is okay but needs attention",
+                    "Bad": "⚠️ Water quality is poor - take action",
+                    "Very Bad": "🚨 CRITICAL - Immediate action required!"
                 }.get(wqi_class, "Unknown status")
             },
             
@@ -1227,13 +1212,13 @@ def predict_batch():
         # Determine overall farm status
         if len(critical_ponds) > 0:
             farm_status = "critical"
-            farm_message = f"{len(critical_ponds)} pond(s) need immediate attention!"
+            farm_message = f"🚨 {len(critical_ponds)} pond(s) need immediate attention!"
         elif all_alerts > 0:
             farm_status = "warning"
-            farm_message = f"{all_alerts} alert(s) across farm - monitor closely"
+            farm_message = f"⚠️ {all_alerts} alert(s) across farm - monitor closely"
         else:
             farm_status = "healthy"
-            farm_message = "All ponds are in good condition"
+            farm_message = "✅ All ponds are in good condition"
 
         return jsonify({
             "timestamp": datetime.now().isoformat(),
@@ -1350,10 +1335,10 @@ def ml_classify():
         # Add simple recommendation based on ML class
         ml_class = result.get("ml_class", "Medium")
         result["recommendation"] = {
-            "Good": {"action": "maintain", "message": "Excellent water quality. Continue current practices."},
-            "Medium": {"action": "monitor", "message": "Acceptable quality. Monitor for changes."},
-            "Bad": {"action": "intervene", "message": "Poor quality. Consider water exchange or aeration."},
-            "Very Bad": {"action": "emergency", "message": "Critical! Immediate intervention required."}
+            "Good": {"action": "maintain", "message": " Excellent water quality. Continue current practices."},
+            "Medium": {"action": "monitor", "message": "⚡ Acceptable quality. Monitor for changes."},
+            "Bad": {"action": "intervene", "message": " Poor quality. Consider water exchange or aeration."},
+            "Very Bad": {"action": "emergency", "message": " Critical! Immediate intervention required."}
         }.get(ml_class, {"action": "unknown", "message": "Unable to determine recommendation"})
         
         return jsonify(result)
@@ -1418,7 +1403,7 @@ def simulate_reading():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Water Quality Prediction API Server")
+    print(" Water Quality Prediction API Server")
     print("=" * 60)
     load_models()
     print("\nStarting server on http://localhost:5001")

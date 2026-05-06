@@ -46,14 +46,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 if rf_model and rf_scaler:
-    logger.info("ML Regression Models loaded successfully")
+    logger.info(" ML Regression Models loaded successfully")
 else:
-    logger.warning("ML Regression Models could not be loaded")
+    logger.warning(" ML Regression Models could not be loaded")
     
 if lstm_model and lstm_scaler:
-    logger.info("ML Time-Series (LSTM) Models loaded successfully")
+    logger.info(" ML Time-Series (LSTM) Models loaded successfully")
 else:
-    logger.warning("ML Time-Series Models could not be loaded")
+    logger.warning(" ML Time-Series Models could not be loaded")
 
 # MongoDB Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
@@ -78,10 +78,10 @@ def connect_to_mongodb():
         collection.create_index("device_id")
         collection.create_index([("timestamp", -1)])
         
-        logger.info("Connected to MongoDB successfully")
+        logger.info(" Connected to MongoDB successfully")
         return True
     except Exception as e:
-        logger.warning(f" MongoDB connection failed: {e}")
+        logger.warning(f"  MongoDB connection failed: {e}")
         logger.warning("   The API will still work but data won't persist until MongoDB is online")
         return False
 
@@ -327,7 +327,7 @@ def generate_alerts(reading):
                 "optimal_max": hi,
                 "unit": unit,
                 "status": "critical_low" if val < lo * 0.9 else "warning_low",
-                "message": f"{label} too LOW: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
+                "message": f"⚠️ {label} too LOW: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
             })
         elif val > hi:
             alerts.append({
@@ -338,7 +338,7 @@ def generate_alerts(reading):
                 "optimal_max": hi,
                 "unit": unit,
                 "status": "critical_high" if val > hi * 1.1 else "warning_high",
-                "message": f"{label} too HIGH: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
+                "message": f"🚨 {label} too HIGH: {round(val, 2)} {unit} (optimal: {lo}–{hi} {unit})"
             })
     
     # ─── Compound / Multi-Parameter Rules ───
@@ -357,7 +357,7 @@ def generate_alerts(reading):
                 "label": "Low Oxygen Risk",
                 "status": "warning_compound",
                 "trigger": f"Temp={round(temp,1)}°C > 32 AND ORP={round(orp,1)} mV < 220",
-                "message": "Possible LOW OXYGEN: High temperature + low ORP detected. Check aerators!"
+                "message": "🚨 Possible LOW OXYGEN: High temperature + low ORP detected. Check aerators!"
             })
     
     # Rule 2: Ammonia Danger (pH + TAN combo)
@@ -379,15 +379,14 @@ def generate_alerts(reading):
                 "label": "Algae Bloom",
                 "status": "warning_compound",
                 "trigger": f"Secchi={round(secchi,1)} cm < 20",
-                "message": "ALGAE BLOOM: Water too turbid (Secchi < 20 cm). Reduce feeding and check aeration."
+                "message": "🟢 ALGAE BLOOM: Water too turbid (Secchi < 20 cm). Reduce feeding and check aeration."
             })
     
     return alerts
 
 
-# ═══════════════════════════════════════════════════
 # TEMPERATURE → DO PREDICTION  (Physics: Henry's Law)
-# ═══════════════════════════════════════════════════
+
 
 def predict_do_from_temperature(temperature_c, salinity_ppt=20.0, hours_ahead=1):
     """
@@ -445,9 +444,9 @@ def predict_do_from_temperature(temperature_c, salinity_ppt=20.0, hours_ahead=1)
     }
 
 
-# ═══════════════════════════════════════════════════
+
 # RELAY CONTROL
-# ═══════════════════════════════════════════════════
+
 
 # In-memory relay state (ESP32 polls this)
 relay_state = {
@@ -490,7 +489,7 @@ def update_relay_from_do(do_value, source="measured_do", temp_c=None, salinity_p
             relay_state["triggered_at"]  = datetime.utcnow().isoformat()
             relay_state["do_level"]      = temp_pred["current_do_sat_mg_l"]
             relay_state["trigger_source"]= "temp_prediction"
-            logger.info(f"RELAY OFF — {relay_state['reason']}")
+            logger.info(f" RELAY OFF — {relay_state['reason']}")
             
         # Store latest temp prediction in relay_state regardless
         relay_state["temp_prediction"] = temp_pred
@@ -505,7 +504,7 @@ def update_relay_from_do(do_value, source="measured_do", temp_c=None, salinity_p
         relay_state["triggered_at"]  = datetime.utcnow().isoformat()
         relay_state["do_level"]      = round(do_value, 3)
         relay_state["trigger_source"]= source
-        logger.warning(f"RELAY ON — Aerator activated! {relay_state['reason']}")
+        logger.warning(f" RELAY ON — Aerator activated! {relay_state['reason']}")
 
     elif do_value >= DO_SAFE_LEVEL and relay_state["aerator"] == "ON" and relay_state.get("trigger_source") != "temp_prediction":
         relay_state["aerator"]       = "OFF"
@@ -513,7 +512,7 @@ def update_relay_from_do(do_value, source="measured_do", temp_c=None, salinity_p
         relay_state["triggered_at"]  = datetime.utcnow().isoformat()
         relay_state["do_level"]      = round(do_value, 3)
         relay_state["trigger_source"]= source
-        logger.info(f"RELAY OFF — Aerator deactivated. {relay_state['reason']}")
+        logger.info(f" RELAY OFF — Aerator deactivated. {relay_state['reason']}")
 
     return None
 
@@ -626,7 +625,7 @@ def receive_sensor_data():
         # Ensure synthetic variables (like pH) are generated BEFORE physics calculations
         features = reading.calculate_ml_features()
         
-        # Run Physics Calculations
+        # Run Physics CalculationsF
         physics_input = {
             "temperature_c": reading.temperature if reading.temperature is not None else 28.0,
             "ph": reading.ph if reading.ph is not None else 7.8,
@@ -648,7 +647,7 @@ def receive_sensor_data():
                     "model_used": "RandomForestRegressor"
                 }
             except Exception as e:
-                logger.error(f"ML Prediction failed: {e}")
+                logger.error(f" ML Prediction failed: {e}")
                 reading.ml_predictions = {"error": str(e)}
         
         # Temperature → DO prediction (physics, always runs)
@@ -777,12 +776,12 @@ def receive_sensor_data():
                         if reading.ml_predictions is None:
                             reading.ml_predictions = {}
                         reading.ml_predictions["predicted_next_hour_do_mg_l"] = round(float(pred_actual), 3)
-                        logger.info(f"LSTM Success. Next Hour DO: {round(float(pred_actual), 3)}")
+                        logger.info(f" LSTM Success. Next Hour DO: {round(float(pred_actual), 3)}")
                     else:
-                        logger.warning(f"LSTM Skipped. df_24h length: {len(df_24h)}")
+                        logger.warning(f" LSTM Skipped. df_24h length: {len(df_24h)}")
             
             except Exception as e:
-                logger.error(f"Time-Series LSTM Prediction failed: {e}")
+                logger.error(f" Time-Series LSTM Prediction failed: {e}")
             reading.ml_predictions["temp_1h_forecast_c"]   = temp_do_pred["temp_1h_forecast_c"]
             reading.ml_predictions["temp_do_risk"]         = temp_do_pred["risk_level"]
             reading.ml_predictions["aerator_recommended"]  = temp_do_pred["aerator_recommended"]
@@ -824,11 +823,11 @@ def receive_sensor_data():
             if cmd == "ON":
                 relay_state["reason"]       = f"Arduino relay ON (Temp > 29.7°C)"
                 relay_state["triggered_at"] = datetime.utcnow().isoformat()
-                logger.warning("RELAY ON (Arduino hardware) — Temp triggered")
+                logger.warning(" RELAY ON (Arduino hardware) — Temp triggered")
             else:
                 relay_state["reason"]       = f"Arduino relay OFF (Temp ≤ 29.7°C)"
                 relay_state["triggered_at"] = datetime.utcnow().isoformat()
-                logger.info("RELAY OFF (Arduino hardware)")
+                logger.info(" RELAY OFF (Arduino hardware)")
         else:
             # No relay_state from Arduino → fall back to ML-based control
             update_relay_from_do(
@@ -845,7 +844,7 @@ def receive_sensor_data():
             for a in alerts:
                 logger.warning(a["message"])
         
-        logger.info(f"Saved sensor reading: {result.inserted_id}")
+        logger.info(f" Saved sensor reading: {result.inserted_id}")
         
         response_data = {
             "status": "success",
@@ -862,10 +861,10 @@ def receive_sensor_data():
         return jsonify(response_data), 201
     
     except ValueError as e:
-        logger.warning(f"Validation error: {e}")
+        logger.warning(f" Validation error: {e}")
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        logger.error(f"Error saving data: {e}")
+        logger.error(f" Error saving data: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -911,7 +910,7 @@ def get_sensor_readings():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error fetching data: {e}")
+        logger.error(f" Error fetching data: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -942,7 +941,7 @@ def get_latest_reading():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error fetching latest reading: {e}")
+        logger.error(f" Error fetching latest reading: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1009,7 +1008,7 @@ def get_sensor_stats():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error calculating stats: {e}")
+        logger.error(f"❌ Error calculating stats: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1072,11 +1071,11 @@ def subscribe_newsletter():
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
             
-        logger.info(f"📧 Sent welcome email to {email}")
+        logger.info(f" Sent welcome email to {email}")
         return jsonify({"status": "success", "message": "Subscribed and email sent!"}), 200
         
     except Exception as e:
-        logger.error(f"Failed to send email to {email}: {e}")
+        logger.error(f" Failed to send email to {email}: {e}")
         return jsonify({"error": "Failed to send welcome email. Please try again later."}), 500
 
 
@@ -1120,7 +1119,7 @@ def calculate_physics_parameters():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error in physics calculation: {e}")
+        logger.error(f" Error in physics calculation: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1153,7 +1152,7 @@ def calculate_nh3():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error calculating NH3: {e}")
+        logger.error(f" Error calculating NH3: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1185,7 +1184,7 @@ def calculate_do_saturation():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error calculating DO saturation: {e}")
+        logger.error(f" Error calculating DO saturation: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1216,7 +1215,7 @@ def convert_conductivity():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error converting conductivity: {e}")
+        logger.error(f" Error converting conductivity: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1240,7 +1239,7 @@ def delete_old_readings():
         }), 200
     
     except Exception as e:
-        logger.error(f"Error deleting data: {e}")
+        logger.error(f" Error deleting data: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1266,5 +1265,5 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_ENV") == "development"
     
-    logger.info(f"Starting IoT Gateway API on port {port}")
+    logger.info(f" Starting IoT Gateway API on port {port}")
     app.run(host="0.0.0.0", port=port, debug=debug)

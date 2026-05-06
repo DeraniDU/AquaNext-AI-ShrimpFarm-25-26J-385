@@ -1,15 +1,3 @@
-"""
-Physics-Based Water Quality Calculator
-================================
-Calculates derived water quality parameters using established physics/chemistry formulas:
-  1. NH₃ (un-ionized ammonia) - from TAN, pH, temperature
-  2. DO Saturation - theoretical maximum oxygen
-  3. Temperature-corrected parameters
-  4. Water quality indexes
-
-These formulas provide accurate predictions without ML models.
-"""
-
 import numpy as np
 from datetime import datetime
 from typing import Dict, Tuple, Optional
@@ -99,19 +87,6 @@ class PhysicsCalculator:
     ) -> Dict[str, float]:
         """
         Calculate theoretical DO saturation (maximum dissolving oxygen).
-        
-        Uses Benson & Krause (1984) equation - industry standard.
-        
-        Parameters:
-            temp_c: Water temperature in °C
-            salinity_ppt: Salinity in ppt (0 = freshwater)
-            pressure_atm: Atmospheric pressure (default 1.0 = sea level)
-        
-        Returns:
-            dict with keys:
-            - do_sat_fresh: DO saturation in freshwater (no salinity)
-            - do_sat_saline: DO saturation with salinity correction
-            - do_sat_final: Final DO saturation with pressure correction
         """
         T = temp_c + 273.15
         

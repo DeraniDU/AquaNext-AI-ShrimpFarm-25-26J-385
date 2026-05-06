@@ -63,7 +63,7 @@ def on_message(client, userdata, msg):
     topic   = msg.topic
     raw     = msg.payload.decode("utf-8", errors="replace").strip()
 
-    logger.info(f"📩 [{topic}] {raw[:120]}")  # log first 120 chars
+    logger.info(f" [{topic}] {raw[:120]}")  
 
     # ── Parse JSON ────────────────────────────────────────────────────────────
     try:
