@@ -341,6 +341,9 @@ class FeedingOptimizer:
         combined = max(0.5, min(1.2, combined))
 
         daily_feed_kg = round(biomass_kg * self.BASE_FEED_RATE * combined, 3)
+        # When we have real biomass, never return 0 so UI can show a DB-based recommendation
+        if biomass_kg >= 0.001 and daily_feed_kg <= 0:
+            daily_feed_kg = 0.001
 
         # Build feeding schedule entries
         today = date.today()

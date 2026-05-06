@@ -2,7 +2,7 @@
 """
 Train XGBoost Models for Decision Making
 
-This script trains a lightweight ML decision agent using synthetic training data
+This script trains a lightweight ML decision agent using  training data
 generated from domain rules (same generator used by AutoGluon training).
 
 Outputs (saved to models/xgboost_models/ by default):
@@ -24,6 +24,7 @@ def train_xgboost_models(
     model_dir: str = "models/xgboost_models",
     noise_level: float = 0.0,
     noise_seed: int = 42,
+    from_csv: str | None = None,
 ) -> None:
     try:
         import joblib
@@ -35,8 +36,6 @@ def train_xgboost_models(
             "Missing dependencies. Install with: pip install xgboost scikit-learn joblib"
         ) from e
 
-    from models.training.data_generator import TrainingDataGenerator
-
     out_dir = Path(model_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -45,13 +44,18 @@ def train_xgboost_models(
     print("=" * 70)
     print()
 
-    print(f"1. Generating {num_samples} synthetic samples...")
-    gen = TrainingDataGenerator()
-    X, y = gen.generate_dataset(num_samples=num_samples)
-
-    X = np.asarray(X, dtype=np.float32)
-    y_action = np.asarray(y["action_type"], dtype=np.int64)
-    y_urgency = np.asarray(y["urgency"], dtype=np.float32)
+    if from_csv:
+        print(f"1. Loading training data from CSV: {from_csv}")
+        from models.training.generate_synthetic_csv import load_training_arrays_from_csv
+        X, y_action, y_urgency = load_training_arrays_from_csv(from_csv)
+    else:
+        from models.training.data_generator import TrainingDataGenerator
+        print(f"1. Generating {num_samples} synthetic samples...")
+        gen = TrainingDataGenerator()
+        X, y = gen.generate_dataset(num_samples=num_samples)
+        X = np.asarray(X, dtype=np.float32)
+        y_action = np.asarray(y["action_type"], dtype=np.int64)
+        y_urgency = np.asarray(y["urgency"], dtype=np.float32)
 
     print(f"   X shape: {X.shape}  y_action: {y_action.shape}  y_urgency: {y_urgency.shape}")
 
@@ -185,7 +189,13 @@ def train_xgboost_models(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--samples", type=int, default=20000, help="Number of synthetic samples to generate")
+    p.add_argument(
+        "--from-csv",
+        type=str,
+        default=None,
+        help="Train from CSV (e.g. models/training/synthetic_xgboost_training.csv) instead of generating in memory",
+    )
+    p.add_argument("--samples", type=int, default=20000, help="Number of synthetic samples to generate (ignored if --from-csv)")
     p.add_argument("--model-dir", type=str, default="models/xgboost_models", help="Output directory for saved models")
     p.add_argument(
         "--noise-level",
@@ -204,6 +214,7 @@ if __name__ == "__main__":
         model_dir=args.model_dir,
         noise_level=args.noise_level,
         noise_seed=args.noise_seed,
+        from_csv=args.from_csv,
     )
 
 

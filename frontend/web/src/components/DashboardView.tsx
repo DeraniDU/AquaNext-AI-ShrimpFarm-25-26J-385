@@ -192,7 +192,8 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter }:
 	const healthScore = Math.round((dashboard.overall_health_score ?? 0.82) * 100)
 	const healthLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Fair' : 'Needs Attention'
 
-	const totalShrimp = sum(feed.map((f) => f.shrimp_count))
+	// Coerce in case API/DB sends string or missing (sum would become NaN or 0)
+	const totalShrimp = sum(feed.map((f) => Number(f.shrimp_count) || 0))
 	const totalBiomassKg = sum(feed.map((f) => (f.shrimp_count * f.average_weight) / 1000))
 	const totalBiomassTons = totalBiomassKg / 1000
 	const totalFeedKg = totalFeedG / 1000
@@ -367,11 +368,18 @@ export function DashboardView({ data, history, hourlyHistory = [], pondFilter }:
 			<div>
 				<div className="dashSectionTitle">Key Performance Indicators</div>
 				<div className="dashKpiRow">
-					<KpiCard icon="🦐" iconBg="rgba(59, 130, 246, 0.15)" label="Total Shrimp Population" value={formatNumber(totalShrimp / 1e6, { maximumFractionDigits: 1 }) + 'M'} trend={shrimpTrend} trendUp />
+					<KpiCard
+						icon="🦐"
+						iconBg="rgba(59, 130, 246, 0.15)"
+						label="Total Shrimp Population"
+						value={formatShrimpPopulation(totalShrimp)}
+						trend={shrimpTrend}
+						trendUp
+					/>
 					<KpiCard icon="🌿" iconBg="rgba(34, 197, 94, 0.15)" label="Total Biomass" value={formatNumber(totalBiomassTons, { maximumFractionDigits: 1 }) + ' tons'} trend={biomassTrend} />
 					<KpiCard icon="🍽️" iconBg="rgba(245, 158, 11, 0.15)" label="Daily Feed Usage" value={formatNumber(totalFeedKg, { maximumFractionDigits: 0 }) + ' kg'} trend={feedTrend} />
 					<KpiCard icon="⚡" iconBg="rgba(234, 179, 8, 0.15)" label="Energy Consumption" value={formatNumber(totalEnergyKwhNum, { maximumFractionDigits: 0 }) + ' kWh'} trend={energyTrend} trendUp />
-					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'$' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
+					<KpiCard icon="💰" iconBg="rgba(139, 92, 246, 0.15)" label="Operational Cost" value={'Rs. ' + formatNumber(operationalCostPerDay, { maximumFractionDigits: 0 }) + '/day'} trend={costTrend} />
 				</div>
 			</div>
 
@@ -972,6 +980,17 @@ function summarizeWaterStatus(statuses: WaterQualityStatus[]) {
 
 function sum(values: number[]) {
 	return values.reduce((a, b) => a + b, 0)
+}
+
+/**
+ * Backend feed agents use per-pond counts in the thousands (e.g. 4k–9k).
+ * Showing total/1e6 + "M" rounds small totals to 0.0M — use M only when in millions.
+ */
+function formatShrimpPopulation(total: number): string {
+	if (!Number.isFinite(total) || total <= 0) return '0'
+	if (total >= 1_000_000) return formatNumber(total / 1_000_000, { maximumFractionDigits: 2 }) + 'M'
+	if (total >= 10_000) return formatNumber(total / 1_000, { maximumFractionDigits: 1 }) + 'K'
+	return formatNumber(total, { maximumFractionDigits: 0 })
 }
 
 function avg(values: number[]) {

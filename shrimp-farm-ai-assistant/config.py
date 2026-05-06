@@ -34,6 +34,10 @@ FARM_CONFIG = {
     "optimal_salinity_range": (15, 25),  # ppt
 }
 
+# Energy cost in Sri Lankan Rupees per kWh (used for EnergyData.cost and DB persistence).
+# Override with env ENERGY_COST_PER_KWH_LKR e.g. 65–90 depending on tariff tier.
+ENERGY_COST_PER_KWH_LKR = float(os.getenv("ENERGY_COST_PER_KWH_LKR", "65"))
+
 # Agent scheduling configuration (minutes)
 AGENT_CONFIG = {
     "water_quality_check_interval": int(os.getenv("WATER_QUALITY_CHECK_INTERVAL_MIN", "30")),
@@ -63,6 +67,11 @@ MONGO_URI = os.getenv("MONGO_URI", "")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "shrimp_farm")
 # Default to false if not explicitly enabled to avoid hard failures in local dev.
 USE_MONGODB = os.getenv("USE_MONGODB", "false").lower() == "true"
+
+# When true, dashboard/agents use only MongoDB *_readings collections—no simulated
+# water/feed/energy/labor data if a pond has no row. Requires USE_MONGODB=true and
+# populated water_quality_readings, feed_readings, energy_readings, labor_readings.
+USE_READINGS_ONLY = os.getenv("USE_READINGS_ONLY", "false").lower() == "true"
 
 # Orchestration: parallel data collection and optional LLM steps
 RUN_MANAGER_SYNTHESIS = os.getenv("RUN_MANAGER_SYNTHESIS", "false").lower() == "true"  # Skip heavy manager LLM by default

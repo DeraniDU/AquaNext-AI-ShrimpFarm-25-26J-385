@@ -359,7 +359,8 @@ class DataRepository:
                     pump_usage=doc.get('pump_usage', 12.0),
                     heater_usage=doc.get('heater_usage', 10.0),
                     total_energy=doc.get('total_energy', 42.0),
-                    cost=doc.get('cost', 5.04),
+                    # Default ~42 kWh * 65 LKR/kWh when legacy USD-scale docs missing
+                    cost=float(doc.get('cost', 42 * 65)),
                     efficiency_score=doc.get('efficiency_score', 0.8)
                 ))
             
@@ -521,7 +522,7 @@ class DataRepository:
                             pump_usage=doc.get('pump_usage', 12.0),
                             heater_usage=doc.get('heater_usage', 10.0),
                             total_energy=doc.get('total_energy', 20.0),
-                            cost=doc.get('cost', 2.0),
+                            cost=float(doc.get('cost', 20 * 65)),
                             efficiency_score=doc.get('efficiency_score', 0.8)
                         ))
                     elif data_type == "labor":

@@ -175,16 +175,17 @@ async def get_system_analytics(
                 "biomass_kg": round(total_biomass_week, 2)
             })
 
-    # Calculate system-wide FCR (simplified - average across batches)
+    # Calculate system-wide FCR: feed-to-biomass ratio (total feed kg / total biomass kg) as proxy
+    # True FCR = feed / weight gain; here we use total_feed / total_biomass when biomass > 0
+    average_fcr = round(total_feed / total_biomass, 3) if total_biomass > 0 else 1.0
+
     system_fcr = []
     if len(batch_summaries) > 0:
-        # For system view, show average FCR per week if available
-        # This is a simplified version - full FCR calculation would need weight gain data
         for week_num in sorted(set(w["week"] for w in abw_by_week)):
             system_fcr.append({
                 "week": week_num,
                 "week_label": f"Week {week_num}",
-                "fcr": 1.0  # Placeholder - would need actual feed consumed / weight gain
+                "fcr": average_fcr
             })
 
     system_result = {
@@ -195,7 +196,7 @@ async def get_system_analytics(
             "totalFeedKg": round(total_feed, 2),
             "totalBiomassKg": round(total_biomass, 2),
             "averageABW": round(total_abw_sum / total_abw_count, 2) if total_abw_count > 0 else 0,
-            "averageFCR": 1.0,  # Placeholder
+            "averageFCR": average_fcr,
             "totalCycles": total_cycles
         },
         "comparisonData": {

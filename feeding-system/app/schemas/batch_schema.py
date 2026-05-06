@@ -21,4 +21,5 @@ class BatchResponse(BatchCreate):
     currentShrimpAge: Optional[int] = None  # dynamically calculated
     createdAt: Optional[datetime] = None
     feedAmount: Optional[float] = 0
+    feedTimesPerDay: Optional[int] = None  # feeding frequency (times per day) from feed calculator
     lastFeedDate: Optional[str] = None  # ISO string format - last time AI feeding was processed

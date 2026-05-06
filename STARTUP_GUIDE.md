@@ -501,3 +501,47 @@ exit
 
 **Your complete Smart Shrimp Farm system is ready to run! 🦐**
 
+
+/////starting commands
+ Start AquaNext — 3 Terminals
+
+
+Terminal 1 — IoT Gateway (Port 8000)
+bash
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/backend-v2/iot_gateway
+source venv/bin/activate
+python app.py
+✅ Expected: Running on http://0.0.0.0:8000
+
+Terminal 2 — ML Prediction API (Port 5001)
+bash
+
+
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/backend-v2
+source venv/bin/activate
+python api.py
+✅ Expected: Flask running on http://0.0.0.0:5001
+
+Terminal 3 — Arduino Serial Bridge
+bash
+
+
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/backend-v2/iot_gateway
+source venv/bin/activate
+python serial_to_api_bridge.py
+
+✅ Expected: Successfully connected to Serial Port!
+
+Terminal 4 — Frontend Dashboard
+bash
+
+cd /Users/deranindugunasekara/Desktop/AquaNext-AI-ShrimpFarm-25-26J-385/frontend/water-quality-system
+npm run dev
+
+✅ Expected: http://localhost:5175
+
+📋 Start Order (Important!)
+1️⃣  app.py          → IoT gateway + MongoDB
+2️⃣  api.py          → ML models loaded into memory
+3️⃣  serial bridge   → Arduino data flowing
+4️⃣  npm run dev     → Dashboard reads from gateway
