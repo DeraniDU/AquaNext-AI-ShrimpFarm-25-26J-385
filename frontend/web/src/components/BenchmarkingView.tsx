@@ -276,7 +276,7 @@ const chartTooltip: ChartOptions['plugins'] = {
 }
 
 export function BenchmarkingView({ ponds = 6 }: Props) {
-	const { data, loading, error, lastUpdatedAt, refresh } = useBenchmark({ ponds })
+	const { data, loading, error, lastUpdatedAt, refresh } = useBenchmark({ ponds, includeAi: true })
 	const benchmark: BenchmarkResult = data?.benchmark ?? FALLBACK_BENCHMARK
 
 	const resolved = useMemo(() => {

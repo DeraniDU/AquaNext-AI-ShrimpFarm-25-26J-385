@@ -45,7 +45,7 @@ from agents.manager_agent import ManagerAgent
 from agents.decision_recommendation_agent import DecisionRecommendationAgent
 from agents.forecasting_agent import ForecastingAgent
 from agents.benchmarking_agent import BenchmarkingAgent
-from agents.feeding_optimizer import FeedingOptimizer
+from agents.feeding_optimizer import FeedingOptimizerAgent
 from config import FARM_CONFIG
 
 app = FastAPI(title="Shrimp Farm Management API", version="0.1.0")
@@ -496,6 +496,8 @@ def _budget_metric(actual_lkr: float, budget_lkr: float, projected_lkr: float) -
 
 
 def _build_budget_summary(cost_summary: Dict[str, Any], budget_settings: Dict[str, float]) -> Dict[str, Any]:
+	# Build the "Budget vs actual" dashboard cards from the latest daily cost snapshot.
+	# "Actual" is a run-rate projection: weekly categories use 7 days, cycle uses 30 days.
 	farm = cost_summary["farm"]
 	daily_feed = float(farm["feed_cost_lkr"])
 	daily_energy = float(farm["energy_cost_lkr"])
@@ -521,7 +523,7 @@ def _build_savings_opportunities(
 	_economic_settings: Dict[str, float],
 ) -> List[Dict[str, Any]]:
 	out: List[Dict[str, Any]] = []
-	feed_optimizer = FeedingOptimizer()
+	feed_optimizer = FeedingOptimizerAgent()
 	feed_optimization = feed_optimizer.optimize_all(feed_data, water_quality_data)
 	feed_daily_cost = float(cost_summary["farm"]["feed_cost_lkr"])
 	if feed_optimization.potential_savings_pct > 0 and feed_daily_cost > 0:
@@ -537,7 +539,7 @@ def _build_savings_opportunities(
 				"priority": "high" if feed_optimization.potential_savings_pct >= 8 else "medium",
 				"savings_lkr": feed_savings_day,
 				"period": "day",
-				"source": "Feeding optimizer",
+				"source": "AI feeding optimizer",
 			}
 		)
 

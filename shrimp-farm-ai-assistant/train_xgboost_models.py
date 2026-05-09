@@ -19,6 +19,30 @@ import json
 import numpy as np
 
 
+def load_training_arrays_from_csv(csv_path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    import pandas as pd
+
+    from models.training.feature_columns import (
+        FEATURE_COLUMNS,
+        TARGET_ACTION_TYPE,
+        TARGET_URGENCY,
+    )
+
+    df = pd.read_csv(csv_path)
+    missing = [
+        column
+        for column in [*FEATURE_COLUMNS, TARGET_ACTION_TYPE, TARGET_URGENCY]
+        if column not in df.columns
+    ]
+    if missing:
+        raise ValueError(f"CSV is missing required columns: {', '.join(missing)}")
+
+    X = df[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
+    y_action = df[TARGET_ACTION_TYPE].to_numpy(dtype=np.int64)
+    y_urgency = df[TARGET_URGENCY].to_numpy(dtype=np.float32)
+    return X, y_action, y_urgency
+
+
 def train_xgboost_models(
     num_samples: int = 20000,
     model_dir: str = "models/xgboost_models",
@@ -46,7 +70,6 @@ def train_xgboost_models(
 
     if from_csv:
         print(f"1. Loading training data from CSV: {from_csv}")
-        from models.training.generate_synthetic_csv import load_training_arrays_from_csv
         X, y_action, y_urgency = load_training_arrays_from_csv(from_csv)
     else:
         from models.training.data_generator import TrainingDataGenerator

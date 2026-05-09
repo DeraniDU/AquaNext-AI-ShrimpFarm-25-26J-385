@@ -191,7 +191,7 @@ function buildHarvestSummary({
 		if (row?.available) {
 			if (row.days_to_harvest != null && row.days_to_harvest <= 5) {
 				recs.push({
-					pond: pondId,
+					pond: pondId,	
 					tone: 'good',
 					text: `Prepare harvest equipment — pond ${pondId} is within ~${row.days_to_harvest} days of the model window.`
 				})
@@ -293,6 +293,7 @@ function simulateHarvestRow({
 }): HarvestMlPondResult {
 	if (!row.available || !affected) return row
 
+	// Baseline values come from the real ML prediction and current water reading.
 	const baseDays = row.days_to_harvest ?? 21
 	const baseRisk = row.early_harvest?.probability ?? 0.18
 	const waterDo = water?.dissolved_oxygen ?? 5.6
@@ -300,21 +301,25 @@ function simulateHarvestRow({
 	const waterAmmonia = water?.ammonia ?? 0.12
 	const waterSalinity = water?.salinity ?? TARGET_SALINITY_PPT
 
+	// Apply the user's scenario deltas without allowing negative water metrics.
 	const nextDo = Math.max(0, waterDo + scenario.doDelta)
 	const nextTemp = waterTemp + scenario.tempDelta
 	const nextAmmonia = Math.max(0, waterAmmonia + scenario.ammoniaDelta)
 	const nextSalinity = Math.max(0, waterSalinity + scenario.salinityDelta)
 
+	// Measure whether temperature and salinity moved closer to or farther from target conditions.
 	const baselineTempVariance = Math.abs(waterTemp - TARGET_TEMP_C)
 	const nextTempVariance = Math.abs(nextTemp - TARGET_TEMP_C)
 	const baselineSalinityVariance = Math.abs(waterSalinity - TARGET_SALINITY_PPT)
 	const nextSalinityVariance = Math.abs(nextSalinity - TARGET_SALINITY_PPT)
 
+	// Convert worse water conditions into penalties used by timing, yield, and growth formulas.
 	const targetDelta = scenario.targetWeightG - (row.target_weight_g ?? baseTargetG)
 	const tempPenalty = Math.max(0, nextTempVariance - baselineTempVariance) * 1.2
 	const salinityPenalty = Math.max(0, nextSalinityVariance - baselineSalinityVariance) * 0.45
 	const ammoniaPenalty = Math.max(0, nextAmmonia - waterAmmonia) * 18
 
+	// Higher feed, feeding frequency, and oxygen improve growth; penalties reduce it.
 	const growthScore =
 		scenario.feedAdjustPct * 0.07 +
 		scenario.feedingFrequencyDelta * 0.75 +
@@ -323,7 +328,9 @@ function simulateHarvestRow({
 		salinityPenalty -
 		ammoniaPenalty
 
+	// Estimate the new harvest day count from the baseline ML result plus scenario effects.
 	const simulatedDays = clamp(Math.round(baseDays + targetDelta * 1.7 - growthScore), 3, 180)
+	// Scale expected biomass for the scenario while keeping it in a realistic range.
 	const yieldFactor = clamp(
 		1 +
 			targetDelta * 0.015 +
@@ -337,6 +344,7 @@ function simulateHarvestRow({
 		1.45
 	)
 
+	// Estimate early-harvest risk: oxygen helps, while poorer temperature, ammonia, or higher target weight hurts.
 	const simulatedRisk = clamp(
 		baseRisk -
 			scenario.doDelta * 0.04 +
@@ -347,6 +355,7 @@ function simulateHarvestRow({
 		0.98
 	)
 
+	// Preserve existing reasons and add scenario-specific reasons when thresholds are crossed.
 	const reasonCodes = new Set(row.early_harvest?.reason_codes ?? [])
 	if (simulatedRisk >= 0.5) reasonCodes.add('scenario_elevated_early_harvest_risk')
 	if (nextDo < 5) reasonCodes.add('low_dissolved_oxygen')
@@ -354,6 +363,7 @@ function simulateHarvestRow({
 	if (nextTemp > 31.5) reasonCodes.add('high_temperature')
 	if (nextTemp < 26) reasonCodes.add('low_temperature')
 
+	// Scale the ML growth curve so later forecast days show more scenario impact.
 	const growthFactor = clamp(
 		1 +
 			scenario.feedAdjustPct * 0.0025 +
@@ -383,6 +393,7 @@ function simulateHarvestRow({
 			}
 		}) ?? row.growth_forecast
 
+	// Return a copy of the ML row with only the simulated fields changed.
 	return {
 		...row,
 		target_weight_g: scenario.targetWeightG,

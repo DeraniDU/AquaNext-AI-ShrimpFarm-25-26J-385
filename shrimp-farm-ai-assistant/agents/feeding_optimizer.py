@@ -3,9 +3,9 @@ Feeding Optimizer Agent
 
 Provides two strategies:
 - FeedingOptimizerAgent: AI agentic method using CrewAI + LLM to reason over
-  water quality and biomass and produce per-pond feeding plans (with rule-based fallback).
+  water quality and biomass and produce per-pond feeding plans.
 - FeedingOptimizer: Rule-based method using fixed multipliers and industry-standard
-  feed rates (3–5 % of biomass per day).
+  feed rates (3–5 % of biomass per day), kept for explicit non-LLM use only.
 
 Both return FeedingPlan per pond with exact amounts and feeding windows.
 """
@@ -51,52 +51,57 @@ class FeedingOptimizerAgent:
     """
     AI agentic feeding optimizer using a CrewAI agent and LLM to reason over
     water quality, biomass, and farming best practices and output structured
-    per-pond feeding plans. Falls back to rule-based FeedingOptimizer when
-    the LLM is unavailable or the agent task fails.
+    per-pond feeding plans. This path requires the AI/LLM stack and does not
+    silently fall back to the rule-based optimizer.
     """
 
     def __init__(self):
         self.llm = None
         self.agent = None
-        if OPENAI_API_KEY and ChatOpenAI is not None:
-            try:
-                self.llm = ChatOpenAI(
-                    openai_api_key=OPENAI_API_KEY,
-                    model_name=OPENAI_MODEL_NAME,
-                    temperature=OPENAI_TEMPERATURE,
-                )
-                self.agent = Agent(
-                    role="Feed Optimization Specialist",
-                    goal="Produce optimal daily feeding plans per pond to maximize growth and FCR while respecting water quality and shrimp biology.",
-                    backstory="""You are an aquaculture nutritionist and farm operations expert with 15 years of experience in shrimp feed management.
-                    You reason from water quality (pH, temperature, dissolved oxygen, ammonia), biomass estimates, and current feeding to recommend
-                    daily feed amounts, feed types by shrimp size, and feeding times. You reduce feed when DO is low or ammonia is high, and align
-                    feeding with typical shrimp activity peaks (e.g. morning and afternoon).""",
-                    verbose=True,
-                    allow_delegation=False,
-                    llm=self.llm,
-                )
-            except Exception as e:
-                print(f"[FeedingOptimizerAgent] LLM init failed: {e}")
-                self.llm = None
-                self.agent = None
-        self._rule_based = FeedingOptimizer()
+        missing = []
+        if not OPENAI_API_KEY:
+            missing.append("OPENAI_API_KEY")
+        if ChatOpenAI is None:
+            missing.append("ChatOpenAI")
+        if not CREWAI_AVAILABLE:
+            missing.append("CrewAI")
+        if missing:
+            raise RuntimeError(f"AI feeding optimizer requires: {', '.join(missing)}")
+
+        try:
+            self.llm = ChatOpenAI(
+                openai_api_key=OPENAI_API_KEY,
+                model_name=OPENAI_MODEL_NAME,
+                temperature=OPENAI_TEMPERATURE,
+            )
+            self.agent = Agent(
+                role="Feed Optimization Specialist",
+                goal="Produce optimal daily feeding plans per pond to maximize growth and FCR while respecting water quality and shrimp biology.",
+                backstory="""You are an aquaculture nutritionist and farm operations expert with 15 years of experience in shrimp feed management.
+                You reason from water quality (pH, temperature, dissolved oxygen, ammonia), biomass estimates, and current feeding to recommend
+                daily feed amounts, feed types by shrimp size, and feeding times. You reduce feed when DO is low or ammonia is high, and align
+                feeding with typical shrimp activity peaks (e.g. morning and afternoon).""",
+                verbose=True,
+                allow_delegation=False,
+                llm=self.llm,
+            )
+        except Exception as e:
+            raise RuntimeError(f"AI feeding optimizer initialization failed: {e}") from e
 
     def optimize_all(
         self,
         feed_data: List[FeedData],
         water_quality_data: List[WaterQualityData],
     ) -> FeedingOptimizationResult:
-        if not self.agent or not CREWAI_AVAILABLE:
-            return self._rule_based.optimize_all(feed_data, water_quality_data)
+        if not self.agent:
+            raise RuntimeError("AI feeding optimizer is not initialized")
         try:
             task = self._create_optimization_task(feed_data, water_quality_data)
             crew = Crew(agents=[self.agent], tasks=[task], verbose=True)
             result = crew.kickoff()
             return self._parse_agent_result(result, feed_data, water_quality_data)
         except Exception as e:
-            print(f"[FeedingOptimizerAgent] Agent run failed, using rule-based fallback: {e}")
-            return self._rule_based.optimize_all(feed_data, water_quality_data)
+            raise RuntimeError(f"AI feeding optimizer run failed: {e}") from e
 
     def _create_optimization_task(
         self,
@@ -214,7 +219,7 @@ Include one object in "plans" for each pond in the input data. Use the pond_ids 
                 )
             )
         if not plans:
-            return self._rule_based.optimize_all(feed_data, water_quality_data)
+            raise ValueError("AI feeding optimizer returned no valid plans")
         total_feed_kg = sum(p.daily_feed_kg for p in plans)
         total_biomass_kg = sum(p.current_biomass_kg for p in plans)
         overall_fcr = round(total_feed_kg / total_biomass_kg, 3) if total_biomass_kg > 0 else 1.2
